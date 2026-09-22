@@ -1,0 +1,506 @@
+import { Response } from "express";
+import crypto from "crypto";
+
+import { supabase } from "../config/supabase";
+import { AuthenticatedRequest } from "../middleware/auth";
+
+const BUCKET_NAME = "resources";
+
+const ALLOWED_TYPES = ["note", "question_paper", "assignment"];
+
+export const getResources = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required.",
+      });
+    }
+
+    let query = supabase
+      .from("resources")
+      .select(
+        "id, topic, type, module_name, programme_id, year, semester, file_path, uploaded_by, created_at"
+      )
+      .order("created_at", { ascending: false });
+
+    if (req.user.role === "programme_admin") {
+      if (!req.user.programme_id) {
+        return res.status(403).json({
+          success: false,
+          message: "Programme not assigned.",
+        });
+      }
+
+      query = query.eq("programme_id", req.user.programme_id);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error("Get resources error:", error);
+
+      return res.status(500).json({
+        success: false,
+        message: "Failed to fetch notes.",
+        error: error.message,
+      });
+    }
+
+    return res.json({
+      success: true,
+      resources: data,
+    });
+  } catch (error) {
+    console.error("Get resources error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Server error.",
+    });
+  }
+};
+
+export const uploadResourceFile = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required.",
+      });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: "Please upload a PDF file.",
+      });
+    }
+
+    if (req.file.mimetype !== "application/pdf") {
+      return res.status(400).json({
+        success: false,
+        message: "Only PDF files are allowed.",
+      });
+    }
+
+    const {
+      topic,
+      type,
+      module_name,
+      year,
+      semester,
+    } = req.body;
+
+    if (!topic || !topic.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Topic is required.",
+      });
+    }
+
+    if (!module_name || !module_name.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Module name is required.",
+      });
+    }
+
+    if (!ALLOWED_TYPES.includes(type)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid resource type.",
+      });
+    }
+
+    const yearNumber = Number(year);
+    const semesterNumber = Number(semester);
+
+    if (!Number.isInteger(yearNumber) || yearNumber < 1) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid year.",
+      });
+    }
+
+    if (
+      !Number.isInteger(semesterNumber) ||
+      semesterNumber < 1
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid semester.",
+      });
+    }
+
+    let programmeId = req.user.programme_id;
+
+    if (req.user.role === "programme_admin" && !programmeId) {
+      return res.status(403).json({
+        success: false,
+        message: "Programme not assigned.",
+      });
+    }
+
+    // Super admin must provide a programme_id.
+    if (req.user.role === "super_admin") {
+      if (!req.body.programme_id) {
+        return res.status(400).json({
+          success: false,
+          message: "Programme ID is required for super admin uploads.",
+        });
+      }
+
+      programmeId = Number(req.body.programme_id);
+    }
+
+    if (!programmeId) {
+      return res.status(400).json({
+        success: false,
+        message: "Programme is required.",
+      });
+    }
+
+    const safeFileName = req.file.originalname
+      .replace(/[^a-zA-Z0-9._-]/g, "_")
+      .replace(/_+/g, "_");
+
+    const filePath = `admin/${programmeId}/${crypto.randomUUID()}-${safeFileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from(BUCKET_NAME)
+      .upload(filePath, req.file.buffer, {
+        contentType: "application/pdf",
+        upsert: false,
+      });
+
+    if (uploadError) {
+      console.error("Storage upload error:", uploadError);
+
+      return res.status(500).json({
+        success: false,
+        message: "Failed to upload PDF.",
+        error: uploadError.message,
+      });
+    }
+
+    const { data: resource, error: insertError } = await supabase
+      .from("resources")
+      .insert({
+        topic: topic.trim(),
+        type,
+        module_name: module_name.trim(),
+        programme_id: programmeId,
+        year: yearNumber,
+        semester: semesterNumber,
+        file_path: filePath,
+        uploaded_by: req.user.id,
+      })
+      .select()
+      .single();
+
+    if (insertError) {
+      console.error("Resource insert error:", insertError);
+
+      // Remove uploaded file if database insert fails.
+      await supabase.storage
+        .from(BUCKET_NAME)
+        .remove([filePath]);
+
+      return res.status(500).json({
+        success: false,
+        message: "Failed to save note information.",
+        error: insertError.message,
+      });
+    }
+
+    return res.status(201).json({
+      success: true,
+      message: "Note uploaded successfully.",
+      resource,
+    });
+  } catch (error) {
+    console.error("Upload resource error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Server error.",
+    });
+  }
+};
+
+export const createResource = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required.",
+      });
+    }
+
+    const {
+      topic,
+      type,
+      module_name,
+      year,
+      semester,
+    } = req.body;
+
+    if (!topic || !module_name || !type || !year || !semester) {
+      return res.status(400).json({
+        success: false,
+        message: "All required fields must be provided.",
+      });
+    }
+
+    if (!ALLOWED_TYPES.includes(type)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid resource type.",
+      });
+    }
+
+    const yearNumber = Number(year);
+    const semesterNumber = Number(semester);
+
+    let programmeId = req.user.programme_id;
+
+    if (req.user.role === "super_admin") {
+      programmeId = Number(req.body.programme_id);
+    }
+
+    if (!programmeId) {
+      return res.status(400).json({
+        success: false,
+        message: "Programme is required.",
+      });
+    }
+
+    const { data, error } = await supabase
+      .from("resources")
+      .insert({
+        topic: topic.trim(),
+        type,
+        module_name: module_name.trim(),
+        programme_id: programmeId,
+        year: yearNumber,
+        semester: semesterNumber,
+        file_path: req.body.file_path || null,
+        uploaded_by: req.user.id,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Create resource error:", error);
+
+      return res.status(500).json({
+        success: false,
+        message: "Failed to create note.",
+        error: error.message,
+      });
+    }
+
+    return res.status(201).json({
+      success: true,
+      message: "Note created successfully.",
+      resource: data,
+    });
+  } catch (error) {
+    console.error("Create resource error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Server error.",
+    });
+  }
+};
+
+export const updateResource = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required.",
+      });
+    }
+
+    const resourceId = req.params.id;
+
+    const { data: existing, error: findError } = await supabase
+      .from("resources")
+      .select("id, programme_id")
+      .eq("id", resourceId)
+      .single();
+
+    if (findError || !existing) {
+      return res.status(404).json({
+        success: false,
+        message: "Note not found.",
+      });
+    }
+
+    if (
+      req.user.role === "programme_admin" &&
+      existing.programme_id !== req.user.programme_id
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "You cannot modify notes from another programme.",
+      });
+    }
+
+    const {
+      topic,
+      type,
+      module_name,
+      year,
+      semester,
+    } = req.body;
+
+    const updates: Record<string, unknown> = {};
+
+    if (topic !== undefined) updates.topic = topic.trim();
+
+    if (type !== undefined) {
+      if (!ALLOWED_TYPES.includes(type)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid resource type.",
+        });
+      }
+
+      updates.type = type;
+    }
+
+    if (module_name !== undefined) {
+      updates.module_name = module_name.trim();
+    }
+
+    if (year !== undefined) {
+      updates.year = Number(year);
+    }
+
+    if (semester !== undefined) {
+      updates.semester = Number(semester);
+    }
+
+    const { data, error } = await supabase
+      .from("resources")
+      .update(updates)
+      .eq("id", resourceId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Update resource error:", error);
+
+      return res.status(500).json({
+        success: false,
+        message: "Failed to update note.",
+        error: error.message,
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: "Note updated successfully.",
+      resource: data,
+    });
+  } catch (error) {
+    console.error("Update resource error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Server error.",
+    });
+  }
+};
+
+export const deleteResource = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required.",
+      });
+    }
+
+    const resourceId = req.params.id;
+
+    const { data: resource, error: findError } = await supabase
+      .from("resources")
+      .select("id, programme_id, file_path")
+      .eq("id", resourceId)
+      .single();
+
+    if (findError || !resource) {
+      return res.status(404).json({
+        success: false,
+        message: "Note not found.",
+      });
+    }
+
+    if (
+      req.user.role === "programme_admin" &&
+      resource.programme_id !== req.user.programme_id
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "You cannot delete notes from another programme.",
+      });
+    }
+
+    if (resource.file_path) {
+      const { error: storageError } = await supabase.storage
+        .from(BUCKET_NAME)
+        .remove([resource.file_path]);
+
+      if (storageError) {
+        console.error("Storage delete error:", storageError);
+      }
+    }
+
+    const { error: deleteError } = await supabase
+      .from("resources")
+      .delete()
+      .eq("id", resourceId);
+
+    if (deleteError) {
+      console.error("Delete resource error:", deleteError);
+
+      return res.status(500).json({
+        success: false,
+        message: "Failed to delete note.",
+        error: deleteError.message,
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: "Note deleted successfully.",
+    });
+  } catch (error) {
+    console.error("Delete resource error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Server error.",
+    });
+  }
+};
