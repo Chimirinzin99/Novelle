@@ -1,671 +1,274 @@
-
 "use client";
 
-import { useState } from "react";
-
-const programmes = {
-  "civil-engineering": {
-    name: "Civil Engineering",
-    shortName: "Civil",
-    description:
-      "Explore notes and past question papers for Civil Engineering students at CST.",
-    modules: ["CE101", "CE102", "CE103", "CE104"],
-  },
-
-  "electrical-engineering": {
-    name: "Electrical Engineering",
-    shortName: "Electrical",
-    description:
-      "Explore notes and past question papers for Electrical Engineering students at CST.",
-    modules: ["EE101", "EE102", "EE103", "EE104"],
-  },
-
-  ece: {
-    name: "Electronics and Communication Engineering",
-    shortName: "ECE",
-    description:
-      "Explore notes and past question papers for ECE students at CST.",
-    modules: ["EC101", "EC102", "EC103", "EC104"],
-  },
-
-  "information-technology": {
-    name: "Information Technology",
-    shortName: "IT",
-    description:
-      "Explore notes and past question papers for IT students at CST.",
-    modules: ["IT101", "IT102", "IT103", "IT104"],
-  },
-
-  architecture: {
-    name: "Architecture",
-    shortName: "Architecture",
-    description:
-      "Explore notes and past question papers for Architecture students at CST.",
-    modules: ["AR101", "AR102", "AR103", "AR104"],
-  },
-
-  "engineering-geology": {
-    name: "Engineering Geology",
-    shortName: "Geology",
-    description:
-      "Explore notes and past question papers for Engineering Geology students at CST.",
-    modules: ["EG101", "EG102", "EG103", "EG104"],
-  },
-
-  "instrumentation-and-control-engineering": {
-    name: "Instrumentation and Control Engineering",
-    shortName: "ICE",
-    description:
-      "Explore notes and past question papers for ICE students at CST.",
-    modules: ["ICE101", "ICE102", "ICE103", "ICE104"],
-  },
-
-  "water-resources-engineering": {
-    name: "Water Resources Engineering",
-    shortName: "WRE",
-    description:
-      "Explore notes and past question papers for WRE students at CST.",
-    modules: ["WRE101", "WRE102", "WRE103", "WRE104"],
-  },
-
-  "mechanical-engineering": {
-    name: "Mechanical Engineering",
-    shortName: "Mechanical",
-    description:
-      "Explore notes and past question papers for Mechanical Engineering students at CST.",
-    modules: ["ME101", "ME102", "ME103", "ME104"],
-  },
-
-  "software-engineering": {
-    name: "Software Engineering",
-    shortName: "Software",
-    description:
-      "Explore notes and past question papers for Software Engineering students at CST.",
-    modules: ["SE101", "SE102", "SE103", "SE104"],
-  },
-};
-
-type ProgrammeSlug = keyof typeof programmes;
-
-type Resource = {
-  id: number;
-  title: string;
-  type: "Note" | "Past Paper";
-  year: string;
-  semester: string;
-  module: string;
-  description: string;
-};
-
-const resources: Resource[] = [
-  // Civil Engineering
-  {
-    id: 1,
-    title: "Engineering Mathematics I",
-    type: "Note",
-    year: "Year 1",
-    semester: "Semester 1",
-    module: "CE101",
-    description: "Study notes for Engineering Mathematics I.",
-  },
-  {
-    id: 2,
-    title: "Engineering Mathematics I - 2025",
-    type: "Past Paper",
-    year: "Year 1",
-    semester: "Semester 1",
-    module: "CE101",
-    description: "Previous examination paper.",
-  },
-  {
-    id: 3,
-    title: "Engineering Mechanics",
-    type: "Note",
-    year: "Year 1",
-    semester: "Semester 2",
-    module: "CE102",
-    description: "Study notes for Engineering Mechanics.",
-  },
-  {
-    id: 4,
-    title: "Engineering Mechanics - 2024",
-    type: "Past Paper",
-    year: "Year 1",
-    semester: "Semester 2",
-    module: "CE102",
-    description: "Previous examination paper.",
-  },
-  {
-    id: 5,
-    title: "Structural Analysis",
-    type: "Note",
-    year: "Year 2",
-    semester: "Semester 1",
-    module: "CE103",
-    description: "Study notes for Structural Analysis.",
-  },
-  {
-    id: 6,
-    title: "Structural Analysis - 2025",
-    type: "Past Paper",
-    year: "Year 2",
-    semester: "Semester 1",
-    module: "CE103",
-    description: "Previous examination paper.",
-  },
-
-  // Electrical Engineering
-  {
-    id: 7,
-    title: "Circuit Theory",
-    type: "Note",
-    year: "Year 1",
-    semester: "Semester 1",
-    module: "EE101",
-    description: "Study notes for Circuit Theory.",
-  },
-  {
-    id: 8,
-    title: "Circuit Theory - 2025",
-    type: "Past Paper",
-    year: "Year 1",
-    semester: "Semester 1",
-    module: "EE101",
-    description: "Previous examination paper.",
-  },
-
-  // ECE
-  {
-    id: 9,
-    title: "Digital Electronics",
-    type: "Note",
-    year: "Year 1",
-    semester: "Semester 2",
-    module: "EC101",
-    description: "Study notes for Digital Electronics.",
-  },
-  {
-    id: 10,
-    title: "Digital Electronics - 2025",
-    type: "Past Paper",
-    year: "Year 1",
-    semester: "Semester 2",
-    module: "EC101",
-    description: "Previous examination paper.",
-  },
-
-  // IT
-  {
-    id: 11,
-    title: "Programming Fundamentals",
-    type: "Note",
-    year: "Year 1",
-    semester: "Semester 1",
-    module: "IT101",
-    description: "Study notes for Programming Fundamentals.",
-  },
-  {
-    id: 12,
-    title: "Programming Fundamentals - 2025",
-    type: "Past Paper",
-    year: "Year 1",
-    semester: "Semester 1",
-    module: "IT101",
-    description: "Previous examination paper.",
-  },
-
-  // Architecture
-  {
-    id: 13,
-    title: "Architectural Design",
-    type: "Note",
-    year: "Year 1",
-    semester: "Semester 1",
-    module: "AR101",
-    description: "Study notes for Architectural Design.",
-  },
-
-  // Engineering Geology
-  {
-    id: 14,
-    title: "Geology Fundamentals",
-    type: "Note",
-    year: "Year 1",
-    semester: "Semester 1",
-    module: "EG101",
-    description: "Study notes for Geology Fundamentals.",
-  },
-
-  // ICE
-  {
-    id: 15,
-    title: "Instrumentation Fundamentals",
-    type: "Note",
-    year: "Year 1",
-    semester: "Semester 1",
-    module: "ICE101",
-    description: "Study notes for Instrumentation Fundamentals.",
-  },
-
-  // WRE
-  {
-    id: 16,
-    title: "Water Resources Fundamentals",
-    type: "Note",
-    year: "Year 1",
-    semester: "Semester 1",
-    module: "WRE101",
-    description: "Study notes for Water Resources Fundamentals.",
-  },
-
-  // Mechanical
-  {
-    id: 17,
-    title: "Engineering Mechanics",
-    type: "Note",
-    year: "Year 1",
-    semester: "Semester 1",
-    module: "ME101",
-    description: "Study notes for Engineering Mechanics.",
-  },
-
-  // Software Engineering
-  {
-    id: 18,
-    title: "Programming Fundamentals",
-    type: "Note",
-    year: "Year 1",
-    semester: "Semester 1",
-    module: "SE101",
-    description: "Study notes for Programming Fundamentals.",
-  },
-  {
-    id: 19,
-    title: "Programming Fundamentals - 2025",
-    type: "Past Paper",
-    year: "Year 1",
-    semester: "Semester 1",
-    module: "SE101",
-    description: "Previous examination paper.",
-  },
-  {
-    id: 20,
-    title: "Database Fundamentals",
-    type: "Note",
-    year: "Year 1",
-    semester: "Semester 2",
-    module: "SE102",
-    description: "Study notes for Database Fundamentals.",
-  },
-];
+import Link from "next/link";
+import { useParams } from "next/navigation";
 
 export default function ProgrammePage() {
-  const [selectedYear, setSelectedYear] = useState("Year 1");
-  const [selectedSemester, setSelectedSemester] = useState("All");
-  const [selectedModule, setSelectedModule] = useState("All");
+  const params = useParams();
 
-  const pathname =
-    typeof window !== "undefined" ? window.location.pathname : "";
-
-  const programmeSlug = pathname.split("/").filter(Boolean).pop() || "";
-
-  const data = programmes[programmeSlug as ProgrammeSlug];
-
-  if (!data) {
-    return (
-      <main className="flex min-h-screen items-center justify-center bg-gray-100">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold text-gray-900">
-            Programme Not Found
-          </h1>
-
-          <a
-  href="/"
-  className="absolute left-6 top-6 rounded-lg bg-black px-4 py-2.5 text-sm font-medium text-white hover:bg-gray-800"
->
-  ← Back
-</a>
-        </div>
-      </main>
-    );
-  }
-
-  const filteredResources = resources.filter((resource) => {
-    const correctProgramme =
-      resource.module.startsWith(data.shortName === "ECE" ? "EC" : data.shortName === "Geology" ? "EG" : data.shortName);
-
-    const correctYear =
-      selectedYear === "All" || resource.year === selectedYear;
-
-    const correctSemester =
-      selectedSemester === "All" ||
-      resource.semester === selectedSemester;
-
-    const correctModule =
-      selectedModule === "All" ||
-      resource.module === selectedModule;
-
-    return (
-      correctProgramme &&
-      correctYear &&
-      correctSemester &&
-      correctModule
-    );
-  });
-
-  const notes = filteredResources.filter(
-    (resource) => resource.type === "Note",
+  const programme = decodeURIComponent(
+    params.programme as string
   );
 
-  const pastPapers = filteredResources.filter(
-    (resource) => resource.type === "Past Paper",
-  );
+  const programmeName = programme
+    .replace(/-/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
 
   return (
-    <main className="min-h-screen bg-gray-100">
-      {/* TOP BAR */}
-      ```tsx
-<header className="border-b bg-white">
-  <div className="relative mx-auto max-w-7xl px-6 py-4">
+    <main className="min-h-screen bg-slate-950 px-6 py-8 text-white md:px-10 lg:px-16">
+      <div className="mx-auto max-w-6xl">
 
-    <button
-      onClick={() => window.history.back()}
-      className="absolute left-6 top-4 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-    >
-      ← Back
-    </button>
-
-    <div className="ml-28">
-      <a
-        href="/"
-        className="text-2xl font-bold text-blue-600"
-      >
-        Novelle
-      </a>
-
-      <p className="text-xs text-gray-500">
-        CST Student Platform
-      </p>
-    </div>
-
-  </div>
-</header>
-```
-
-
-      {/* PROGRAMME HEADER */}
-      <section className="border-b bg-white px-6 py-8">
-        <div className="mx-auto max-w-7xl">
-          <p className="text-sm font-medium text-blue-600">
-            CST Programme
-          </p>
-
-          <h1 className="mt-2 text-3xl font-bold text-gray-900">
-            {data.name}
-          </h1>
-
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-500">
-            {data.description}
-          </p>
-        </div>
-      </section>
-
-      {/* CONTENT */}
-      <section className="px-6 py-8">
-        <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 lg:grid-cols-[230px_1fr]">
-
-          {/* LEFT SIDEBAR */}
-          <aside className="h-fit rounded-2xl border bg-white p-5">
-            <h2 className="text-lg font-semibold text-gray-900">
-              Resources
-            </h2>
-
-            {/* YEARS */}
-            <div className="mt-6">
-              <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-400">
-                Year
-              </h3>
-
-              <div className="space-y-1">
-                {["Year 1", "Year 2", "Year 3", "Year 4"].map(
-                  (year) => (
-                    <button
-                      key={year}
-                      onClick={() => {
-                        setSelectedYear(year);
-                        setSelectedModule("All");
-                      }}
-                      className={`w-full rounded-lg px-3 py-2 text-left text-sm transition ${
-                        selectedYear === year
-                          ? "bg-blue-50 font-medium text-blue-700"
-                          : "text-gray-600 hover:bg-gray-50"
-                      }`}
-                    >
-                      {year}
-                    </button>
-                  ),
-                )}
-              </div>
-            </div>
-
-            {/* SEMESTER */}
-            <div className="mt-6 border-t pt-5">
-              <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-400">
-                Semester
-              </h3>
-
-              <div className="space-y-1">
-                {["All", "Semester 1", "Semester 2"].map(
-                  (semester) => (
-                    <button
-                      key={semester}
-                      onClick={() => setSelectedSemester(semester)}
-                      className={`w-full rounded-lg px-3 py-2 text-left text-sm ${
-                        selectedSemester === semester
-                          ? "bg-gray-100 font-medium text-gray-900"
-                          : "text-gray-600 hover:bg-gray-50"
-                      }`}
-                    >
-                      {semester}
-                    </button>
-                  ),
-                )}
-              </div>
-            </div>
-
-            {/* MODULES */}
-            <div className="mt-6 border-t pt-5">
-              <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-400">
-                Module
-              </h3>
-
-              <div className="space-y-1">
-                <button
-                  onClick={() => setSelectedModule("All")}
-                  className={`w-full rounded-lg px-3 py-2 text-left text-sm ${
-                    selectedModule === "All"
-                      ? "bg-gray-100 font-medium text-gray-900"
-                      : "text-gray-600 hover:bg-gray-50"
-                  }`}
-                >
-                  All Modules
-                </button>
-
-                {data.modules.map((module) => (
-                  <button
-                    key={module}
-                    onClick={() => setSelectedModule(module)}
-                    className={`w-full rounded-lg px-3 py-2 text-left text-sm ${
-                      selectedModule === module
-                        ? "bg-blue-50 font-medium text-blue-700"
-                        : "text-gray-600 hover:bg-gray-50"
-                    }`}
-                  >
-                    {module}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* CLEAR */}
-            <button
-              onClick={() => {
-                setSelectedYear("Year 1");
-                setSelectedSemester("All");
-                setSelectedModule("All");
-              }}
-              className="mt-6 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50"
+        {/* Header */}
+        <div className="mb-12">
+          <Link
+            href="/"
+            className="mb-10 inline-flex items-center gap-2 text-sm font-medium text-slate-400 transition hover:text-white"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={2}
+              stroke="currentColor"
+              className="h-4 w-4"
             >
-              Clear Filters
-            </button>
-          </aside>
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"
+              />
+            </svg>
 
-          {/* MAIN CONTENT */}
+            Back to programmes
+          </Link>
+
           <div>
-            {/* ACTIVE FILTER */}
-            <div className="mb-6 rounded-xl border bg-white px-5 py-4">
-              <p className="text-xs uppercase tracking-wide text-gray-400">
-                Currently viewing
-              </p>
+            <p className="mb-3 text-sm font-medium text-slate-500">
+              Programmes / {programmeName}
+            </p>
 
-              <div className="mt-2 flex flex-wrap gap-2">
-                <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">
-                  {selectedYear}
-                </span>
+            <h1 className="text-4xl font-semibold tracking-tight md:text-5xl">
+              {programmeName}
+            </h1>
 
-                <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600">
-                  {selectedSemester}
-                </span>
-
-                <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600">
-                  {selectedModule}
-                </span>
-              </div>
-            </div>
-
-            {/* NOTES */}
-            <section className="rounded-2xl border bg-white p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-xl font-semibold text-gray-900">
-                    Notes
-                  </h2>
-
-                  <p className="mt-1 text-sm text-gray-500">
-                    Notes for {selectedYear}
-                  </p>
-                </div>
-
-                <span className="text-sm text-gray-400">
-                  {notes.length} resources
-                </span>
-              </div>
-
-              {notes.length > 0 ? (
-                <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                  {notes.map((note) => (
-                    <div
-                      key={note.id}
-                      className="rounded-xl border p-5 hover:border-blue-200 hover:shadow-sm"
-                    >
-                      <span className="text-xs font-medium text-blue-600">
-                        {note.module}
-                      </span>
-
-                      <h3 className="mt-3 font-semibold text-gray-900">
-                        {note.title}
-                      </h3>
-
-                      <p className="mt-2 text-sm leading-5 text-gray-500">
-                        {note.description}
-                      </p>
-
-                      <div className="mt-4 flex items-center justify-between border-t pt-4">
-                        <span className="text-xs text-gray-400">
-                          {note.semester}
-                        </span>
-
-                        <button className="text-sm font-medium text-blue-600 hover:underline">
-                          View
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="mt-6 rounded-xl border border-dashed p-10 text-center">
-                  <p className="text-sm font-medium text-gray-600">
-                    No notes found
-                  </p>
-
-                  <p className="mt-1 text-xs text-gray-400">
-                    Try another year, semester or module.
-                  </p>
-                </div>
-              )}
-            </section>
-
-            {/* PAST QUESTION PAPERS */}
-            <section className="mt-6 rounded-2xl border bg-white p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-xl font-semibold text-gray-900">
-                    Past Question Papers
-                  </h2>
-
-                  <p className="mt-1 text-sm text-gray-500">
-                    Previous examination papers for {selectedYear}
-                  </p>
-                </div>
-
-                <span className="text-sm text-gray-400">
-                  {pastPapers.length} papers
-                </span>
-              </div>
-
-              {pastPapers.length > 0 ? (
-                <div className="mt-6 space-y-3">
-                  {pastPapers.map((paper) => (
-                    <div
-                      key={paper.id}
-                      className="flex items-center justify-between rounded-xl border p-4 hover:bg-gray-50"
-                    >
-                      <div>
-                        <span className="text-xs font-medium text-blue-600">
-                          {paper.module}
-                        </span>
-
-                        <h3 className="mt-1 font-medium text-gray-900">
-                          {paper.title}
-                        </h3>
-
-                        <p className="mt-1 text-xs text-gray-400">
-                          {paper.semester}
-                        </p>
-                      </div>
-
-                      <button className="rounded-lg border px-4 py-2 text-sm font-medium text-gray-600 hover:bg-white">
-                        View
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="mt-6 rounded-xl border border-dashed p-10 text-center">
-                  <p className="text-sm font-medium text-gray-600">
-                    No past question papers found
-                  </p>
-
-                  <p className="mt-1 text-xs text-gray-400">
-                    There are no question papers for the selected filters yet.
-                  </p>
-                </div>
-              )}
-            </section>
+            <p className="mt-4 max-w-xl text-base leading-relaxed text-slate-400">
+              Browse notes, past question papers, and assignments
+              for your programme.
+            </p>
           </div>
         </div>
-      </section>
+
+        {/* Divider */}
+        <div className="mb-8 h-px bg-white/10" />
+
+        {/* Section heading */}
+        <div className="mb-6">
+          <h2 className="text-lg font-semibold text-white">
+            Resources
+          </h2>
+
+          <p className="mt-1 text-sm text-slate-500">
+            Choose a category to continue.
+          </p>
+        </div>
+
+        {/* Resource Cards */}
+        <div className="grid gap-5 md:grid-cols-3">
+
+          {/* Notes */}
+          <Link
+            href={`/programmes/${encodeURIComponent(
+              programme
+            )}/notes`}
+            className="group"
+          >
+            <div className="flex min-h-[250px] flex-col rounded-2xl border border-white/10 bg-white/[0.03] p-7 transition-all duration-200 hover:-translate-y-1 hover:border-indigo-400/40 hover:bg-white/[0.06]">
+
+              <div className="flex items-center justify-between">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-400">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={1.7}
+                    stroke="currentColor"
+                    className="h-6 w-6"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"
+                    />
+                  </svg>
+                </div>
+
+                <span className="text-xs font-semibold text-slate-600">
+                  01
+                </span>
+              </div>
+
+              <div className="mt-auto">
+                <h3 className="text-xl font-semibold text-white">
+                  Notes
+                </h3>
+
+                <p className="mt-2 text-sm leading-relaxed text-slate-400">
+                  Find study notes and learning materials
+                  organized by module.
+                </p>
+
+                <div className="mt-6 flex items-center gap-2 text-sm font-medium text-indigo-400">
+                  Browse notes
+
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={2}
+                    stroke="currentColor"
+                    className="h-4 w-4 transition-transform group-hover:translate-x-1"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"
+                    />
+                  </svg>
+                </div>
+              </div>
+            </div>
+          </Link>
+
+          {/* Question Papers */}
+          <Link
+            href={`/programmes/${encodeURIComponent(
+              programme
+            )}/question-papers`}
+            className="group"
+          >
+            <div className="flex min-h-[250px] flex-col rounded-2xl border border-white/10 bg-white/[0.03] p-7 transition-all duration-200 hover:-translate-y-1 hover:border-cyan-400/40 hover:bg-white/[0.06]">
+
+              <div className="flex items-center justify-between">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-cyan-500/10 text-cyan-400">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={1.7}
+                    stroke="currentColor"
+                    className="h-6 w-6"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
+                    />
+                  </svg>
+                </div>
+
+                <span className="text-xs font-semibold text-slate-600">
+                  02
+                </span>
+              </div>
+
+              <div className="mt-auto">
+                <h3 className="text-xl font-semibold text-white">
+                  Question Papers
+                </h3>
+
+                <p className="mt-2 text-sm leading-relaxed text-slate-400">
+                  Access previous examination papers
+                  organized by year and module.
+                </p>
+
+                <div className="mt-6 flex items-center gap-2 text-sm font-medium text-cyan-400">
+                  Browse papers
+
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={2}
+                    stroke="currentColor"
+                    className="h-4 w-4 transition-transform group-hover:translate-x-1"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"
+                    />
+                  </svg>
+                </div>
+              </div>
+            </div>
+          </Link>
+
+          {/* Assignments */}
+          <Link
+            href={`/programmes/${encodeURIComponent(
+              programme
+            )}/assignments`}
+            className="group"
+          >
+            <div className="flex min-h-[250px] flex-col rounded-2xl border border-white/10 bg-white/[0.03] p-7 transition-all duration-200 hover:-translate-y-1 hover:border-fuchsia-400/40 hover:bg-white/[0.06]">
+
+              <div className="flex items-center justify-between">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-fuchsia-500/10 text-fuchsia-400">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={1.7}
+                    stroke="currentColor"
+                    className="h-6 w-6"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M9 5.25h6m-7.5 3h9m-10.5 3h12m-12 3h7.5M6 3.75h12A2.25 2.25 0 0120.25 6v14.25A2.25 2.25 0 0118 22.5H6a2.25 2.25 0 01-2.25-2.25V6A2.25 2.25 0 016 3.75z"
+                    />
+                  </svg>
+                </div>
+
+                <span className="text-xs font-semibold text-slate-600">
+                  03
+                </span>
+              </div>
+
+              <div className="mt-auto">
+                <h3 className="text-xl font-semibold text-white">
+                  Assignments
+                </h3>
+
+                <p className="mt-2 text-sm leading-relaxed text-slate-400">
+                  Find assignments and coursework for
+                  your modules.
+                </p>
+
+                <div className="mt-6 flex items-center gap-2 text-sm font-medium text-fuchsia-400">
+                  Browse assignments
+
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={2}
+                    stroke="currentColor"
+                    className="h-4 w-4 transition-transform group-hover:translate-x-1"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"
+                    />
+                  </svg>
+                </div>
+              </div>
+            </div>
+          </Link>
+
+        </div>
+      </div>
     </main>
   );
 }
-
