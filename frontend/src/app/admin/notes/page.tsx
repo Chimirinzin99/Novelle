@@ -13,6 +13,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { BACKEND_URL } from "@/lib/config";
 
 type Resource = {
   id: number;
@@ -132,7 +133,7 @@ export default function ManageNotesPage() {
       }
 
       const response = await fetch(
-        "http://localhost:5000/api/resources",
+        `${BACKEND_URL}/api/resources`,
         {
           method: "GET",
           headers: {
@@ -213,7 +214,7 @@ export default function ManageNotesPage() {
       formData.append("file", file);
 
       const response = await fetch(
-        "http://localhost:5000/api/resources/upload",
+        `${BACKEND_URL}/api/resources/upload`,
         {
           method: "POST",
           headers: {
@@ -282,7 +283,7 @@ export default function ManageNotesPage() {
       }
 
       const response = await fetch(
-        `http://localhost:5000/api/resources/${resource.id}`,
+        `${BACKEND_URL}/api/resources/${resource.id}`,
         {
           method: "DELETE",
           headers: {
