@@ -6,7 +6,7 @@ import { AuthenticatedRequest } from "../middleware/auth";
 
 const BUCKET_NAME = "resources";
 
-const ALLOWED_TYPES = ["note", "question_paper", "assignment"];
+export const ALLOWED_TYPES = ["note", "question_paper", "assignment"];
 
 export const getResources = async (
   req: AuthenticatedRequest,
@@ -90,13 +90,7 @@ export const uploadResourceFile = async (
       });
     }
 
-    const {
-      topic,
-      type,
-      module_name,
-      year,
-      semester,
-    } = req.body;
+    const { topic, type, module_id } = req.body;
 
     if (!topic || !topic.trim()) {
       return res.status(400).json({
@@ -105,37 +99,10 @@ export const uploadResourceFile = async (
       });
     }
 
-    if (!module_name || !module_name.trim()) {
-      return res.status(400).json({
-        success: false,
-        message: "Module name is required.",
-      });
-    }
-
     if (!ALLOWED_TYPES.includes(type)) {
       return res.status(400).json({
         success: false,
         message: "Invalid resource type.",
-      });
-    }
-
-    const yearNumber = Number(year);
-    const semesterNumber = Number(semester);
-
-    if (!Number.isInteger(yearNumber) || yearNumber < 1) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid year.",
-      });
-    }
-
-    if (
-      !Number.isInteger(semesterNumber) ||
-      semesterNumber < 1
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid semester.",
       });
     }
 
@@ -148,16 +115,86 @@ export const uploadResourceFile = async (
       });
     }
 
-    // Super admin must provide a programme_id.
-    if (req.user.role === "super_admin") {
-      if (!req.body.programme_id) {
+    let moduleId: number | null = null;
+    let moduleName: string;
+    let yearNumber: number;
+    let semesterNumber: number;
+
+    if (module_id) {
+      // Module picked from a dropdown (/admin/resources):
+      // name, year, semester and programme all come from the module.
+      const { data: module, error: moduleError } = await supabase
+        .from("modules")
+        .select("id, programme_id, module_name, year, semester, active")
+        .eq("id", Number(module_id))
+        .maybeSingle();
+
+      if (moduleError || !module || !module.active) {
         return res.status(400).json({
           success: false,
-          message: "Programme ID is required for super admin uploads.",
+          message: "Module not found or not active.",
         });
       }
 
-      programmeId = Number(req.body.programme_id);
+      if (
+        req.user.role === "programme_admin" &&
+        module.programme_id !== programmeId
+      ) {
+        return res.status(403).json({
+          success: false,
+          message: "You cannot upload to another programme's module.",
+        });
+      }
+
+      moduleId = module.id;
+      moduleName = module.module_name;
+      yearNumber = module.year;
+      semesterNumber = module.semester;
+      programmeId = module.programme_id;
+    } else {
+      // Module name typed in (/admin/notes).
+      const { module_name, year, semester } = req.body;
+
+      if (!module_name || !module_name.trim()) {
+        return res.status(400).json({
+          success: false,
+          message: "Module name is required.",
+        });
+      }
+
+      yearNumber = Number(year);
+      semesterNumber = Number(semester);
+
+      if (!Number.isInteger(yearNumber) || yearNumber < 1) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid year.",
+        });
+      }
+
+      if (
+        !Number.isInteger(semesterNumber) ||
+        semesterNumber < 1
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid semester.",
+        });
+      }
+
+      moduleName = module_name.trim();
+
+      // Super admin must provide a programme_id.
+      if (req.user.role === "super_admin") {
+        if (!req.body.programme_id) {
+          return res.status(400).json({
+            success: false,
+            message: "Programme ID is required for super admin uploads.",
+          });
+        }
+
+        programmeId = Number(req.body.programme_id);
+      }
     }
 
     if (!programmeId) {
@@ -195,7 +232,8 @@ export const uploadResourceFile = async (
       .insert({
         topic: topic.trim(),
         type,
-        module_name: module_name.trim(),
+        module_id: moduleId,
+        module_name: moduleName,
         programme_id: programmeId,
         year: yearNumber,
         semester: semesterNumber,
