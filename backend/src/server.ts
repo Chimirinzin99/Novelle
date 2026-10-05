@@ -10,6 +10,7 @@ import {
 import { requireRole } from "./middleware/role";
 import modulesRoutes from "./routes/modules.routes";
 import resourcesRoutes from "./routes/resources.routes";
+import submissionsRoutes from "./routes/submissions.routes";
 
 const app = express();
 
@@ -21,6 +22,9 @@ app.use("/api/modules", modulesRoutes);
 
 // Resources API
 app.use("/api/resources", resourcesRoutes);
+
+// Submissions API (admin review)
+app.use("/api/submissions", submissionsRoutes);
 
 const PORT = 5000;
 

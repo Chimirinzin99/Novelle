@@ -202,7 +202,7 @@ export default function AdminResourcesPage() {
       const formData = new FormData();
 
       formData.append("file", file);
-      formData.append("title", title);
+      formData.append("topic", title.trim());
       formData.append("type", type);
       formData.append("module_id", moduleId);
       formData.append("year", year);
