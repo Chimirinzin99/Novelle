@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { BACKEND_URL } from "@/lib/config";
 
 export default function BackendTestPage() {
   const [file, setFile] = useState<File | null>(null);
@@ -76,7 +77,7 @@ export default function BackendTestPage() {
       // ------------------------------------
 
       const response = await fetch(
-        "http://localhost:5000/api/resources/upload",
+        `${BACKEND_URL}/api/resources/upload`,
         {
           method: "POST",
           headers: {

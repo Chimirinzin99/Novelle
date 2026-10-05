@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { BACKEND_URL } from "@/lib/config";
 
 type Resource = {
   id: number;
@@ -59,7 +60,7 @@ export default function AdminResourcesPage() {
       }
 
       const response = await fetch(
-        "http://localhost:5000/api/modules",
+        `${BACKEND_URL}/api/modules`,
         {
           method: "GET",
           headers: {
@@ -101,7 +102,7 @@ export default function AdminResourcesPage() {
       }
 
       const response = await fetch(
-        "http://localhost:5000/api/resources",
+        `${BACKEND_URL}/api/resources`,
         {
           headers: {
             Authorization: `Bearer ${session.access_token}`,
@@ -208,7 +209,7 @@ export default function AdminResourcesPage() {
       formData.append("semester", semester);
 
       const response = await fetch(
-        "http://localhost:5000/api/resources/upload",
+        `${BACKEND_URL}/api/resources/upload`,
         {
           method: "POST",
           headers: {

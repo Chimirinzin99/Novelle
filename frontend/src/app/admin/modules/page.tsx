@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { BACKEND_URL } from "@/lib/config";
 
 type Profile = {
   id: string;
@@ -19,8 +20,6 @@ type Module = {
   semester: number;
   active: boolean;
 };
-
-const BACKEND_URL = "http://localhost:5000";
 
 export default function ModulesPage() {
   const router = useRouter();
