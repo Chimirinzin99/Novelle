@@ -21,7 +21,7 @@ export default function ProgrammePage() {
         {/* Header */}
         <div className="mb-12">
           <Link
-            href="/"
+            href="/home"
             className="mb-10 inline-flex items-center gap-2 text-sm font-medium text-slate-400 transition hover:text-white"
           >
             <svg

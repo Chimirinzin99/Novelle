@@ -78,7 +78,7 @@ export default function LoginPage() {
     ) {
       router.push("/admin");
     } else {
-      router.push("/");
+      router.push("/home");
     }
   };
 
