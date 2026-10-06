@@ -99,7 +99,7 @@ export default function ModulesPage() {
       profileData.role !== "programme_admin" &&
       profileData.role !== "super_admin"
     ) {
-      router.push("/");
+      router.push("/home");
       return null;
     }
 
