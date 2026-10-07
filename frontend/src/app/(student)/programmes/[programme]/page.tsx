@@ -15,35 +15,13 @@ export default function ProgrammePage() {
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
 
   return (
-    <main className="min-h-screen bg-slate-950 px-6 py-8 text-white md:px-10 lg:px-16">
+    <main className="min-h-full bg-gray-200 px-6 py-8 text-gray-900 md:px-10 lg:px-16">
       <div className="mx-auto max-w-6xl">
 
         {/* Header */}
         <div className="mb-12">
-          <Link
-            href="/home"
-            className="mb-10 inline-flex items-center gap-2 text-sm font-medium text-slate-400 transition hover:text-white"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth={2}
-              stroke="currentColor"
-              className="h-4 w-4"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"
-              />
-            </svg>
-
-            Back to programmes
-          </Link>
-
           <div>
-            <p className="mb-3 text-sm font-medium text-slate-500">
+            <p className="mb-3 text-sm font-medium text-blue-600">
               Programmes / {programmeName}
             </p>
 
@@ -51,7 +29,7 @@ export default function ProgrammePage() {
               {programmeName}
             </h1>
 
-            <p className="mt-4 max-w-xl text-base leading-relaxed text-slate-400">
+            <p className="mt-4 max-w-xl text-base leading-relaxed text-gray-500">
               Browse notes, past question papers, and assignments
               for your programme.
             </p>
@@ -59,15 +37,15 @@ export default function ProgrammePage() {
         </div>
 
         {/* Divider */}
-        <div className="mb-8 h-px bg-white/10" />
+        <div className="mb-8 h-px bg-gray-300" />
 
         {/* Section heading */}
         <div className="mb-6">
-          <h2 className="text-lg font-semibold text-white">
+          <h2 className="text-lg font-semibold text-gray-900">
             Resources
           </h2>
 
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-gray-500">
             Choose a category to continue.
           </p>
         </div>
@@ -82,10 +60,10 @@ export default function ProgrammePage() {
             )}/notes`}
             className="group"
           >
-            <div className="flex min-h-[250px] flex-col rounded-2xl border border-white/10 bg-white/[0.03] p-7 transition-all duration-200 hover:-translate-y-1 hover:border-indigo-400/40 hover:bg-white/[0.06]">
+            <div className="flex min-h-[250px] flex-col rounded-2xl border border-gray-200 bg-white shadow-sm p-7 transition-all duration-200 hover:-translate-y-1 hover:border-indigo-300 hover:shadow-md">
 
               <div className="flex items-center justify-between">
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-400">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     fill="none"
@@ -102,22 +80,22 @@ export default function ProgrammePage() {
                   </svg>
                 </div>
 
-                <span className="text-xs font-semibold text-slate-600">
+                <span className="text-xs font-semibold text-gray-400">
                   01
                 </span>
               </div>
 
               <div className="mt-auto">
-                <h3 className="text-xl font-semibold text-white">
+                <h3 className="text-xl font-semibold text-gray-900">
                   Notes
                 </h3>
 
-                <p className="mt-2 text-sm leading-relaxed text-slate-400">
+                <p className="mt-2 text-sm leading-relaxed text-gray-500">
                   Find study notes and learning materials
                   organized by module.
                 </p>
 
-                <div className="mt-6 flex items-center gap-2 text-sm font-medium text-indigo-400">
+                <div className="mt-6 flex items-center gap-2 text-sm font-medium text-indigo-600">
                   Browse notes
 
                   <svg
@@ -146,10 +124,10 @@ export default function ProgrammePage() {
             )}/question-papers`}
             className="group"
           >
-            <div className="flex min-h-[250px] flex-col rounded-2xl border border-white/10 bg-white/[0.03] p-7 transition-all duration-200 hover:-translate-y-1 hover:border-cyan-400/40 hover:bg-white/[0.06]">
+            <div className="flex min-h-[250px] flex-col rounded-2xl border border-gray-200 bg-white shadow-sm p-7 transition-all duration-200 hover:-translate-y-1 hover:border-cyan-300 hover:shadow-md">
 
               <div className="flex items-center justify-between">
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-cyan-500/10 text-cyan-400">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-cyan-50 text-cyan-600">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     fill="none"
@@ -166,22 +144,22 @@ export default function ProgrammePage() {
                   </svg>
                 </div>
 
-                <span className="text-xs font-semibold text-slate-600">
+                <span className="text-xs font-semibold text-gray-400">
                   02
                 </span>
               </div>
 
               <div className="mt-auto">
-                <h3 className="text-xl font-semibold text-white">
+                <h3 className="text-xl font-semibold text-gray-900">
                   Question Papers
                 </h3>
 
-                <p className="mt-2 text-sm leading-relaxed text-slate-400">
+                <p className="mt-2 text-sm leading-relaxed text-gray-500">
                   Access previous examination papers
                   organized by year and module.
                 </p>
 
-                <div className="mt-6 flex items-center gap-2 text-sm font-medium text-cyan-400">
+                <div className="mt-6 flex items-center gap-2 text-sm font-medium text-cyan-600">
                   Browse papers
 
                   <svg
@@ -210,10 +188,10 @@ export default function ProgrammePage() {
             )}/assignments`}
             className="group"
           >
-            <div className="flex min-h-[250px] flex-col rounded-2xl border border-white/10 bg-white/[0.03] p-7 transition-all duration-200 hover:-translate-y-1 hover:border-fuchsia-400/40 hover:bg-white/[0.06]">
+            <div className="flex min-h-[250px] flex-col rounded-2xl border border-gray-200 bg-white shadow-sm p-7 transition-all duration-200 hover:-translate-y-1 hover:border-fuchsia-300 hover:shadow-md">
 
               <div className="flex items-center justify-between">
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-fuchsia-500/10 text-fuchsia-400">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-fuchsia-50 text-fuchsia-600">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     fill="none"
@@ -230,22 +208,22 @@ export default function ProgrammePage() {
                   </svg>
                 </div>
 
-                <span className="text-xs font-semibold text-slate-600">
+                <span className="text-xs font-semibold text-gray-400">
                   03
                 </span>
               </div>
 
               <div className="mt-auto">
-                <h3 className="text-xl font-semibold text-white">
+                <h3 className="text-xl font-semibold text-gray-900">
                   Assignments
                 </h3>
 
-                <p className="mt-2 text-sm leading-relaxed text-slate-400">
+                <p className="mt-2 text-sm leading-relaxed text-gray-500">
                   Find assignments and coursework for
                   your modules.
                 </p>
 
-                <div className="mt-6 flex items-center gap-2 text-sm font-medium text-fuchsia-400">
+                <div className="mt-6 flex items-center gap-2 text-sm font-medium text-fuchsia-600">
                   Browse assignments
 
                   <svg

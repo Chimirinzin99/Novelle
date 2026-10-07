@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import Sidebar from "@/components/Sidebar";
 import { supabase } from "@/lib/supabase";
 
 type Note = {
@@ -258,11 +257,7 @@ export default function Home() {
   }
 
   return (
-    <main className="flex h-screen overflow-hidden bg-gray-200">
-
-      <Sidebar />
-
-      <section className="min-w-0 flex-1 overflow-y-auto px-8 py-10">
+    <main className="min-h-full bg-gray-200 px-8 py-10">
 
         <div className="mx-auto max-w-7xl">
 
@@ -456,7 +451,7 @@ export default function Home() {
 
         </div>
 
-      </section>
+      
 
     </main>
   );
