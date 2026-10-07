@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import FilterBar from "@/components/FilterBar";
 
 type Note = {
   id: number;
@@ -37,6 +38,8 @@ export default function NotesPage() {
   const [selectedYear, setSelectedYear] = useState("All Years");
   const [selectedSemester, setSelectedSemester] =
     useState("All Semesters");
+  const [selectedModule, setSelectedModule] =
+    useState("All Modules");
 
   useEffect(() => {
     fetchNotes();
@@ -273,6 +276,9 @@ export default function NotesPage() {
     }));
   }
 
+  // Module dropdown options, taken from the loaded notes
+  const modules = [...new Set(notes.map((note) => note.module_name))];
+
   // Filter notes
   const filteredNotes = notes.filter((note) => {
     const yearMatch =
@@ -285,136 +291,31 @@ export default function NotesPage() {
       note.semester.toString() ===
         selectedSemester.replace("Semester ", "");
 
-    return yearMatch && semesterMatch;
+    const moduleMatch =
+      selectedModule === "All Modules" ||
+      note.module_name === selectedModule;
+
+    return yearMatch && semesterMatch && moduleMatch;
   });
 
   function clearFilters() {
     setSelectedYear("All Years");
     setSelectedSemester("All Semesters");
+    setSelectedModule("All Modules");
   }
 
   return (
-    <main className="min-h-screen bg-gray-200 text-gray-900">
-      <div className="flex min-h-screen">
-
-        {/* Sidebar */}
-        <aside className="hidden w-64 shrink-0 border-r border-gray-200 bg-white p-6 md:block">
-
-          <Link
-            href={`/programmes/${encodeURIComponent(
-              programmeSlug
-            )}`}
-            className="inline-flex items-center gap-2 text-sm font-medium text-gray-500 transition hover:text-gray-900"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth={2}
-              stroke="currentColor"
-              className="h-4 w-4"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"
-              />
-            </svg>
-
-            Back
-          </Link>
-
-          <div className="mt-10">
-            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">
-              Programme
-            </p>
-
-            <h2 className="mt-2 text-lg font-semibold text-gray-900">
-              {programme}
-            </h2>
-          </div>
-
-          {/* Year */}
-          <div className="mt-10">
-            <h3 className="mb-4 text-sm font-semibold text-gray-900">
-              Year
-            </h3>
-
-            {[
-              "All Years",
-              "Year 1",
-              "Year 2",
-              "Year 3",
-              "Year 4",
-            ].map((year) => (
-              <label
-                key={year}
-                className="mb-3 flex cursor-pointer items-center gap-3 text-sm text-gray-500 transition hover:text-gray-900"
-              >
-                <input
-                  type="radio"
-                  name="year"
-                  checked={selectedYear === year}
-                  onChange={() =>
-                    setSelectedYear(year)
-                  }
-                  className="h-4 w-4 accent-blue-600"
-                />
-
-                {year}
-              </label>
-            ))}
-          </div>
-
-          {/* Semester */}
-          <div className="mt-8">
-            <h3 className="mb-4 text-sm font-semibold text-gray-900">
-              Semester
-            </h3>
-
-            {[
-              "All Semesters",
-              "Semester 1",
-              "Semester 2",
-            ].map((semester) => (
-              <label
-                key={semester}
-                className="mb-3 flex cursor-pointer items-center gap-3 text-sm text-gray-500 transition hover:text-gray-900"
-              >
-                <input
-                  type="radio"
-                  name="semester"
-                  checked={
-                    selectedSemester === semester
-                  }
-                  onChange={() =>
-                    setSelectedSemester(semester)
-                  }
-                  className="h-4 w-4 accent-blue-600"
-                />
-
-                {semester}
-              </label>
-            ))}
-          </div>
-
-          <button
-            onClick={clearFilters}
-            className="mt-6 w-full rounded-lg border border-gray-200 bg-gray-50 py-2.5 text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-gray-900"
-          >
-            Clear Filters
-          </button>
-        </aside>
+    <main className="min-h-full bg-gray-200 text-gray-900">
 
         {/* Main Content */}
         <section className="min-w-0 flex-1 px-6 py-8 md:px-10 lg:px-12">
 
-          {/* Mobile Back */}
+          {/* Back */}
           <Link
             href={`/programmes/${encodeURIComponent(
               programmeSlug
             )}`}
-            className="mb-8 inline-flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-gray-900 md:hidden"
+            className="mb-8 inline-flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-gray-900"
           >
             ← Back
           </Link>
@@ -446,6 +347,18 @@ export default function NotesPage() {
               )}
             </div>
           </div>
+
+          {/* Filters */}
+          <FilterBar
+            year={selectedYear}
+            onYearChange={setSelectedYear}
+            semester={selectedSemester}
+            onSemesterChange={setSelectedSemester}
+            modules={modules}
+            module={selectedModule}
+            onModuleChange={setSelectedModule}
+            onClear={clearFilters}
+          />
 
           {/* Error */}
           {error && (
@@ -627,7 +540,6 @@ export default function NotesPage() {
           )}
 
         </section>
-      </div>
     </main>
   );
 }

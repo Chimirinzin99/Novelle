@@ -2,9 +2,11 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
 export default function SubmitNotePage() {
+  const router = useRouter();
   const [title, setTitle] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
@@ -154,9 +156,10 @@ if (!profile.programme_id) {
         fileInput.value = "";
       }
 
-      setMessage(
-        "Note submitted successfully. It is now waiting for admin review."
-      );
+      // Show the new submission (as "Pending") on My Submissions.
+      router.push("/my-submissions");
+
+
     } catch (err) {
       console.error("SUBMIT ERROR:", err);
 

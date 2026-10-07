@@ -4,6 +4,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
+import FilterBar from "@/components/FilterBar";
 
 type Assignment = {
   id: number;
@@ -105,6 +106,10 @@ export default function AssignmentsPage() {
     },
   ];
 
+  // Module dropdown options, taken from the data itself.
+  // new Set(...) removes duplicates; [...] turns it back into an array.
+  const modules = [...new Set(assignments.map((item) => item.module))];
+
   // -----------------------------
   // Filtering
   // -----------------------------
@@ -136,14 +141,14 @@ export default function AssignmentsPage() {
   };
 
   return (
-    <main className="min-h-screen bg-gray-100 p-8">
+    <main className="min-h-full bg-gray-100 p-8">
 
       {/* Back Button */}
       <Link
         href={`/programmes/${encodeURIComponent(programme)}`}
-        className="mb-6 inline-flex items-center rounded-lg bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50"
+        className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-gray-900"
       >
-        ← Back to {programmeName}
+        ← Back
       </Link>
 
       {/* Page Header */}
@@ -158,177 +163,23 @@ export default function AssignmentsPage() {
         </p>
       </div>
 
-      {/* Main Layout */}
-      <div className="flex flex-col gap-8 lg:flex-row">
-
-        {/* ================================================= */}
-        {/* FILTER SIDEBAR */}
-        {/* ================================================= */}
-
-        <aside className="w-full shrink-0 lg:w-64">
-
-          <div className="rounded-2xl bg-white p-6 shadow-sm">
-
-            {/* Filter Header */}
-            <div className="mb-6 flex items-center justify-between">
-
-              <h2 className="text-lg font-semibold text-gray-900">
-                Filters
-              </h2>
-
-              <button
-                onClick={clearFilters}
-                className="text-xs font-medium text-gray-500 hover:text-gray-900"
-              >
-                Clear
-              </button>
-
-            </div>
-
-            {/* ================= YEAR ================= */}
-
-            <div className="mb-7">
-
-              <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-700">
-                Year
-              </h3>
-
-              <div className="space-y-3">
-
-                {[
-                  "All Years",
-                  "Year 1",
-                  "Year 2",
-                  "Year 3",
-                  "Year 4",
-                ].map((year) => (
-
-                  <label
-                    key={year}
-                    className="flex cursor-pointer items-center gap-3 text-sm text-gray-600"
-                  >
-
-                    <input
-                      type="radio"
-                      name="year"
-                      value={year}
-                      checked={selectedYear === year}
-                      onChange={(e) =>
-                        setSelectedYear(e.target.value)
-                      }
-                      className="h-4 w-4"
-                    />
-
-                    {year}
-
-                  </label>
-
-                ))}
-
-              </div>
-
-            </div>
-
-            {/* ================= SEMESTER ================= */}
-
-            <div className="mb-7">
-
-              <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-700">
-                Semester
-              </h3>
-
-              <div className="space-y-3">
-
-                {[
-                  "All Semesters",
-                  "Semester 1",
-                  "Semester 2",
-                ].map((semester) => (
-
-                  <label
-                    key={semester}
-                    className="flex cursor-pointer items-center gap-3 text-sm text-gray-600"
-                  >
-
-                    <input
-                      type="radio"
-                      name="semester"
-                      value={semester}
-                      checked={
-                        selectedSemester === semester
-                      }
-                      onChange={(e) =>
-                        setSelectedSemester(e.target.value)
-                      }
-                      className="h-4 w-4"
-                    />
-
-                    {semester}
-
-                  </label>
-
-                ))}
-
-              </div>
-
-            </div>
-
-            {/* ================= MODULE ================= */}
-
-            <div>
-
-              <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-700">
-                Module
-              </h3>
-
-              <div className="space-y-3">
-
-                {[
-                  "All Modules",
-                  "Programming",
-                  "Database Systems",
-                  "Software Engineering",
-                  "Computer Networks",
-                  "Web Development",
-                ].map((module) => (
-
-                  <label
-                    key={module}
-                    className="flex cursor-pointer items-center gap-3 text-sm text-gray-600"
-                  >
-
-                    <input
-                      type="radio"
-                      name="module"
-                      value={module}
-                      checked={
-                        selectedModule === module
-                      }
-                      onChange={(e) =>
-                        setSelectedModule(e.target.value)
-                      }
-                      className="h-4 w-4"
-                    />
-
-                    {module}
-
-                  </label>
-
-                ))}
-
-              </div>
-
-            </div>
-
-          </div>
-
-        </aside>
+      {/* Filters */}
+      <FilterBar
+        year={selectedYear}
+        onYearChange={setSelectedYear}
+        semester={selectedSemester}
+        onSemesterChange={setSelectedSemester}
+        modules={modules}
+        module={selectedModule}
+        onModuleChange={setSelectedModule}
+        onClear={clearFilters}
+      />
 
         {/* ================================================= */}
         {/* ASSIGNMENTS */}
         {/* ================================================= */}
 
-        <section className="flex-1">
+        <section>
 
           {/* Results Header */}
           <div className="mb-5">
@@ -439,8 +290,6 @@ export default function AssignmentsPage() {
           )}
 
         </section>
-
-      </div>
 
     </main>
   );
