@@ -1,14 +1,22 @@
 // The one list of resource types for the frontend. Codes must match
-// backend/src/constants/resourceTypes.ts and the database CHECK constraint.
-// To add a type later (e.g. Video), add one line here.
+// backend/src/constants/resourceTypes.ts and the database CHECK constraints.
+// To add a type later, add one line here.
+//   studentCanSubmit: shown on the student submit page? (Videos are added
+//   by admins only — the database also blocks video submissions.)
 export const RESOURCE_TYPES = [
-  { code: "note", label: "Note" },
-  { code: "question_paper", label: "Question Paper" },
-  { code: "assignment", label: "Assignment" },
+  { code: "note", label: "Note", studentCanSubmit: true },
+  { code: "question_paper", label: "Question Paper", studentCanSubmit: true },
+  { code: "assignment", label: "Assignment", studentCanSubmit: true },
+  { code: "video", label: "Video", studentCanSubmit: false },
 ] as const;
 
-// "note" | "question_paper" | "assignment", derived from the list above.
+// "note" | "question_paper" | "assignment" | "video", derived from the list.
 export type ResourceTypeCode = (typeof RESOURCE_TYPES)[number]["code"];
+
+// The types offered on the student submit page.
+export const STUDENT_SUBMIT_TYPES = RESOURCE_TYPES.filter(
+  (t) => t.studentCanSubmit
+);
 
 // "question_paper" -> "Question Paper". Unknown codes are shown as-is.
 export const resourceTypeLabel = (code: string | null | undefined) =>

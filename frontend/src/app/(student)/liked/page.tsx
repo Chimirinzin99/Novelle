@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { youTubeThumbnail, youTubeWatchUrl } from "@/lib/youtube";
 
 // One row from favourites, with the liked resource (and its programme)
 // joined in through the foreign keys.
@@ -17,7 +18,8 @@ type LikedItem = {
     module_name: string | null;
     year: number | null;
     semester: number | null;
-    file_path: string;
+    file_path: string | null; // empty for videos
+    video_id: string | null; // set only for videos
     programmes: { name: string } | null;
   } | null;
 };
@@ -51,14 +53,14 @@ export default function LikedPage() {
     const { data, error } = await supabase
       .from("favourites")
       .select(
-        "id, created_at, resources(id, title, topic, type, module_name, year, semester, file_path, programmes(name))"
+        "id, created_at, resources(id, title, topic, type, module_name, year, semester, file_path, video_id, programmes(name))"
       )
       .eq("user_id", user.id)
       .order("created_at", { ascending: false }); // most recently liked first
 
     if (error) {
       console.error("Load liked error:", error);
-      setError("Could not load your liked notes.");
+      setError("Could not load your liked resources.");
     } else {
       // If a resource was deleted or is not visible to this student,
       // "resources" comes back null — skip those.
@@ -108,7 +110,7 @@ export default function LikedPage() {
           Liked
         </h1>
         <p className="mt-2 text-sm text-gray-500">
-          Notes you have liked, from every programme, in one place.
+          Notes, papers and videos you have liked, from every programme, in one place.
         </p>
       </div>
 
@@ -120,13 +122,13 @@ export default function LikedPage() {
 
       {loading ? (
         <div className="rounded-2xl bg-white p-10 text-center text-sm text-gray-500">
-          Loading your liked notes...
+          Loading your liked resources...
         </div>
       ) : items.length === 0 ? (
         <div className="rounded-2xl bg-white p-12 text-center">
-          <h3 className="text-lg font-semibold">No liked notes yet</h3>
+          <h3 className="text-lg font-semibold">Nothing liked yet</h3>
           <p className="mt-2 text-sm text-gray-500">
-            Tap the heart on any note and it will show up here.
+            Tap the heart on any note or video and it will show up here.
           </p>
         </div>
       ) : (
@@ -140,6 +142,17 @@ export default function LikedPage() {
                 key={item.id}
                 className="flex flex-col rounded-2xl bg-white p-5 shadow-sm"
               >
+                {/* Videos show their YouTube thumbnail */}
+                {resource.video_id && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={youTubeThumbnail(resource.video_id)}
+                    alt=""
+                    loading="lazy"
+                    className="mb-4 aspect-video w-full rounded-lg bg-gray-100 object-cover"
+                  />
+                )}
+
                 <p className="text-xs font-medium text-blue-600">
                   {resource.programmes?.name ?? "Unknown programme"}
                 </p>
@@ -160,19 +173,35 @@ export default function LikedPage() {
                 </p>
 
                 <div className="mt-auto flex gap-2 pt-5">
-                  <button
-                    onClick={() => openFile(resource.file_path, false)}
-                    className="flex-1 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
-                  >
-                    View
-                  </button>
-                  <button
-                    onClick={() => openFile(resource.file_path, true)}
-                    className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-                  >
-                    Download
-                  </button>
-                                    {/* Same filled heart as the note cards on /home */}
+                  {resource.video_id ? (
+                    // Video: open it on YouTube (nothing to download).
+                    <a
+                      href={youTubeWatchUrl(resource.video_id)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 rounded-lg bg-blue-600 px-3 py-2 text-center text-sm font-medium text-white hover:bg-blue-700"
+                    >
+                      Watch
+                    </a>
+                  ) : resource.file_path ? (
+                    // PDF: view or download through a short-lived signed link.
+                    <>
+                      <button
+                        onClick={() => openFile(resource.file_path!, false)}
+                        className="flex-1 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                      >
+                        View
+                      </button>
+                      <button
+                        onClick={() => openFile(resource.file_path!, true)}
+                        className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                      >
+                        Download
+                      </button>
+                    </>
+                  ) : null}
+
+                  {/* Same filled heart as the note cards on /home */}
                   <button
                     onClick={() => unlike(item.id)}
                     title="Unlike"

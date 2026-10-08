@@ -7,6 +7,7 @@ import { AuthenticatedRequest } from "../middleware/auth";
 const BUCKET_NAME = "resources";
 
 import { isResourceType } from "../constants/resourceTypes";
+import { parseYouTubeId } from "../utils/youtube";
 
 export const getResources = async (
   req: AuthenticatedRequest,
@@ -23,7 +24,7 @@ export const getResources = async (
     let query = supabase
       .from("resources")
       .select(
-        "id, topic, type, module_name, programme_id, year, semester, file_path, uploaded_by, created_at"
+        "id, topic, type, module_name, programme_id, year, semester, file_path, video_id, uploaded_by, created_at"
       )
       .order("created_at", { ascending: false });
 
@@ -76,20 +77,6 @@ export const uploadResourceFile = async (
       });
     }
 
-    if (!req.file) {
-      return res.status(400).json({
-        success: false,
-        message: "Please upload a PDF file.",
-      });
-    }
-
-    if (req.file.mimetype !== "application/pdf") {
-      return res.status(400).json({
-        success: false,
-        message: "Only PDF files are allowed.",
-      });
-    }
-
     const { topic, type, module_id } = req.body;
 
     if (!topic || !topic.trim()) {
@@ -104,6 +91,35 @@ export const uploadResourceFile = async (
         success: false,
         message: "Invalid resource type.",
       });
+    }
+
+    // Videos are a YouTube link (no file); every other type is a PDF.
+    const isVideo = type === "video";
+    let videoId: string | null = null;
+
+    if (isVideo) {
+      videoId = parseYouTubeId(req.body.video_url);
+
+      if (!videoId) {
+        return res.status(400).json({
+          success: false,
+          message: "Please enter a valid YouTube video link.",
+        });
+      }
+    } else {
+      if (!req.file) {
+        return res.status(400).json({
+          success: false,
+          message: "Please upload a PDF file.",
+        });
+      }
+
+      if (req.file.mimetype !== "application/pdf") {
+        return res.status(400).json({
+          success: false,
+          message: "Only PDF files are allowed.",
+        });
+      }
     }
 
     let programmeId = req.user.programme_id;
@@ -204,27 +220,32 @@ export const uploadResourceFile = async (
       });
     }
 
-    const safeFileName = req.file.originalname
-      .replace(/[^a-zA-Z0-9._-]/g, "_")
-      .replace(/_+/g, "_");
+    // PDFs: upload the file to Storage first. Videos have no file.
+    let filePath: string | null = null;
 
-    const filePath = `admin/${programmeId}/${crypto.randomUUID()}-${safeFileName}`;
+    if (!isVideo && req.file) {
+      const safeFileName = req.file.originalname
+        .replace(/[^a-zA-Z0-9._-]/g, "_")
+        .replace(/_+/g, "_");
 
-    const { error: uploadError } = await supabase.storage
-      .from(BUCKET_NAME)
-      .upload(filePath, req.file.buffer, {
-        contentType: "application/pdf",
-        upsert: false,
-      });
+      filePath = `admin/${programmeId}/${crypto.randomUUID()}-${safeFileName}`;
 
-    if (uploadError) {
-      console.error("Storage upload error:", uploadError);
+      const { error: uploadError } = await supabase.storage
+        .from(BUCKET_NAME)
+        .upload(filePath, req.file.buffer, {
+          contentType: "application/pdf",
+          upsert: false,
+        });
 
-      return res.status(500).json({
-        success: false,
-        message: "Failed to upload PDF.",
-        error: uploadError.message,
-      });
+      if (uploadError) {
+        console.error("Storage upload error:", uploadError);
+
+        return res.status(500).json({
+          success: false,
+          message: "Failed to upload PDF.",
+          error: uploadError.message,
+        });
+      }
     }
 
     const { data: resource, error: insertError } = await supabase
@@ -237,7 +258,8 @@ export const uploadResourceFile = async (
         programme_id: programmeId,
         year: yearNumber,
         semester: semesterNumber,
-        file_path: filePath,
+        file_path: filePath, // null for videos
+        video_id: videoId, // null for PDFs
         uploaded_by: req.user.id,
       })
       .select()
@@ -247,20 +269,24 @@ export const uploadResourceFile = async (
       console.error("Resource insert error:", insertError);
 
       // Remove uploaded file if database insert fails.
-      await supabase.storage
-        .from(BUCKET_NAME)
-        .remove([filePath]);
+      if (filePath) {
+        await supabase.storage
+          .from(BUCKET_NAME)
+          .remove([filePath]);
+      }
 
       return res.status(500).json({
         success: false,
-        message: "Failed to save note information.",
+        message: "Failed to save resource information.",
         error: insertError.message,
       });
     }
 
     return res.status(201).json({
       success: true,
-      message: "Note uploaded successfully.",
+      message: isVideo
+        ? "Video added successfully."
+        : "Resource uploaded successfully.",
       resource,
     });
   } catch (error) {
@@ -304,6 +330,14 @@ export const createResource = async (
       return res.status(400).json({
         success: false,
         message: "Invalid resource type.",
+      });
+    }
+
+    // Videos are added through POST /upload (it reads the YouTube link).
+    if (type === "video") {
+      return res.status(400).json({
+        success: false,
+        message: "Use the upload endpoint to add a video.",
       });
     }
 
@@ -379,7 +413,7 @@ export const updateResource = async (
 
     const { data: existing, error: findError } = await supabase
       .from("resources")
-      .select("id, programme_id")
+      .select("id, programme_id, type")
       .eq("id", resourceId)
       .single();
 
@@ -417,6 +451,15 @@ export const updateResource = async (
         return res.status(400).json({
           success: false,
           message: "Invalid resource type.",
+        });
+      }
+
+      // A video has no PDF and a PDF has no video link, so a resource
+      // can't be switched to or from "video" by editing its type.
+      if ((type === "video") !== (existing.type === "video")) {
+        return res.status(400).json({
+          success: false,
+          message: "Cannot change a resource to or from Video.",
         });
       }
 

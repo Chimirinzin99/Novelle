@@ -307,11 +307,12 @@ export default function AdminResourcesPage() {
               <select
                 value={type}
                 onChange={(e) =>
-                                    setType(e.target.value as ResourceTypeCode)
+                  setType(e.target.value as ResourceTypeCode)
                 }
                 className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none"
               >
-                {RESOURCE_TYPES.map((t) => (
+                {/* Videos are added on /admin/notes (this page only uploads PDFs). */}
+                {RESOURCE_TYPES.filter((t) => t.code !== "video").map((t) => (
                   <option key={t.code} value={t.code}>
                     {t.label}
                   </option>
@@ -469,7 +470,7 @@ export default function AdminResourcesPage() {
                   className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm"
                 >
                   <p className="mb-2 text-xs font-semibold uppercase text-gray-500">
-                                        {resourceTypeLabel(resource.type)}
+                    {resourceTypeLabel(resource.type)}
                   </p>
 
                   <h3 className="mb-3 line-clamp-2 font-semibold text-gray-900">

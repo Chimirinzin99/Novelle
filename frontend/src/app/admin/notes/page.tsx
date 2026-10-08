@@ -11,11 +11,16 @@ import {
   Upload,
   Trash2,
   ExternalLink,
+  Play,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { BACKEND_URL } from "@/lib/config";
 import { RESOURCE_TYPES, resourceTypeLabel } from "@/lib/resourceTypes";
-
+import {
+  parseYouTubeId,
+  youTubeThumbnail,
+  youTubeWatchUrl,
+} from "@/lib/youtube";
 
 type Resource = {
   id: number;
@@ -25,6 +30,7 @@ type Resource = {
   year: number;
   semester: number;
   file_path: string | null;
+  video_id: string | null; // set only for videos
   created_at: string;
 };
 
@@ -47,6 +53,12 @@ export default function ManageNotesPage() {
   const [year, setYear] = useState("1");
   const [semester, setSemester] = useState("1");
   const [file, setFile] = useState<File | null>(null);
+  const [videoUrl, setVideoUrl] = useState("");
+
+  // Videos use a YouTube link instead of a PDF.
+  const isVideo = type === "video";
+  // Worked out on every render, so the preview updates while typing.
+  const previewVideoId = parseYouTubeId(videoUrl);
 
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -174,19 +186,26 @@ export default function ManageNotesPage() {
       return;
     }
 
-    if (!file) {
-      setError("Please select a PDF file.");
-      return;
-    }
+    if (isVideo) {
+      if (!previewVideoId) {
+        setError("Please enter a valid YouTube video link.");
+        return;
+      }
+    } else {
+      if (!file) {
+        setError("Please select a PDF file.");
+        return;
+      }
 
-    if (file.type !== "application/pdf") {
-      setError("Only PDF files are allowed.");
-      return;
-    }
+      if (file.type !== "application/pdf") {
+        setError("Only PDF files are allowed.");
+        return;
+      }
 
-    if (file.size > 10 * 1024 * 1024) {
-      setError("PDF must be smaller than 10 MB.");
-      return;
+      if (file.size > 10 * 1024 * 1024) {
+        setError("PDF must be smaller than 10 MB.");
+        return;
+      }
     }
 
     setUploading(true);
@@ -213,7 +232,13 @@ export default function ManageNotesPage() {
       formData.append("module_name", moduleName.trim());
       formData.append("year", year);
       formData.append("semester", semester);
-      formData.append("file", file);
+
+      // Send either the YouTube link or the PDF, never both.
+      if (isVideo) {
+        formData.append("video_url", videoUrl.trim());
+      } else if (file) {
+        formData.append("file", file);
+      }
 
       const response = await fetch(
         `${BACKEND_URL}/api/resources/upload`,
@@ -242,6 +267,7 @@ export default function ManageNotesPage() {
       setYear("1");
       setSemester("1");
       setFile(null);
+      setVideoUrl("");
 
       const fileInput = document.getElementById(
         "pdf"
@@ -310,7 +336,15 @@ export default function ManageNotesPage() {
     }
   }
 
-  async function handleView(filePath: string | null) {
+  async function handleView(resource: Resource) {
+    // Videos open on YouTube in a new tab.
+    if (resource.video_id) {
+      window.open(youTubeWatchUrl(resource.video_id), "_blank");
+      return;
+    }
+
+    const filePath = resource.file_path;
+
     if (!filePath) {
       setError("This item does not have a file.");
       return;
@@ -329,6 +363,7 @@ export default function ManageNotesPage() {
     window.open(data.signedUrl, "_blank");
   }
 
+
   function ResourceCard({
     resource,
   }: {
@@ -342,8 +377,23 @@ export default function ManageNotesPage() {
             {resourceTypeLabel(resource.type)}
           </span>
 
-          <FileText className="h-4 w-4 text-gray-300" />
+          {resource.video_id ? (
+            <Play className="h-4 w-4 text-gray-300" />
+          ) : (
+            <FileText className="h-4 w-4 text-gray-300" />
+          )}
         </div>
+
+        {/* Video thumbnail, straight from YouTube */}
+        {resource.video_id && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={youTubeThumbnail(resource.video_id)}
+            alt=""
+            loading="lazy"
+            className="mt-3 aspect-video w-full rounded-lg bg-gray-100 object-cover"
+          />
+        )}
 
         <h3 className="mt-3 line-clamp-2 text-sm font-semibold leading-5 text-gray-900">
           {resource.topic}
@@ -365,7 +415,7 @@ export default function ManageNotesPage() {
 
         <div className="mt-auto flex gap-2 border-t border-gray-100 pt-3">
           <button
-            onClick={() => handleView(resource.file_path)}
+            onClick={() => handleView(resource)}
             className="flex flex-1 items-center justify-center gap-1.5 rounded-md bg-gray-900 px-3 py-2 text-xs font-medium text-white transition hover:bg-gray-700"
           >
             <ExternalLink className="h-3.5 w-3.5" />
@@ -602,7 +652,7 @@ export default function ManageNotesPage() {
                 </h2>
 
                 <p className="mt-1 text-xs text-gray-500">
-                  Share a note, question paper, or assignment.
+                  Share a note, question paper, assignment, or video.
                 </p>
               </div>
 
@@ -666,7 +716,7 @@ export default function ManageNotesPage() {
                   }
                   className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-gray-900 focus:ring-1 focus:ring-gray-900"
                 >
-                    {RESOURCE_TYPES.map((t) => (
+                  {RESOURCE_TYPES.map((t) => (
                     <option key={t.code} value={t.code}>
                       {t.label}
                     </option>
@@ -721,51 +771,93 @@ export default function ManageNotesPage() {
 
               </div>
 
-              {/* PDF */}
+              {/* PDF or YouTube link, depending on the type */}
 
-              <div>
-                <label
-                  htmlFor="pdf"
-                  className="mb-1.5 block text-xs font-medium text-gray-700"
-                >
-                  PDF File
-                </label>
-
-                <label
-                  htmlFor="pdf"
-                  className="flex cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-gray-300 bg-gray-50 px-4 py-5 text-center transition hover:border-gray-400 hover:bg-gray-100"
-                >
-                  <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-lg bg-white shadow-sm">
-                    <FileText className="h-4 w-4 text-gray-500" />
-                  </div>
-
-                  <p className="text-xs font-medium text-gray-700">
-                    Select PDF file
-                  </p>
-
-                  <p className="mt-1 text-[10px] text-gray-400">
-                    PDF only · Maximum size: 10 MB
-                  </p>
+              {isVideo ? (
+                <div>
+                  <label
+                    htmlFor="video-url"
+                    className="mb-1.5 block text-xs font-medium text-gray-700"
+                  >
+                    YouTube Link
+                  </label>
 
                   <input
-                    id="pdf"
-                    type="file"
-                    accept="application/pdf,.pdf"
+                    id="video-url"
+                    type="url"
+                    value={videoUrl}
                     onChange={(e) =>
-                      setFile(
-                        e.target.files?.[0] || null
-                      )
+                      setVideoUrl(e.target.value)
                     }
-                    className="hidden"
+                    placeholder="https://www.youtube.com/watch?v=..."
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none transition focus:border-gray-900 focus:ring-1 focus:ring-gray-900"
                   />
-                </label>
 
-                {file && (
-                  <p className="mt-2 truncate text-[11px] text-gray-500">
-                    Selected: {file.name}
+                  <p className="mt-1 text-[10px] text-gray-400">
+                    Tip: for your own lecture recordings, upload them to
+                    YouTube as Unlisted and paste the link here.
                   </p>
-                )}
-              </div>
+
+                  {/* Live preview: thumbnail if the link is valid */}
+                  {videoUrl.trim() &&
+                    (previewVideoId ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={youTubeThumbnail(previewVideoId)}
+                        alt="Video thumbnail preview"
+                        className="mt-3 aspect-video w-full rounded-lg bg-gray-100 object-cover"
+                      />
+                    ) : (
+                      <p className="mt-2 text-[11px] text-red-500">
+                        This doesn&apos;t look like a YouTube video link.
+                      </p>
+                    ))}
+                </div>
+              ) : (
+                <div>
+                  <label
+                    htmlFor="pdf"
+                    className="mb-1.5 block text-xs font-medium text-gray-700"
+                  >
+                    PDF File
+                  </label>
+
+                  <label
+                    htmlFor="pdf"
+                    className="flex cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-gray-300 bg-gray-50 px-4 py-5 text-center transition hover:border-gray-400 hover:bg-gray-100"
+                  >
+                    <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-lg bg-white shadow-sm">
+                      <FileText className="h-4 w-4 text-gray-500" />
+                    </div>
+
+                    <p className="text-xs font-medium text-gray-700">
+                      Select PDF file
+                    </p>
+
+                    <p className="mt-1 text-[10px] text-gray-400">
+                      PDF only · Maximum size: 10 MB
+                    </p>
+
+                    <input
+                      id="pdf"
+                      type="file"
+                      accept="application/pdf,.pdf"
+                      onChange={(e) =>
+                        setFile(
+                          e.target.files?.[0] || null
+                        )
+                      }
+                      className="hidden"
+                    />
+                  </label>
+
+                  {file && (
+                    <p className="mt-2 truncate text-[11px] text-gray-500">
+                      Selected: {file.name}
+                    </p>
+                  )}
+                </div>
+              )}
 
               {/* Upload */}
 

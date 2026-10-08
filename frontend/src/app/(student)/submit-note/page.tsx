@@ -3,7 +3,10 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { RESOURCE_TYPES, type ResourceTypeCode } from "@/lib/resourceTypes";
+import {
+  STUDENT_SUBMIT_TYPES,
+  type ResourceTypeCode,
+} from "@/lib/resourceTypes";
 
 export default function SubmitNotePage() {
   const router = useRouter();
@@ -230,7 +233,7 @@ if (!profile.programme_id) {
             />
           </div>
 
-          {/* Type (options come from lib/resourceTypes.ts) */}
+          {/* Type (from lib/resourceTypes.ts; videos are admin-only) */}
           <div>
             <label
               htmlFor="resource-type"
@@ -248,7 +251,7 @@ if (!profile.programme_id) {
               disabled={loading}
               className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none focus:border-black focus:ring-1 focus:ring-black disabled:bg-gray-100"
             >
-              {RESOURCE_TYPES.map((t) => (
+              {STUDENT_SUBMIT_TYPES.map((t) => (
                 <option key={t.code} value={t.code}>
                   {t.label}
                 </option>
