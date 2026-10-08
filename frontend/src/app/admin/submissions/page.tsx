@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { BACKEND_URL } from "@/lib/config";
 import { REJECTION_REASONS } from "@/lib/rejectionReasons";
+import { resourceTypeLabel } from "@/lib/resourceTypes";
 
 type Profile = {
   id: string;
@@ -32,12 +33,6 @@ type Module = {
   year: number;
   semester: number;
   active: boolean;
-};
-
-const TYPE_LABELS: Record<string, string> = {
-  note: "Note",
-  question_paper: "Question Paper",
-  assignment: "Assignment",
 };
 
 const selectClass =
@@ -342,7 +337,7 @@ export default function AdminSubmissionsPage() {
                       </div>
 
                       <p className="mt-2 text-sm text-gray-600">
-                        Type: {TYPE_LABELS[submission.type] ?? submission.type}
+                        Type: {resourceTypeLabel(submission.type)}
                         {profile?.role === "super_admin" &&
                           submission.programme &&
                           ` · ${submission.programme.name}`}

@@ -14,6 +14,8 @@ import {
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { BACKEND_URL } from "@/lib/config";
+import { RESOURCE_TYPES, resourceTypeLabel } from "@/lib/resourceTypes";
+
 
 type Resource = {
   id: number;
@@ -327,14 +329,6 @@ export default function ManageNotesPage() {
     window.open(data.signedUrl, "_blank");
   }
 
-  function getTypeLabel(type: string) {
-    return type
-      .replace("_", " ")
-      .replace(/\b\w/g, (letter) =>
-        letter.toUpperCase()
-      );
-  }
-
   function ResourceCard({
     resource,
   }: {
@@ -345,7 +339,7 @@ export default function ManageNotesPage() {
 
         <div className="flex items-center justify-between">
           <span className="rounded-full bg-gray-100 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-gray-500">
-            {getTypeLabel(resource.type)}
+            {resourceTypeLabel(resource.type)}
           </span>
 
           <FileText className="h-4 w-4 text-gray-300" />
@@ -402,7 +396,7 @@ export default function ManageNotesPage() {
       resource.module_name
         .toLowerCase()
         .includes(searchText) ||
-      getTypeLabel(resource.type)
+      resourceTypeLabel(resource.type)
         .toLowerCase()
         .includes(searchText)
     );
@@ -672,15 +666,11 @@ export default function ManageNotesPage() {
                   }
                   className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-gray-900 focus:ring-1 focus:ring-gray-900"
                 >
-                  <option value="note">Note</option>
-
-                  <option value="question_paper">
-                    Question Paper
-                  </option>
-
-                  <option value="assignment">
-                    Assignment
-                  </option>
+                    {RESOURCE_TYPES.map((t) => (
+                    <option key={t.code} value={t.code}>
+                      {t.label}
+                    </option>
+                  ))}
                 </select>
               </div>
 

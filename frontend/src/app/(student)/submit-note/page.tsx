@@ -1,13 +1,15 @@
-
 "use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { RESOURCE_TYPES, type ResourceTypeCode } from "@/lib/resourceTypes";
 
 export default function SubmitNotePage() {
   const router = useRouter();
   const [title, setTitle] = useState("");
+  // Chosen resource type; starts as "note".
+  const [type, setType] = useState<ResourceTypeCode>("note");
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
@@ -48,7 +50,7 @@ export default function SubmitNotePage() {
       }
 
       if (!user) {
-        setError("You must be logged in to submit a note.");
+        setError("You must be logged in to submit.");
         return;
       }
 
@@ -118,7 +120,7 @@ if (!profile.programme_id) {
         .from("resource_submissions")
         .insert({
           title: title.trim(),
-          type: "note",
+          type, // the type the student picked
           programme_id: profile.programme_id,
           file_path: filePath,
           submitted_by: user.id,
@@ -146,6 +148,7 @@ if (!profile.programme_id) {
 
       // 7. Clear form
       setTitle("");
+      setType("note");
       setFile(null);
 
       const fileInput = document.getElementById(
@@ -191,11 +194,11 @@ if (!profile.programme_id) {
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-gray-900">
-            Submit a Note
+            Submit a Resource
           </h1>
 
           <p className="mt-2 text-sm text-gray-500">
-            Submit your PDF for admin review. Approved notes
+            Submit your PDF for admin review. Approved resources
             will appear on Novelle.
           </p>
         </div>
@@ -211,7 +214,7 @@ if (!profile.programme_id) {
               htmlFor="note-title"
               className="mb-2 block text-sm font-medium text-gray-700"
             >
-              Note Title
+              Title
             </label>
 
             <input
@@ -221,10 +224,36 @@ if (!profile.programme_id) {
               onChange={(e) =>
                 setTitle(e.target.value)
               }
-              placeholder="Enter note title"
+              placeholder="Enter a title"
               disabled={loading}
               className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder:text-gray-400 outline-none focus:border-black focus:ring-1 focus:ring-black disabled:bg-gray-100"
             />
+          </div>
+
+          {/* Type (options come from lib/resourceTypes.ts) */}
+          <div>
+            <label
+              htmlFor="resource-type"
+              className="mb-2 block text-sm font-medium text-gray-700"
+            >
+              Type
+            </label>
+
+            <select
+              id="resource-type"
+              value={type}
+              onChange={(e) =>
+                setType(e.target.value as ResourceTypeCode)
+              }
+              disabled={loading}
+              className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none focus:border-black focus:ring-1 focus:ring-black disabled:bg-gray-100"
+            >
+              {RESOURCE_TYPES.map((t) => (
+                <option key={t.code} value={t.code}>
+                  {t.label}
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* PDF */}
@@ -295,4 +324,3 @@ if (!profile.programme_id) {
     </main>
   );
 }
-

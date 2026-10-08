@@ -6,7 +6,7 @@ import { AuthenticatedRequest } from "../middleware/auth";
 
 const BUCKET_NAME = "resources";
 
-export const ALLOWED_TYPES = ["note", "question_paper", "assignment"];
+import { isResourceType } from "../constants/resourceTypes";
 
 export const getResources = async (
   req: AuthenticatedRequest,
@@ -99,7 +99,7 @@ export const uploadResourceFile = async (
       });
     }
 
-    if (!ALLOWED_TYPES.includes(type)) {
+    if (!isResourceType(type)) {
       return res.status(400).json({
         success: false,
         message: "Invalid resource type.",
@@ -300,7 +300,7 @@ export const createResource = async (
       });
     }
 
-    if (!ALLOWED_TYPES.includes(type)) {
+    if (!isResourceType(type)) {
       return res.status(400).json({
         success: false,
         message: "Invalid resource type.",
@@ -413,7 +413,7 @@ export const updateResource = async (
     if (topic !== undefined) updates.topic = topic.trim();
 
     if (type !== undefined) {
-      if (!ALLOWED_TYPES.includes(type)) {
+      if (!isResourceType(type)) {
         return res.status(400).json({
           success: false,
           message: "Invalid resource type.",

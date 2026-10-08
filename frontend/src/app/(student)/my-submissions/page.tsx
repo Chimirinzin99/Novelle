@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { rejectionReasonLabel } from "@/lib/rejectionReasons";
+import { resourceTypeLabel } from "@/lib/resourceTypes";
 
 // One row from resource_submissions, plus the programme name joined in.
 type Submission = {
@@ -205,7 +206,7 @@ export default function MySubmissionsPage() {
                   </div>
 
                   <p className="mt-1 text-sm text-gray-500">
-                    <span className="capitalize">{submission.type}</span>
+                    {resourceTypeLabel(submission.type)}
                     {" · "}
                     {submission.programmes?.name ?? "Unknown programme"}
                     {" · "}

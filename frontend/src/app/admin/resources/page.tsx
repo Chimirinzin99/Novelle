@@ -3,11 +3,16 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { BACKEND_URL } from "@/lib/config";
+import {
+  RESOURCE_TYPES,
+  resourceTypeLabel,
+  type ResourceTypeCode,
+} from "@/lib/resourceTypes";
 
 type Resource = {
   id: number;
   title: string;
-  type: "note" | "question_paper" | "assignment";
+  type: ResourceTypeCode;
   programme_id: number;
   module_id: number;
   year: number;
@@ -32,7 +37,7 @@ export default function AdminResourcesPage() {
   const [modules, setModules] = useState<Module[]>([]);
 
   const [title, setTitle] = useState("");
-  const [type, setType] = useState<"note" | "question_paper">("note");
+  const [type, setType] = useState<ResourceTypeCode>("note");
   const [year, setYear] = useState("");
   const [semester, setSemester] = useState("");
   const [moduleId, setModuleId] = useState("");
@@ -302,18 +307,15 @@ export default function AdminResourcesPage() {
               <select
                 value={type}
                 onChange={(e) =>
-                  setType(
-                    e.target.value as
-                      | "note"
-                      | "question_paper"
-                  )
+                                    setType(e.target.value as ResourceTypeCode)
                 }
                 className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none"
               >
-                <option value="note">Note</option>
-                <option value="question_paper">
-                  Question Paper
-                </option>
+                {RESOURCE_TYPES.map((t) => (
+                  <option key={t.code} value={t.code}>
+                    {t.label}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -467,9 +469,7 @@ export default function AdminResourcesPage() {
                   className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm"
                 >
                   <p className="mb-2 text-xs font-semibold uppercase text-gray-500">
-                    {resource.type === "question_paper"
-                      ? "Question Paper"
-                      : "Note"}
+                                        {resourceTypeLabel(resource.type)}
                   </p>
 
                   <h3 className="mb-3 line-clamp-2 font-semibold text-gray-900">
