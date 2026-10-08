@@ -7,8 +7,11 @@ import { supabase } from "@/lib/supabase";
 
 export default function SubmitNotePage() {
   const router = useRouter();
+
   const [title, setTitle] = useState("");
+  const [type, setType] = useState("note");
   const [file, setFile] = useState<File | null>(null);
+
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -48,35 +51,32 @@ export default function SubmitNotePage() {
       }
 
       if (!user) {
-        setError("You must be logged in to submit a note.");
+        setError("You must be logged in to submit a resource.");
         return;
       }
 
       // 2. Get student's programme
-      
-const { data: profile, error: profileError } = await supabase
-  .from("profiles")
-  .select("id, programme_id")
-  .eq("id", user.id)
-  .maybeSingle();
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("id, programme_id")
+        .eq("id", user.id)
+        .maybeSingle();
 
-if (profileError) {
-  throw new Error("Profile error: " + profileError.message);
-}
+      if (profileError) {
+        throw new Error("Profile error: " + profileError.message);
+      }
 
-if (!profile) {
-  throw new Error(
-    "Your profile was not found. Please check the profiles table in Supabase."
-  );
-}
+      if (!profile) {
+        throw new Error(
+          "Your profile was not found. Please check the profiles table in Supabase."
+        );
+      }
 
-if (!profile.programme_id) {
-  throw new Error(
-    "Your profile does not have a programme assigned."
-  );
-}
-
-
+      if (!profile.programme_id) {
+        throw new Error(
+          "Your profile does not have a programme assigned."
+        );
+      }
 
       // 3. Create safe file name
       const safeFileName = file.name.replace(
@@ -118,7 +118,7 @@ if (!profile.programme_id) {
         .from("resource_submissions")
         .insert({
           title: title.trim(),
-          type: "note",
+          type: type,
           programme_id: profile.programme_id,
           file_path: filePath,
           submitted_by: user.id,
@@ -146,6 +146,7 @@ if (!profile.programme_id) {
 
       // 7. Clear form
       setTitle("");
+      setType("note");
       setFile(null);
 
       const fileInput = document.getElementById(
@@ -156,9 +157,8 @@ if (!profile.programme_id) {
         fileInput.value = "";
       }
 
-      // Show the new submission (as "Pending") on My Submissions.
+      // 8. Go to My Submissions
       router.push("/my-submissions");
-
 
     } catch (err) {
       console.error("SUBMIT ERROR:", err);
@@ -191,12 +191,12 @@ if (!profile.programme_id) {
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-gray-900">
-            Submit a Note
+            Submit a Resource
           </h1>
 
           <p className="mt-2 text-sm text-gray-500">
-            Submit your PDF for admin review. Approved notes
-            will appear on Novelle.
+            Submit your PDF for admin review. Approved
+            resources will appear on Novelle.
           </p>
         </div>
 
@@ -211,7 +211,7 @@ if (!profile.programme_id) {
               htmlFor="note-title"
               className="mb-2 block text-sm font-medium text-gray-700"
             >
-              Note Title
+              Resource Title
             </label>
 
             <input
@@ -221,10 +221,42 @@ if (!profile.programme_id) {
               onChange={(e) =>
                 setTitle(e.target.value)
               }
-              placeholder="Enter note title"
+              placeholder="Enter resource title"
               disabled={loading}
               className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder:text-gray-400 outline-none focus:border-black focus:ring-1 focus:ring-black disabled:bg-gray-100"
             />
+          </div>
+
+          {/* Resource Type */}
+          <div>
+            <label
+              htmlFor="resource-type"
+              className="mb-2 block text-sm font-medium text-gray-700"
+            >
+              Resource Type
+            </label>
+
+            <select
+              id="resource-type"
+              value={type}
+              onChange={(e) =>
+                setType(e.target.value)
+              }
+              disabled={loading}
+              className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none focus:border-black focus:ring-1 focus:ring-black disabled:bg-gray-100"
+            >
+              <option value="note">
+                Note
+              </option>
+
+              <option value="question_paper">
+                Question Paper
+              </option>
+
+              <option value="assignment">
+                Assignment
+              </option>
+            </select>
           </div>
 
           {/* PDF */}

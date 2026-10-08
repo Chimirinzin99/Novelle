@@ -1,9 +1,11 @@
+
 "use client";
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { findProgramme } from "@/lib/programme";
 import FilterBar from "@/components/FilterBar";
 
 type Note = {
@@ -22,9 +24,11 @@ export default function NotesPage() {
     params.programme as string
   );
 
-  const programme = programmeSlug
-    .replace(/-/g, " ")
-    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+  // Use the programme short name from the URL.
+  // Example: ece -> ECE
+  const programme = programmeSlug.toUpperCase();
+
+  const [programmeName, setProgrammeName] = useState("");
 
   const [notes, setNotes] = useState<Note[]>([]);
   const [favourites, setFavourites] = useState<number[]>([]);
@@ -49,21 +53,10 @@ export default function NotesPage() {
     setLoading(true);
     setError("");
 
-    // Find programme
-    const { data: programmeData, error: programmeError } =
-      await supabase
-        .from("programmes")
-        .select("id, name")
-        .eq("name", programme)
-        .single();
-
-    if (programmeError || !programmeData) {
-      console.error("Programme error:", programmeError);
-
-      setError(`Unable to find programme "${programme}".`);
-      setLoading(false);
-      return;
-    }
+    // Find programme using short_name
+    // Example: ECE, SE, IT, CE
+    const { data: programmeData, error: programmeError, } = await findProgramme(programmeSlug); 
+    if (programmeError || !programmeData) { console.error("Programme error:", programmeError); setError( `Unable to find programme "${programmeSlug}".` ); setLoading(false); return; } setProgrammeName(programmeData.name);
 
     // Get notes for this programme
     const { data, error: notesError } = await supabase
@@ -276,8 +269,10 @@ export default function NotesPage() {
     }));
   }
 
-  // Module dropdown options, taken from the loaded notes
-  const modules = [...new Set(notes.map((note) => note.module_name))];
+  // Module dropdown options
+  const modules = [
+    ...new Set(notes.map((note) => note.module_name)),
+  ];
 
   // Filter notes
   const filteredNotes = notes.filter((note) => {
@@ -306,240 +301,239 @@ export default function NotesPage() {
 
   return (
     <main className="min-h-full bg-gray-200 text-gray-900">
+      <section className="min-w-0 flex-1 px-6 py-8 md:px-10 lg:px-12">
 
-        {/* Main Content */}
-        <section className="min-w-0 flex-1 px-6 py-8 md:px-10 lg:px-12">
+        {/* Back */}
+        <Link
+          href={`/programmes/${encodeURIComponent(
+            programmeSlug
+          )}`}
+          className="mb-8 inline-flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-gray-900"
+        >
+          ← Back
+        </Link>
 
-          {/* Back */}
-          <Link
-            href={`/programmes/${encodeURIComponent(
-              programmeSlug
-            )}`}
-            className="mb-8 inline-flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-gray-900"
-          >
-            ← Back
-          </Link>
+        {/* Header */}
+        <div className="mb-10">
+          <p className="text-sm font-medium text-blue-600">
+            {programmeName || programme}
+          </p>
 
-          {/* Header */}
-          <div className="mb-10">
-            <p className="text-sm font-medium text-blue-600">
-              {programme}
-            </p>
+          <div className="mt-2 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+            <div>
+              <h1 className="text-3xl font-semibold tracking-tight text-gray-900 md:text-4xl">
+                Notes
+              </h1>
 
-            <div className="mt-2 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-              <div>
-                <h1 className="text-3xl font-semibold tracking-tight text-gray-900 md:text-4xl">
-                  Notes
-                </h1>
-
-                <p className="mt-2 text-sm text-gray-500">
-                  Browse approved study notes for your modules.
-                </p>
-              </div>
-
-              {!loading && (
-                <div className="text-sm font-medium text-gray-500">
-                  {filteredNotes.length}{" "}
-                  {filteredNotes.length === 1
-                    ? "note"
-                    : "notes"}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Filters */}
-          <FilterBar
-            year={selectedYear}
-            onYearChange={setSelectedYear}
-            semester={selectedSemester}
-            onSemesterChange={setSelectedSemester}
-            modules={modules}
-            module={selectedModule}
-            onModuleChange={setSelectedModule}
-            onClear={clearFilters}
-          />
-
-          {/* Error */}
-          {error && (
-            <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
-              {error}
-            </div>
-          )}
-
-          {/* Loading */}
-          {loading && (
-            <div className="rounded-2xl border border-gray-200 bg-white p-10 text-center">
-              <p className="text-sm text-gray-500">
-                Loading notes...
+              <p className="mt-2 text-sm text-gray-500">
+                Browse approved study notes for your modules.
               </p>
             </div>
-          )}
 
-          {/* Notes */}
-          {!loading && (
-            <>
-              {filteredNotes.length === 0 ? (
-                <div className="rounded-2xl border border-gray-200 bg-white p-12 text-center">
+            {!loading && (
+              <div className="text-sm font-medium text-gray-500">
+                {filteredNotes.length}{" "}
+                {filteredNotes.length === 1
+                  ? "note"
+                  : "notes"}
+              </div>
+            )}
+          </div>
+        </div>
 
-                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-gray-100 text-gray-400">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      strokeWidth={1.5}
-                      stroke="currentColor"
-                      className="h-7 w-7"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292"
-                      />
-                    </svg>
-                  </div>
+        {/* Filters */}
+        <FilterBar
+          year={selectedYear}
+          onYearChange={setSelectedYear}
+          semester={selectedSemester}
+          onSemesterChange={setSelectedSemester}
+          modules={modules}
+          module={selectedModule}
+          onModuleChange={setSelectedModule}
+          onClear={clearFilters}
+        />
 
-                  <h2 className="mt-5 text-lg font-semibold text-gray-900">
-                    No notes found
-                  </h2>
+        {/* Error */}
+        {error && (
+          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
+            {error}
+          </div>
+        )}
 
-                  <p className="mt-2 text-sm text-gray-500">
-                    Try changing your filters or check back later.
-                  </p>
+        {/* Loading */}
+        {loading && (
+          <div className="rounded-2xl border border-gray-200 bg-white p-10 text-center">
+            <p className="text-sm text-gray-500">
+              Loading notes...
+            </p>
+          </div>
+        )}
 
-                  <button
-                    onClick={clearFilters}
-                    className="mt-6 rounded-lg bg-gray-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-gray-700"
+        {/* Notes */}
+        {!loading && (
+          <>
+            {filteredNotes.length === 0 ? (
+              <div className="rounded-2xl border border-gray-200 bg-white p-12 text-center">
+
+                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-gray-100 text-gray-400">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={1.5}
+                    stroke="currentColor"
+                    className="h-7 w-7"
                   >
-                    Clear Filters
-                  </button>
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292"
+                    />
+                  </svg>
                 </div>
-              ) : (
-                <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
 
-                  {filteredNotes.map((note) => {
-                    const isFavourite =
-                      favourites.includes(note.id);
+                <h2 className="mt-5 text-lg font-semibold text-gray-900">
+                  No notes found
+                </h2>
 
-                    const likes =
-                      likeCounts[note.id] || 0;
+                <p className="mt-2 text-sm text-gray-500">
+                  Try changing your filters or check back later.
+                </p>
 
-                    return (
-                      <div
-                        key={note.id}
-                        className="flex h-[210px] flex-col rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
-                      >
+                <button
+                  onClick={clearFilters}
+                  className="mt-6 rounded-lg bg-gray-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-gray-700"
+                >
+                  Clear Filters
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
 
-                        {/* Topic */}
-                        <h3 className="text-sm font-semibold text-gray-900">
-                          {note.topic}
-                        </h3>
+                {filteredNotes.map((note) => {
+                  const isFavourite =
+                    favourites.includes(note.id);
 
-                        {/* Module */}
-                        <p className="mt-2 text-xs leading-5 text-gray-500">
-                          {note.module_name}
-                        </p>
+                  const likes =
+                    likeCounts[note.id] || 0;
 
-                        {/* Year / Semester */}
-                        <div className="mt-3 flex items-center justify-between text-[10px] text-gray-400">
-                          <span>
-                            Year {note.year}
-                          </span>
+                  return (
+                    <div
+                      key={note.id}
+                      className="flex h-[210px] flex-col rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
+                    >
 
-                          <span>
-                            Semester {note.semester}
-                          </span>
-                        </div>
+                      {/* Topic */}
+                      <h3 className="text-sm font-semibold text-gray-900">
+                        {note.topic}
+                      </h3>
 
-                        {/* Buttons */}
-                        <div className="mt-auto flex items-center gap-2 border-t pt-3">
+                      {/* Module */}
+                      <p className="mt-2 text-xs leading-5 text-gray-500">
+                        {note.module_name}
+                      </p>
 
-                          {/* View */}
-                          <button
-                            onClick={() =>
-                              handleViewNote(
-                                note.file_path
-                              )
-                            }
-                            className="flex-1 rounded-md bg-blue-600 px-2 py-2 text-xs font-medium text-white hover:bg-blue-700"
-                          >
-                            View
-                          </button>
+                      {/* Year / Semester */}
+                      <div className="mt-3 flex items-center justify-between text-[10px] text-gray-400">
+                        <span>
+                          Year {note.year}
+                        </span>
 
-                          {/* Download */}
-                          <button
-                            onClick={() =>
-                              handleDownloadNote(
-                                note.file_path
-                              )
-                            }
-                            className="flex-1 rounded-md border border-gray-200 px-2 py-2 text-xs font-medium text-gray-600 hover:bg-gray-50"
-                          >
-                            Download
-                          </button>
-
-                          {/* Like */}
-                          <button
-                            onClick={() =>
-                              handleFavourite(note.id)
-                            }
-                            title={
-                              isFavourite
-                                ? "Unlike"
-                                : "Like"
-                            }
-                            className={`flex h-9 w-14 items-center justify-center gap-1 rounded-md border transition ${
-                              isFavourite
-                                ? "border-red-200 bg-red-50 text-red-500"
-                                : "border-gray-200 text-gray-500 hover:bg-red-50 hover:text-red-500"
-                            }`}
-                          >
-                            <span className="flex h-4 w-4 items-center justify-center">
-
-                              {isFavourite ? (
-                                <svg
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  viewBox="0 0 24 24"
-                                  fill="currentColor"
-                                  className="h-4 w-4"
-                                >
-                                  <path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" />
-                                </svg>
-                              ) : (
-                                <svg
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  fill="none"
-                                  viewBox="0 0 24 24"
-                                  strokeWidth={2}
-                                  stroke="currentColor"
-                                  className="h-4 w-4"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"
-                                  />
-                                </svg>
-                              )}
-
-                            </span>
-
-                            <span className="text-xs leading-none">
-                              {likes}
-                            </span>
-                          </button>
-
-                        </div>
+                        <span>
+                          Semester {note.semester}
+                        </span>
                       </div>
-                    );
-                  })}
 
-                </div>
-              )}
-            </>
-          )}
+                      {/* Buttons */}
+                      <div className="mt-auto flex items-center gap-2 border-t pt-3">
 
-        </section>
+                        {/* View */}
+                        <button
+                          onClick={() =>
+                            handleViewNote(
+                              note.file_path
+                            )
+                          }
+                          className="flex-1 rounded-md bg-blue-600 px-2 py-2 text-xs font-medium text-white hover:bg-blue-700"
+                        >
+                          View
+                        </button>
+
+                        {/* Download */}
+                        <button
+                          onClick={() =>
+                            handleDownloadNote(
+                              note.file_path
+                            )
+                          }
+                          className="flex-1 rounded-md border border-gray-200 px-2 py-2 text-xs font-medium text-gray-600 hover:bg-gray-50"
+                        >
+                          Download
+                        </button>
+
+                        {/* Like */}
+                        <button
+                          onClick={() =>
+                            handleFavourite(note.id)
+                          }
+                          title={
+                            isFavourite
+                              ? "Unlike"
+                              : "Like"
+                          }
+                          className={`flex h-9 w-14 items-center justify-center gap-1 rounded-md border transition ${
+                            isFavourite
+                              ? "border-red-200 bg-red-50 text-red-500"
+                              : "border-gray-200 text-gray-500 hover:bg-red-50 hover:text-red-500"
+                          }`}
+                        >
+                          <span className="flex h-4 w-4 items-center justify-center">
+
+                            {isFavourite ? (
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 24 24"
+                                fill="currentColor"
+                                className="h-4 w-4"
+                              >
+                                <path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" />
+                              </svg>
+                            ) : (
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                strokeWidth={2}
+                                stroke="currentColor"
+                                className="h-4 w-4"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"
+                                />
+                              </svg>
+                            )}
+
+                          </span>
+
+                          <span className="text-xs leading-none">
+                            {likes}
+                          </span>
+                        </button>
+
+                      </div>
+                    </div>
+                  );
+                })}
+
+              </div>
+            )}
+          </>
+        )}
+
+      </section>
     </main>
   );
 }
+

@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -30,8 +31,8 @@ export default function ProgrammePage() {
             </h1>
 
             <p className="mt-4 max-w-xl text-base leading-relaxed text-gray-500">
-              Browse notes, past question papers, and assignments
-              for your programme.
+              Browse notes, past question papers, assignments,
+              and related videos for your programme.
             </p>
           </div>
         </div>
@@ -51,7 +52,7 @@ export default function ProgrammePage() {
         </div>
 
         {/* Resource Cards */}
-        <div className="grid gap-5 md:grid-cols-3">
+        <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
 
           {/* Notes */}
           <Link
@@ -60,7 +61,7 @@ export default function ProgrammePage() {
             )}/notes`}
             className="group"
           >
-            <div className="flex min-h-[250px] flex-col rounded-2xl border border-gray-200 bg-white shadow-sm p-7 transition-all duration-200 hover:-translate-y-1 hover:border-indigo-300 hover:shadow-md">
+            <div className="flex min-h-[250px] flex-col rounded-2xl border border-gray-200 bg-white p-7 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:border-indigo-300 hover:shadow-md">
 
               <div className="flex items-center justify-between">
                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
@@ -124,7 +125,7 @@ export default function ProgrammePage() {
             )}/question-papers`}
             className="group"
           >
-            <div className="flex min-h-[250px] flex-col rounded-2xl border border-gray-200 bg-white shadow-sm p-7 transition-all duration-200 hover:-translate-y-1 hover:border-cyan-300 hover:shadow-md">
+            <div className="flex min-h-[250px] flex-col rounded-2xl border border-gray-200 bg-white p-7 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:border-cyan-300 hover:shadow-md">
 
               <div className="flex items-center justify-between">
                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-cyan-50 text-cyan-600">
@@ -139,7 +140,7 @@ export default function ProgrammePage() {
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"
-                      d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
+                      d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125v17.25c0 .621-.504 1.125-1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
                     />
                   </svg>
                 </div>
@@ -188,7 +189,7 @@ export default function ProgrammePage() {
             )}/assignments`}
             className="group"
           >
-            <div className="flex min-h-[250px] flex-col rounded-2xl border border-gray-200 bg-white shadow-sm p-7 transition-all duration-200 hover:-translate-y-1 hover:border-fuchsia-300 hover:shadow-md">
+            <div className="flex min-h-[250px] flex-col rounded-2xl border border-gray-200 bg-white p-7 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:border-fuchsia-300 hover:shadow-md">
 
               <div className="flex items-center justify-between">
                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-fuchsia-50 text-fuchsia-600">
@@ -225,6 +226,75 @@ export default function ProgrammePage() {
 
                 <div className="mt-6 flex items-center gap-2 text-sm font-medium text-fuchsia-600">
                   Browse assignments
+
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={2}
+                    stroke="currentColor"
+                    className="h-4 w-4 transition-transform group-hover:translate-x-1"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"
+                    />
+                  </svg>
+                </div>
+              </div>
+            </div>
+          </Link>
+
+          {/* Related Videos */}
+          <Link
+            href={`/programmes/${encodeURIComponent(
+              programme
+            )}/videos`}
+            className="group"
+          >
+            <div className="flex min-h-[250px] flex-col rounded-2xl border border-gray-200 bg-white p-7 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:border-red-300 hover:shadow-md">
+
+              <div className="flex items-center justify-between">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-red-50 text-red-600">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={1.7}
+                    stroke="currentColor"
+                    className="h-6 w-6"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M15.5 12L9 8.25v7.5L15.5 12z"
+                    />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z"
+                    />
+                  </svg>
+                </div>
+
+                <span className="text-xs font-semibold text-gray-400">
+                  04
+                </span>
+              </div>
+
+              <div className="mt-auto">
+                <h3 className="text-xl font-semibold text-gray-900">
+                  Related Videos
+                </h3>
+
+                <p className="mt-2 text-sm leading-relaxed text-gray-500">
+                  Watch useful YouTube videos related to
+                  your modules and coursework.
+                </p>
+
+                <div className="mt-6 flex items-center gap-2 text-sm font-medium text-red-600">
+                  Browse videos
 
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
