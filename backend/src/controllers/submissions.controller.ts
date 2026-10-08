@@ -2,7 +2,7 @@ import { Response } from "express";
 
 import { supabase } from "../config/supabase";
 import { AuthenticatedRequest } from "../middleware/auth";
-import { ALLOWED_TYPES } from "./resources.controller";
+import { isResourceType } from "../constants/resourceTypes";
 import {
   REJECTION_REASONS,
   SUBMISSION_STATUSES,
@@ -183,7 +183,7 @@ export const approveSubmission = async (
 
     if (!submission) return;
 
-    if (!ALLOWED_TYPES.includes(submission.type)) {
+    if (!isResourceType(submission.type)) {
       return res.status(400).json({
         success: false,
         message: `Submission has an unknown type "${submission.type}".`,

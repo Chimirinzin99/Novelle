@@ -3,10 +3,12 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { youTubeThumbnail, youTubeWatchUrl } from "@/lib/youtube";
 
 type Note = {
   id: number;
-  title: string;
+  title: string | null; // empty for admin uploads
+  topic: string;
   programme_id: number;
   year: number;
   semester: number;
@@ -14,10 +16,24 @@ type Note = {
   created_at: string;
 };
 
+// A video resource (YouTube link added by an admin).
+type Video = {
+  id: number;
+  title: string | null;
+  topic: string;
+  year: number;
+  semester: number;
+  video_id: string; // 11-character YouTube ID
+};
+
+// How many of the newest videos to show on the home page.
+const HOME_VIDEO_LIMIT = 8;
+
 export default function Home() {
   const router = useRouter();
   const [fullName, setFullName] = useState("");
   const [notes, setNotes] = useState<Note[]>([]);
+  const [videos, setVideos] = useState<Video[]>([]);
   const [favourites, setFavourites] = useState<number[]>([]);
   const [likeCounts, setLikeCounts] = useState<Record<number, number>>({});
   const [loading, setLoading] = useState(true);
@@ -67,7 +83,7 @@ export default function Home() {
     } = await supabase
       .from("resources")
       .select(
-        "id, title, programme_id, year, semester, file_path, created_at"
+        "id, title, topic, programme_id, year, semester, file_path, created_at"
       )
       .eq("programme_id", profile.programme_id)
       .eq("type", "note")
@@ -82,6 +98,24 @@ export default function Home() {
     const loadedNotes = resources || [];
 
     setNotes(loadedNotes);
+
+    // Get the newest videos for the student's programme
+    const { data: videoData, error: videosError } = await supabase
+      .from("resources")
+      .select("id, title, topic, year, semester, video_id")
+      .eq("programme_id", profile.programme_id)
+      .eq("type", "video")
+      .order("created_at", { ascending: false })
+      .limit(HOME_VIDEO_LIMIT);
+
+    if (videosError) {
+      // Not fatal: the notes still show without the videos row.
+      console.error("Error fetching videos:", videosError);
+    }
+
+    const loadedVideos: Video[] = videoData || [];
+
+    setVideos(loadedVideos);
 
     // Get student's own likes
     const {
@@ -105,26 +139,26 @@ export default function Home() {
       );
     }
 
-    // Get total like count for each note
+    // Get total like count for each note and video
     const counts: Record<number, number> = {};
 
-    for (const note of loadedNotes) {
+    for (const item of [...loadedNotes, ...loadedVideos]) {
       const { data, error } = await supabase.rpc(
         "get_like_count",
         {
-          p_resource_id: note.id,
+          p_resource_id: item.id,
         }
       );
 
       if (error) {
         console.error(
-          `Error getting likes for note ${note.id}:`,
+          `Error getting likes for resource ${item.id}:`,
           error
         );
 
-        counts[note.id] = 0;
+        counts[item.id] = 0;
       } else {
-        counts[note.id] = Number(data) || 0;
+        counts[item.id] = Number(data) || 0;
       }
     }
 
@@ -281,7 +315,7 @@ export default function Home() {
             </h1>
 
             <p className="mt-2 text-gray-500">
-              Find notes and learning resources from CST students.
+              Find notes, videos and learning resources from CST students.
             </p>
 
             {/* Search */}
@@ -364,7 +398,8 @@ export default function Home() {
 
                         {/* Title */}
                         <h3 className="text-sm font-semibold text-gray-900">
-                          {note.title}
+                          {/* Admin uploads fill "topic"; approved submissions fill "title". */}
+                          {note.title || note.topic}
                         </h3>
 
                         {/* Description */}
@@ -449,9 +484,116 @@ export default function Home() {
 
           </div>
 
-        </div>
+          {/* Latest Videos (only shown when the programme has some) */}
+          {!loading && videos.length > 0 && (
+            <div className="mt-12">
 
-      
+              <div className="mb-5">
+                <h2 className="text-xl font-semibold text-gray-900">
+                  Latest Videos
+                </h2>
+
+                <p className="mt-1 text-sm text-gray-500">
+                  Video lessons added by your programme admins.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+                {videos.map((video) => {
+                  const isFavourite = favourites.includes(video.id);
+                  const likes = likeCounts[video.id] || 0;
+
+                  return (
+                    <div
+                      key={video.id}
+                      className="flex flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
+                    >
+                      {/* Thumbnail: opens the video on YouTube in a new tab */}
+                      <a
+                        href={youTubeWatchUrl(video.video_id)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="group relative block"
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={youTubeThumbnail(video.video_id)}
+                          alt={video.title || video.topic}
+                          loading="lazy"
+                          className="aspect-video w-full bg-gray-100 object-cover"
+                        />
+
+                        {/* Play button on top of the thumbnail */}
+                        <span className="absolute inset-0 flex items-center justify-center bg-black/0 transition group-hover:bg-black/20">
+                          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-black/70 text-white">
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              viewBox="0 0 24 24"
+                              fill="currentColor"
+                              className="ml-0.5 h-5 w-5"
+                            >
+                              <path d="M8 5.14v13.72a1 1 0 001.5.86l11-6.86a1 1 0 000-1.72l-11-6.86A1 1 0 008 5.14z" />
+                            </svg>
+                          </span>
+                        </span>
+                      </a>
+
+                      <div className="flex flex-1 flex-col p-4">
+                        <h3 className="text-sm font-semibold text-gray-900">
+                          {video.title || video.topic}
+                        </h3>
+
+                        <p className="mt-1 text-[10px] text-gray-400">
+                          Year {video.year} · Semester {video.semester}
+                        </p>
+
+                        <div className="mt-auto flex items-center gap-2 border-t pt-3">
+                          <a
+                            href={youTubeWatchUrl(video.video_id)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex-1 rounded-md bg-black px-2 py-2 text-center text-xs font-medium text-white hover:bg-gray-700"
+                          >
+                            Watch
+                          </a>
+
+                          {/* Like (same handler and counts as the notes) */}
+                          <button
+                            onClick={() => handleFavourite(video.id)}
+                            title={isFavourite ? "Unlike" : "Like"}
+                            className={`flex h-9 w-14 items-center justify-center gap-1 rounded-md border transition ${
+                              isFavourite
+                                ? "border-red-200 bg-red-50 text-red-500"
+                                : "border-gray-200 text-gray-500 hover:bg-red-50 hover:text-red-500"
+                            }`}
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              viewBox="0 0 24 24"
+                              fill={isFavourite ? "currentColor" : "none"}
+                              stroke="currentColor"
+                              strokeWidth={isFavourite ? 0 : 2}
+                              className="h-4 w-4"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"
+                              />
+                            </svg>
+
+                            <span className="text-xs leading-none">{likes}</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+        </div>
 
     </main>
   );
