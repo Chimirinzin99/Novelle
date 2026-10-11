@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import { findProgrammeBySlug } from "@/lib/programmes";
 
 // The category cards, as data. Each card is drawn by the same JSX below,
 // so adding a category means adding one object here.
@@ -62,13 +64,34 @@ const CATEGORIES = [
 export default function ProgrammePage() {
   const params = useParams();
 
+  // The slug from the URL, e.g. "information-technology"
   const programme = decodeURIComponent(
     params.programme as string
   );
 
-  const programmeName = programme
-    .replace(/-/g, " ")
-    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+  // The real name, looked up in the database from the slug.
+  // "" while loading; null if no programme matches the slug.
+  const [programmeName, setProgrammeName] = useState<string | null>("");
+
+  useEffect(() => {
+    findProgrammeBySlug(programme).then((found) =>
+      setProgrammeName(found ? found.name : null)
+    );
+  }, [programme]);
+
+  // Unknown slug (e.g. an old bookmark): say so instead of showing empty cards.
+  if (programmeName === null) {
+    return (
+      <main className="min-h-full bg-gray-200 px-6 py-8 text-gray-900 md:px-10 lg:px-16">
+        <div className="mx-auto max-w-5xl rounded-2xl border border-red-200 bg-red-50 p-8 text-red-600">
+          <h1 className="text-xl font-semibold">Programme not found</h1>
+          <p className="mt-2 text-sm">
+            There is no programme at this address. Pick one from the sidebar.
+          </p>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-full bg-gray-200 px-6 py-8 text-gray-900 md:px-10 lg:px-16">
@@ -77,11 +100,11 @@ export default function ProgrammePage() {
         {/* Header */}
         <div className="mb-12">
           <p className="mb-3 text-sm font-medium text-blue-600">
-            Programmes / {programmeName}
+            Programmes / {programmeName || "…"}
           </p>
 
           <h1 className="text-4xl font-semibold tracking-tight md:text-5xl">
-            {programmeName}
+            {programmeName || "Loading…"}
           </h1>
 
           <p className="mt-4 max-w-xl text-base leading-relaxed text-gray-500">

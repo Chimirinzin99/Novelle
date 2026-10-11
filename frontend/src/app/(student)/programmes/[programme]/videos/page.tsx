@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import FilterBar from "@/components/FilterBar";
+import { findProgrammeBySlug } from "@/lib/programmes";
 import { youTubeThumbnail, youTubeWatchUrl } from "@/lib/youtube";
 
 // One video row from the resources table (type = 'video').
@@ -24,10 +25,8 @@ export default function VideosPage() {
     params.programme as string
   );
 
-  // "software-engineering" -> "Software Engineering"
-  const programme = programmeSlug
-    .replace(/-/g, " ")
-    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+  // The programme's real name, shown in the header once it has loaded.
+  const [programme, setProgramme] = useState("");
 
   const [videos, setVideos] = useState<Video[]>([]);
   const [favourites, setFavourites] = useState<number[]>([]);
@@ -42,25 +41,22 @@ export default function VideosPage() {
 
   useEffect(() => {
     fetchVideos();
-  }, [programme]);
+  }, [programmeSlug]);
 
   async function fetchVideos() {
     setLoading(true);
     setError("");
 
-    // 1. Find the programme by name.
-    const { data: programmeData, error: programmeError } = await supabase
-      .from("programmes")
-      .select("id, name")
-      .eq("name", programme)
-      .single();
+    // 1. Find the programme whose slugified name matches the URL slug.
+    const programmeData = await findProgrammeBySlug(programmeSlug);
 
-    if (programmeError || !programmeData) {
-      console.error("Programme error:", programmeError);
-      setError(`Unable to find programme "${programme}".`);
+    if (!programmeData) {
+      setError(`Unable to find programme "${programmeSlug}".`);
       setLoading(false);
       return;
     }
+
+    setProgramme(programmeData.name);
 
     // 2. This programme's videos, newest first.
     const { data, error: videosError } = await supabase
