@@ -8,8 +8,10 @@ import {
   FileQuestion,
   ClipboardList,
   LogOut,
+  Layers,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { isAdminRole, isSuperAdminRole } from "@/lib/roles";
 
 type Profile = {
   id: string;
@@ -70,17 +72,16 @@ export default function AdminPage() {
       }
 
       // Only admins can access this page
-      if (
-        profileData.role !== "programme_admin" &&
-        profileData.role !== "super_admin"
-      ) {
+      // lib/roles.ts decides who counts as an admin.
+      if (!isAdminRole(profileData.role)) {
         router.push("/home");
         return;
       }
 
       setProfile(profileData);
 
-      const isSuperAdmin = profileData.role === "super_admin";
+      // Super admins see every programme (rule in lib/roles.ts).
+      const isSuperAdmin = isSuperAdminRole(profileData.role);
 
       // Get programme name
       if (profileData.programme_id) {
@@ -296,7 +297,8 @@ export default function AdminPage() {
     return null;
   }
 
-  const isSuperAdmin = profile.role === "super_admin";
+  // Used below to switch the wording/cards for super admins (lib/roles.ts).
+  const isSuperAdmin = isSuperAdminRole(profile.role);
 
   return (
     <main className="flex min-h-screen bg-slate-50 text-gray-900">
@@ -337,32 +339,23 @@ export default function AdminPage() {
             <span>Pending Submissions</span>
           </button>
 
+          {/* One page manages every resource type (notes, question papers,
+              assignments, videos) since Part 7 merged the upload pages. */}
           <button
-            onClick={() => router.push("/admin/notes")}
+            onClick={() => router.push("/admin/resources")}
             className="mb-1 flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-sm font-medium text-gray-700 transition hover:bg-gray-100 hover:text-gray-900"
           >
             <FileText className="h-5 w-5" />
-            <span>Manage Notes</span>
+            <span>Manage Resources</span>
           </button>
 
+          {/* Super admin manages modules; programme admins can view them. */}
           <button
-            onClick={() =>
-              router.push("/admin/question-papers")
-            }
+            onClick={() => router.push("/admin/modules")}
             className="mb-1 flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-sm font-medium text-gray-700 transition hover:bg-gray-100 hover:text-gray-900"
           >
-            <FileQuestion className="h-5 w-5" />
-            <span>Manage Question Papers</span>
-          </button>
-
-          <button
-            onClick={() =>
-              router.push("/admin/assignments")
-            }
-            className="mb-1 flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-sm font-medium text-gray-700 transition hover:bg-gray-100 hover:text-gray-900"
-          >
-            <ClipboardList className="h-5 w-5" />
-            <span>Manage Assignments</span>
+            <Layers className="h-5 w-5" />
+            <span>{isSuperAdmin ? "Manage Modules" : "Modules"}</span>
           </button>
 
         </nav>
@@ -468,7 +461,7 @@ export default function AdminPage() {
 
             {/* Notes */}
             <button
-              onClick={() => router.push("/admin/notes")}
+              onClick={() => router.push("/admin/resources")}
               className="group rounded-2xl border border-gray-200 bg-white p-6 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-md"
             >
               <div className="flex items-start justify-between">
@@ -497,7 +490,7 @@ export default function AdminPage() {
             {/* Question Papers */}
             <button
               onClick={() =>
-                router.push("/admin/question-papers")
+                router.push("/admin/resources")
               }
               className="group rounded-2xl border border-gray-200 bg-white p-6 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-md"
             >
@@ -527,7 +520,7 @@ export default function AdminPage() {
             {/* Assignments */}
             <button
               onClick={() =>
-                router.push("/admin/assignments")
+                router.push("/admin/resources")
               }
               className="group rounded-2xl border border-gray-200 bg-white p-6 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-md"
             >

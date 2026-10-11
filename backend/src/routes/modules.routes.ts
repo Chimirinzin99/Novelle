@@ -24,6 +24,10 @@ router.get(
   getModules
 );
 
+// Reading modules: any admin (programme admins only get their own
+// programme's, see getModules). Adding, editing, deactivating and
+// reactivating modules: super admin only (decided in the roles plan).
+
 // ------------------------------------
 // Create module
 // ------------------------------------
@@ -31,7 +35,7 @@ router.get(
 router.post(
   "/",
   authenticateUser,
-  requireRole("programme_admin", "super_admin"),
+  requireRole("super_admin"),
   createModule
 );
 
@@ -42,7 +46,7 @@ router.post(
 router.put(
   "/:id",
   authenticateUser,
-  requireRole("programme_admin", "super_admin"),
+  requireRole("super_admin"),
   updateModule
 );
 
@@ -53,7 +57,7 @@ router.put(
 router.patch(
   "/:id/deactivate",
   authenticateUser,
-  requireRole("programme_admin", "super_admin"),
+  requireRole("super_admin"),
   deactivateModule
 );
 
@@ -64,7 +68,7 @@ router.patch(
 router.patch(
   "/:id/activate",
   authenticateUser,
-  requireRole("programme_admin", "super_admin"),
+  requireRole("super_admin"),
   activateModule
 );
 

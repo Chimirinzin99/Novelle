@@ -1,9 +1,9 @@
-
 "use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { homePathForRole } from "@/lib/roles";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -71,15 +71,9 @@ export default function LoginPage() {
       return;
     }
 
-    // Redirect according to role
-    if (
-      profile.role === "programme_admin" ||
-      profile.role === "super_admin"
-    ) {
-      router.push("/admin");
-    } else {
-      router.push("/home");
-    }
+    // Redirect according to role (admins -> /admin, students -> /home).
+    // The rule lives in lib/roles.ts so login and ExploreButton always agree.
+    router.push(homePathForRole(profile.role));
   };
 
   return (
@@ -166,4 +160,3 @@ export default function LoginPage() {
     </main>
   );
 }
-

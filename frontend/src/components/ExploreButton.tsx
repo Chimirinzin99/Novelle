@@ -5,6 +5,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import { homePathForRole } from "@/lib/roles";
 
 export default function ExploreButton() {
   // Start by pointing at /login. If the check below finds a session,
@@ -24,14 +25,8 @@ export default function ExploreButton() {
         .eq("id", session.user.id)
         .single();
 
-      if (
-        profile?.role === "programme_admin" ||
-        profile?.role === "super_admin"
-      ) {
-        setHref("/admin");
-      } else {
-        setHref("/home");
-      }
+      // lib/roles.ts decides where each role lands (same rule as login).
+      setHref(homePathForRole(profile?.role));
     });
   }, []);
 
