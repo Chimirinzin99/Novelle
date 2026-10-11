@@ -27,3 +27,19 @@ export const isSuperAdminRole = (role: MaybeRole) =>
 // Where a logged-in user should land: admins -> /admin, everyone else -> /home.
 export const homePathForRole = (role: MaybeRole) =>
   isAdminRole(role) ? "/admin" : "/home";
+
+// Display names, used by the Users page (role badges and the role dropdown).
+export const ROLE_LABELS: Record<Role, string> = {
+  student: "Student",
+  programme_admin: "Programme admin",
+  super_admin: "Super admin",
+};
+
+// Every role in display order, for dropdowns: [{ code, label }, ...]
+export const ROLE_OPTIONS = (Object.keys(ROLE_LABELS) as Role[]).map(
+  (code) => ({ code, label: ROLE_LABELS[code] })
+);
+
+// Label for any role string; unknown values are shown as they are.
+export const roleLabel = (role: MaybeRole) =>
+  ROLE_LABELS[role as Role] ?? role ?? "";

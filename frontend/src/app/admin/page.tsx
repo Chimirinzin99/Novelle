@@ -9,9 +9,26 @@ import {
   ClipboardList,
   LogOut,
   Layers,
+  Users,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { isAdminRole, isSuperAdminRole } from "@/lib/roles";
+import { BACKEND_URL } from "@/lib/config";
+import { ROLES, isAdminRole, isSuperAdminRole } from "@/lib/roles";
+
+// Super admin only: one row per programme in the overview table.
+type ProgrammeOverview = {
+  id: number;
+  name: string;
+  pending: number;
+  admins: string[]; // names of active programme admins
+};
+
+// Super admin only: user counts for the cards.
+type UserCounts = {
+  students: number;
+  programmeAdmins: number;
+  deactivated: number;
+};
 
 type Profile = {
   id: string;
@@ -34,6 +51,12 @@ export default function AdminPage() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  // Super admin overview (Part 9)
+  const [userCounts, setUserCounts] = useState<UserCounts | null>(null);
+  const [programmeOverview, setProgrammeOverview] = useState<
+    ProgrammeOverview[]
+  >([]);
 
   useEffect(() => {
     const loadAdmin = async () => {
@@ -253,6 +276,72 @@ export default function AdminPage() {
             .eq("type", "assignment");
 
         setAssignmentsCount(assignments ?? 0);
+
+        // Users + per-programme overview. Profiles of other users can't be
+        // read from the browser (RLS), so users come from the backend.
+        try {
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
+
+          const [usersResponse, pendingResult, programmesResult] =
+            await Promise.all([
+              fetch(`${BACKEND_URL}/api/users`, {
+                headers: {
+                  Authorization: `Bearer ${session?.access_token}`,
+                },
+              }),
+              supabase
+                .from("resource_submissions")
+                .select("programme_id")
+                .eq("status", "pending"),
+              supabase.from("programmes").select("id, name").order("name"),
+            ]);
+
+          const usersData = await usersResponse.json();
+
+          if (!usersResponse.ok) {
+            throw new Error(usersData.message || "Failed to load users.");
+          }
+
+          const users: {
+            full_name: string;
+            role: string;
+            programme_id: number | null;
+            is_active: boolean;
+          }[] = usersData.users || [];
+
+          setUserCounts({
+            students: users.filter((u) => u.role === ROLES.student).length,
+            programmeAdmins: users.filter(
+              (u) => u.role === ROLES.programmeAdmin
+            ).length,
+            deactivated: users.filter((u) => !u.is_active).length,
+          });
+
+          const pendingRows = pendingResult.data || [];
+
+          setProgrammeOverview(
+            (programmesResult.data || []).map((programme) => ({
+              id: programme.id,
+              name: programme.name,
+              pending: pendingRows.filter(
+                (row) => row.programme_id === programme.id
+              ).length,
+              admins: users
+                .filter(
+                  (u) =>
+                    u.role === ROLES.programmeAdmin &&
+                    u.is_active &&
+                    u.programme_id === programme.id
+                )
+                .map((u) => u.full_name),
+            }))
+          );
+        } catch (overviewError) {
+          // The cards above still work; only the overview is missing.
+          console.error("OVERVIEW ERROR:", overviewError);
+        }
       }
 
       setLoading(false);
@@ -357,6 +446,17 @@ export default function AdminPage() {
             <Layers className="h-5 w-5" />
             <span>{isSuperAdmin ? "Manage Modules" : "Modules"}</span>
           </button>
+
+          {/* Super admin only: roles, programme admins, deactivation. */}
+          {isSuperAdmin && (
+            <button
+              onClick={() => router.push("/admin/users")}
+              className="mb-1 flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-sm font-medium text-gray-700 transition hover:bg-gray-100 hover:text-gray-900"
+            >
+              <Users className="h-5 w-5" />
+              <span>Manage Users</span>
+            </button>
+          )}
 
         </nav>
 
@@ -578,6 +678,120 @@ export default function AdminPage() {
             </button>
 
           </div>
+
+          {/* Super admin overview: users and programmes */}
+          {isSuperAdmin && userCounts && (
+            <>
+              <h2 className="mb-4 mt-10 text-lg font-semibold text-gray-900">
+                Users
+              </h2>
+
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
+                {[
+                  {
+                    label: "Students",
+                    value: userCounts.students,
+                    note: "Registered students",
+                  },
+                  {
+                    label: "Programme Admins",
+                    value: userCounts.programmeAdmins,
+                    note: "Assigned to a programme",
+                  },
+                  {
+                    label: "Deactivated",
+                    value: userCounts.deactivated,
+                    note: "Cannot log in",
+                  },
+                ].map((card) => (
+                  <button
+                    key={card.label}
+                    onClick={() => router.push("/admin/users")}
+                    className="group rounded-2xl border border-gray-200 bg-white p-6 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-md"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-500">
+                          {card.label}
+                        </p>
+
+                        <p className="mt-4 text-4xl font-bold tracking-tight text-gray-900">
+                          {card.value}
+                        </p>
+
+                        <p className="mt-2 text-xs text-gray-400">
+                          {card.note}
+                        </p>
+                      </div>
+
+                      <div className="rounded-xl bg-gray-100 p-3 text-gray-700">
+                        <Users className="h-5 w-5" />
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+
+              <h2 className="mb-4 mt-10 text-lg font-semibold text-gray-900">
+                Programmes
+              </h2>
+
+              <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-sm">
+                <table className="w-full text-left text-sm">
+                  <thead className="border-b border-gray-200 text-xs uppercase tracking-wide text-gray-400">
+                    <tr>
+                      <th className="px-5 py-3 font-medium">Programme</th>
+                      <th className="px-5 py-3 font-medium">
+                        Pending submissions
+                      </th>
+                      <th className="px-5 py-3 font-medium">
+                        Programme admin
+                      </th>
+                    </tr>
+                  </thead>
+
+                  <tbody className="divide-y divide-gray-100">
+                    {programmeOverview.map((programme) => (
+                      <tr key={programme.id}>
+                        <td className="px-5 py-3 font-medium text-gray-900">
+                          {programme.name}
+                        </td>
+
+                        <td className="px-5 py-3">
+                          {programme.pending > 0 ? (
+                            <button
+                              onClick={() => router.push("/admin/submissions")}
+                              className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-700 hover:bg-amber-200"
+                            >
+                              {programme.pending} pending
+                            </button>
+                          ) : (
+                            <span className="text-gray-400">0</span>
+                          )}
+                        </td>
+
+                        <td className="px-5 py-3">
+                          {programme.admins.length > 0 ? (
+                            <span className="text-gray-700">
+                              {programme.admins.join(", ")}
+                            </span>
+                          ) : (
+                            // No admin yet: only the super admin can review here.
+                            <button
+                              onClick={() => router.push("/admin/users")}
+                              className="text-sm text-blue-600 hover:underline"
+                            >
+                              None — assign one
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
 
         </div>
 
