@@ -1,23 +1,21 @@
-
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-
+import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { findProgramme } from "@/lib/programme";
+import FilterBar from "@/components/FilterBar";
+import { findProgrammeBySlug } from "@/lib/programmes";
+import { youTubeThumbnail, youTubeWatchUrl } from "@/lib/youtube";
 
+// One video row from the resources table (type = 'video').
 type Video = {
   id: number;
-  title: string;
-  youtube_url: string;
-  year: number | null;
-  semester: number | null;
-  module: {
-    module_code: string;
-    module_name: string;
-  } | null;
+  topic: string;
+  year: number;
+  semester: number;
+  module_name: string;
+  video_id: string; // 11-character YouTube ID
 };
 
 export default function VideosPage() {
@@ -27,281 +25,341 @@ export default function VideosPage() {
     params.programme as string
   );
 
-  const programmeName = programmeSlug
-    .replace(/-/g, " ")
-    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+  // The programme's real name, shown in the header once it has loaded.
+  const [programme, setProgramme] = useState("");
 
   const [videos, setVideos] = useState<Video[]>([]);
+  const [favourites, setFavourites] = useState<number[]>([]);
+  const [likeCounts, setLikeCounts] = useState<Record<number, number>>({});
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  const [selectedYear, setSelectedYear] = useState("All Years");
+  const [selectedSemester, setSelectedSemester] = useState("All Semesters");
+  const [selectedModule, setSelectedModule] = useState("All Modules");
+
   useEffect(() => {
-    const loadVideos = async () => {
-      setLoading(true);
-      setError("");
-
-      try {
-        // Find the programme using short name OR full programme name
-        const {
-          data: programmeData,
-          error: programmeError,
-        } = await findProgramme(programmeSlug);
-
-        if (programmeError || !programmeData) {
-          console.error("Programme error:", programmeError);
-          setError(`Programme "${programmeSlug}" not found.`);
-          setLoading(false);
-          return;
-        }
-
-        // Get videos for this programme
-        const { data, error: videoError } = await supabase
-          .from("videos")
-          .select(`
-            id,
-            title,
-            youtube_url,
-            year,
-            semester,
-            module:modules (
-              module_code,
-              module_name
-            )
-          `)
-          .eq("programme_id", programmeData.id)
-          .order("created_at", {
-            ascending: false,
-          });
-
-        if (videoError) {
-          console.error("Video error:", videoError);
-          setError("Unable to load videos.");
-          setLoading(false);
-          return;
-        }
-
-        setVideos((data || []) as unknown as Video[]);
-      } catch (err) {
-        console.error(err);
-        setError("Something went wrong while loading videos.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadVideos();
+    fetchVideos();
   }, [programmeSlug]);
 
-  // Convert YouTube URL into an embed URL
-  const getYouTubeEmbedUrl = (url: string) => {
-    try {
-      const parsedUrl = new URL(url);
+  async function fetchVideos() {
+    setLoading(true);
+    setError("");
 
-      // Normal YouTube URL
-      // https://www.youtube.com/watch?v=VIDEO_ID
-      if (
-        parsedUrl.hostname === "youtube.com" ||
-        parsedUrl.hostname === "www.youtube.com"
-      ) {
-        const videoId = parsedUrl.searchParams.get("v");
+    // 1. Find the programme whose slugified name matches the URL slug.
+    const programmeData = await findProgrammeBySlug(programmeSlug);
 
-        if (videoId) {
-          return `https://www.youtube.com/embed/${videoId}`;
-        }
-
-        // YouTube Shorts
-        const shortsMatch = parsedUrl.pathname.match(
-          /\/shorts\/([^/]+)/
-        );
-
-        if (shortsMatch) {
-          return `https://www.youtube.com/embed/${shortsMatch[1]}`;
-        }
-      }
-
-      // Short YouTube URL
-      // https://youtu.be/VIDEO_ID
-      if (
-        parsedUrl.hostname === "youtu.be" ||
-        parsedUrl.hostname === "www.youtu.be"
-      ) {
-        const videoId = parsedUrl.pathname.substring(1);
-
-        if (videoId) {
-          return `https://www.youtube.com/embed/${videoId}`;
-        }
-      }
-
-      return null;
-    } catch {
-      return null;
+    if (!programmeData) {
+      setError(`Unable to find programme "${programmeSlug}".`);
+      setLoading(false);
+      return;
     }
-  };
+
+    setProgramme(programmeData.name);
+
+    // 2. This programme's videos, newest first.
+    const { data, error: videosError } = await supabase
+      .from("resources")
+      .select("id, topic, year, semester, module_name, video_id")
+      .eq("programme_id", programmeData.id)
+      .eq("type", "video")
+      .order("created_at", { ascending: false });
+
+    if (videosError) {
+      console.error("Videos error:", videosError);
+      setError("Unable to load videos.");
+      setLoading(false);
+      return;
+    }
+
+    const loadedVideos: Video[] = (data || []).map((item) => ({
+      id: item.id,
+      topic: item.topic,
+      year: item.year,
+      semester: item.semester,
+      module_name: item.module_name || "Unknown Module",
+      video_id: item.video_id,
+    }));
+
+    setVideos(loadedVideos);
+
+    // 3. Which of these the logged-in student has liked.
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (user) {
+      const { data: favouriteData, error: favouriteError } = await supabase
+        .from("favourites")
+        .select("resource_id")
+        .eq("user_id", user.id);
+
+      if (favouriteError) {
+        console.error("Favourite loading error:", favouriteError);
+      } else {
+        setFavourites((favouriteData || []).map((f) => f.resource_id));
+      }
+    }
+
+    // 4. Total likes per video (same database function as the Notes page).
+    const counts: Record<number, number> = {};
+
+    for (const video of loadedVideos) {
+      const { data: likeCount, error: likeError } = await supabase.rpc(
+        "get_like_count",
+        { p_resource_id: video.id }
+      );
+
+      counts[video.id] = likeError ? 0 : Number(likeCount) || 0;
+    }
+
+    setLikeCounts(counts);
+    setLoading(false);
+  }
+
+  // Like / unlike (same as the Notes page).
+  async function handleFavourite(resourceId: number) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      setError("Please log in to like a video.");
+      return;
+    }
+
+    if (favourites.includes(resourceId)) {
+      const { error: deleteError } = await supabase
+        .from("favourites")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("resource_id", resourceId);
+
+      if (deleteError) {
+        console.error("Remove like error:", deleteError);
+        setError("Unable to remove like.");
+        return;
+      }
+
+      setFavourites((current) => current.filter((id) => id !== resourceId));
+      setLikeCounts((current) => ({
+        ...current,
+        [resourceId]: Math.max((current[resourceId] || 0) - 1, 0),
+      }));
+      return;
+    }
+
+    const { error: insertError } = await supabase
+      .from("favourites")
+      .insert({ user_id: user.id, resource_id: resourceId });
+
+    if (insertError) {
+      console.error("Add like error:", insertError);
+      setError("Unable to like this video.");
+      return;
+    }
+
+    setFavourites((current) => [...current, resourceId]);
+    setLikeCounts((current) => ({
+      ...current,
+      [resourceId]: (current[resourceId] || 0) + 1,
+    }));
+  }
+
+  // Module dropdown options, taken from the loaded videos.
+  const modules = [...new Set(videos.map((video) => video.module_name))];
+
+  const filteredVideos = videos.filter((video) => {
+    const yearMatch =
+      selectedYear === "All Years" ||
+      video.year.toString() === selectedYear.replace("Year ", "");
+
+    const semesterMatch =
+      selectedSemester === "All Semesters" ||
+      video.semester.toString() === selectedSemester.replace("Semester ", "");
+
+    const moduleMatch =
+      selectedModule === "All Modules" || video.module_name === selectedModule;
+
+    return yearMatch && semesterMatch && moduleMatch;
+  });
+
+  function clearFilters() {
+    setSelectedYear("All Years");
+    setSelectedSemester("All Semesters");
+    setSelectedModule("All Modules");
+  }
 
   return (
-    <main className="min-h-full bg-gray-200 px-6 py-8 text-gray-900 md:px-10 lg:px-16">
-      <div className="mx-auto max-w-6xl">
+    <main className="min-h-full bg-gray-200 text-gray-900">
+      <section className="min-w-0 flex-1 px-6 py-8 md:px-10 lg:px-12">
+
+        {/* Back */}
+        <Link
+          href={`/programmes/${encodeURIComponent(programmeSlug)}`}
+          className="mb-8 inline-flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-gray-900"
+        >
+          ← Back
+        </Link>
 
         {/* Header */}
         <div className="mb-10">
-          <Link
-            href={`/programmes/${encodeURIComponent(programmeSlug)}`}
-            className="mb-4 inline-flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-700"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth={2}
-              stroke="currentColor"
-              className="h-4 w-4"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"
-              />
-            </svg>
+          <p className="text-sm font-medium text-blue-600">{programme}</p>
 
-            Back to {programmeName}
-          </Link>
+          <div className="mt-2 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+            <div>
+              <h1 className="text-3xl font-semibold tracking-tight text-gray-900 md:text-4xl">
+                Videos
+              </h1>
 
-          <p className="mb-3 text-sm font-medium text-red-600">
-            Programmes / {programmeName} / Videos
-          </p>
-
-          <h1 className="text-4xl font-semibold tracking-tight md:text-5xl">
-            Related Videos
-          </h1>
-
-          <p className="mt-4 max-w-2xl text-base leading-relaxed text-gray-500">
-            Watch useful YouTube videos related to your
-            programme, modules, and coursework.
-          </p>
-        </div>
-
-        {/* Divider */}
-        <div className="mb-8 h-px bg-gray-300" />
-
-        {/* Loading */}
-        {loading && (
-          <div className="rounded-2xl border border-gray-200 bg-white p-10 text-center shadow-sm">
-            <p className="text-sm text-gray-500">
-              Loading videos...
-            </p>
-          </div>
-        )}
-
-        {/* Error */}
-        {!loading && error && (
-          <div className="rounded-2xl border border-red-200 bg-red-50 p-10 text-center">
-            <h2 className="text-xl font-semibold text-red-700">
-              Unable to load videos
-            </h2>
-
-            <p className="mt-2 text-sm text-red-600">
-              {error}
-            </p>
-          </div>
-        )}
-
-        {/* No videos */}
-        {!loading && !error && videos.length === 0 && (
-          <div className="rounded-2xl border border-gray-200 bg-white p-10 text-center shadow-sm">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-red-50 text-red-600">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={1.7}
-                stroke="currentColor"
-                className="h-7 w-7"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M15.5 12L9 8.25v7.5L15.5 12z"
-                />
-
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z"
-                />
-              </svg>
+              <p className="mt-2 text-sm text-gray-500">
+                Video lessons added by your programme admins. They open on
+                YouTube.
+              </p>
             </div>
 
-            <h2 className="mt-5 text-xl font-semibold text-gray-900">
-              No videos available
+            {!loading && (
+              <div className="text-sm font-medium text-gray-500">
+                {filteredVideos.length}{" "}
+                {filteredVideos.length === 1 ? "video" : "videos"}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Filters */}
+        <FilterBar
+          year={selectedYear}
+          onYearChange={setSelectedYear}
+          semester={selectedSemester}
+          onSemesterChange={setSelectedSemester}
+          modules={modules}
+          module={selectedModule}
+          onModuleChange={setSelectedModule}
+          onClear={clearFilters}
+        />
+
+        {/* Error */}
+        {error && (
+          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
+            {error}
+          </div>
+        )}
+
+        {/* Loading / empty / list */}
+        {loading ? (
+          <div className="rounded-2xl border border-gray-200 bg-white p-10 text-center">
+            <p className="text-sm text-gray-500">Loading videos...</p>
+          </div>
+        ) : filteredVideos.length === 0 ? (
+          <div className="rounded-2xl border border-gray-200 bg-white p-12 text-center">
+            <h2 className="text-lg font-semibold text-gray-900">
+              No videos found
             </h2>
 
             <p className="mt-2 text-sm text-gray-500">
-              Videos for this programme will appear here
-              once an administrator adds them.
+              Try changing your filters or check back later.
             </p>
-          </div>
-        )}
 
-        {/* Videos */}
-        {!loading && !error && videos.length > 0 && (
-          <div className="grid gap-6 md:grid-cols-2">
-            {videos.map((video) => {
-              const embedUrl = getYouTubeEmbedUrl(
-                video.youtube_url
-              );
+            <button
+              onClick={clearFilters}
+              className="mt-6 rounded-lg bg-gray-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-gray-700"
+            >
+              Clear Filters
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+            {filteredVideos.map((video) => {
+              const isFavourite = favourites.includes(video.id);
+              const likes = likeCounts[video.id] || 0;
 
               return (
                 <div
                   key={video.id}
-                  className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm"
+                  className="flex flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
                 >
-                  {/* YouTube */}
-                  {embedUrl ? (
-                    <div className="aspect-video w-full bg-black">
-                      <iframe
-                        className="h-full w-full"
-                        src={embedUrl}
-                        title={video.title}
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                        allowFullScreen
-                      />
-                    </div>
-                  ) : (
-                    <div className="flex aspect-video items-center justify-center bg-gray-100">
-                      <p className="text-sm text-gray-500">
-                        Invalid YouTube URL
-                      </p>
-                    </div>
-                  )}
+                  {/* Thumbnail: a normal link, so it opens YouTube in a new tab */}
+                  <a
+                    href={youTubeWatchUrl(video.video_id)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group relative block"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={youTubeThumbnail(video.video_id)}
+                      alt={video.topic}
+                      loading="lazy"
+                      className="aspect-video w-full bg-gray-100 object-cover"
+                    />
 
-                  {/* Video information */}
-                  <div className="p-6">
-                    <h2 className="text-xl font-semibold text-gray-900">
-                      {video.title}
-                    </h2>
+                    {/* Play button drawn on top of the thumbnail */}
+                    <span className="absolute inset-0 flex items-center justify-center bg-black/0 transition group-hover:bg-black/20">
+                      <span className="flex h-12 w-12 items-center justify-center rounded-full bg-black/70 text-white">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          fill="currentColor"
+                          className="ml-0.5 h-6 w-6"
+                        >
+                          <path d="M8 5.14v13.72a1 1 0 001.5.86l11-6.86a1 1 0 000-1.72l-11-6.86A1 1 0 008 5.14z" />
+                        </svg>
+                      </span>
+                    </span>
+                  </a>
 
-                    {video.module && (
-                      <p className="mt-2 text-sm text-gray-500">
-                        <span className="font-medium text-gray-700">
-                          Module:
-                        </span>{" "}
-                        {video.module.module_code} —{" "}
-                        {video.module.module_name}
-                      </p>
-                    )}
+                  <div className="flex flex-1 flex-col p-4">
+                    <h3 className="text-sm font-semibold text-gray-900">
+                      {video.topic}
+                    </h3>
 
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      {video.year && (
-                        <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600">
-                          Year {video.year}
-                        </span>
-                      )}
+                    <p className="mt-1 text-xs text-gray-500">
+                      {video.module_name}
+                    </p>
 
-                      {video.semester && (
-                        <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600">
-                          Semester {video.semester}
-                        </span>
-                      )}
+                    <p className="mt-1 text-[10px] text-gray-400">
+                      Year {video.year} · Semester {video.semester}
+                    </p>
+
+                    <div className="mt-auto flex items-center gap-2 border-t pt-3">
+                      <a
+                        href={youTubeWatchUrl(video.video_id)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-1 rounded-md bg-blue-600 px-2 py-2 text-center text-xs font-medium text-white hover:bg-blue-700"
+                      >
+                        Watch on YouTube
+                      </a>
+
+                      {/* Like */}
+                      <button
+                        onClick={() => handleFavourite(video.id)}
+                        title={isFavourite ? "Unlike" : "Like"}
+                        className={`flex h-9 w-14 items-center justify-center gap-1 rounded-md border transition ${
+                          isFavourite
+                            ? "border-red-200 bg-red-50 text-red-500"
+                            : "border-gray-200 text-gray-500 hover:bg-red-50 hover:text-red-500"
+                        }`}
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          fill={isFavourite ? "currentColor" : "none"}
+                          stroke="currentColor"
+                          strokeWidth={isFavourite ? 0 : 2}
+                          className="h-4 w-4"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"
+                          />
+                        </svg>
+
+                        <span className="text-xs leading-none">{likes}</span>
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -309,7 +367,7 @@ export default function VideosPage() {
             })}
           </div>
         )}
-      </div>
+      </section>
     </main>
   );
 }

@@ -18,7 +18,7 @@ export const requireRole = (...allowedRoles: string[]) => {
 
       const { data: profile, error } = await supabase
         .from("profiles")
-        .select("id, role, programme_id")
+        .select("id, role, programme_id, is_active")
         .eq("id", req.user.id)
         .single();
 
@@ -26,6 +26,15 @@ export const requireRole = (...allowedRoles: string[]) => {
         return res.status(403).json({
           success: false,
           message: "User profile not found.",
+        });
+      }
+
+      // Deactivated accounts lose access straight away, even if their
+      // login token hasn't expired yet (see users.controller.ts).
+      if (!profile.is_active) {
+        return res.status(403).json({
+          success: false,
+          message: "Your account has been deactivated.",
         });
       }
 

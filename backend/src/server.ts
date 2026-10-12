@@ -11,6 +11,7 @@ import { requireRole } from "./middleware/role";
 import modulesRoutes from "./routes/modules.routes";
 import resourcesRoutes from "./routes/resources.routes";
 import submissionsRoutes from "./routes/submissions.routes";
+import usersRoutes from "./routes/users.routes";
 
 const app = express();
 
@@ -25,6 +26,9 @@ app.use("/api/resources", resourcesRoutes);
 
 // Submissions API (admin review)
 app.use("/api/submissions", submissionsRoutes);
+
+// Users API (super admin: roles, deactivate/activate)
+app.use("/api/users", usersRoutes);
 
 const PORT = 5000;
 

@@ -1,9 +1,13 @@
-
 "use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { homePathForRole } from "@/lib/roles";
+
+// Shown when a super admin has deactivated this account (/admin/users).
+const DEACTIVATED_MESSAGE =
+  "Your account has been deactivated. Please contact the super admin.";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -39,7 +43,13 @@ export default function LoginPage() {
     });
 
     if (error) {
-      setError(error.message);
+      // A deactivated account is banned in Supabase Auth (Part 9), which
+      // refuses the login with the code "user_banned".
+      setError(
+        error.code === "user_banned"
+          ? DEACTIVATED_MESSAGE
+          : error.message
+      );
       setLoading(false);
       return;
     }
@@ -54,7 +64,7 @@ export default function LoginPage() {
     // Get the user's role from the profiles table
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
-      .select("role")
+      .select("role, is_active")
       .eq("id", data.user.id)
       .maybeSingle();
 
@@ -71,15 +81,18 @@ export default function LoginPage() {
       return;
     }
 
-    // Redirect according to role
-    if (
-      profile.role === "programme_admin" ||
-      profile.role === "super_admin"
-    ) {
-      router.push("/admin");
-    } else {
-      router.push("/home");
+    // Backup check: if the profile says deactivated but the ban didn't
+    // stop the login, sign straight back out.
+    if (!profile.is_active) {
+      await supabase.auth.signOut();
+      setError(DEACTIVATED_MESSAGE);
+      setLoading(false);
+      return;
     }
+
+    // Redirect according to role (admins -> /admin, students -> /home).
+    // The rule lives in lib/roles.ts so login and ExploreButton always agree.
+    router.push(homePathForRole(profile.role));
   };
 
   return (
@@ -166,4 +179,3 @@ export default function LoginPage() {
     </main>
   );
 }
-

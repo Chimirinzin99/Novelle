@@ -5,25 +5,32 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
+import { programmeHref } from "@/lib/programmes";
+
 // The programme links, written once as data instead of 10 copies of <a>.
-// slug = the part of the URL after /programmes/
+// name  = the programme's name EXACTLY as in the database `programmes` table
+//         (the URL is made from it with slugify — see lib/programmes.ts)
+// label = what the sidebar shows (adds the short form, e.g. "(ECE)")
 const PROGRAMMES = [
-  { slug: "civil-engineering", name: "Civil Engineering" },
-  { slug: "electrical-engineering", name: "Electrical Engineering" },
-  { slug: "ece", name: "Electronics and Communication Engineering (ECE)" },
-  { slug: "information-technology", name: "Information Technology (IT)" },
-  { slug: "architecture", name: "Architecture" },
-  { slug: "engineering-geology", name: "Engineering Geology" },
+  { name: "Civil Engineering", label: "Civil Engineering" },
+  { name: "Electrical Engineering", label: "Electrical Engineering" },
   {
-    slug: "instrumentation-and-control-engineering",
-    name: "Instrumentation and Control Engineering (ICE)",
+    name: "Electronics and Communication Engineering",
+    label: "Electronics and Communication Engineering (ECE)",
+  },
+  { name: "Information Technology", label: "Information Technology (IT)" },
+  { name: "Architecture", label: "Architecture" },
+  { name: "Engineering Geology", label: "Engineering Geology" },
+  {
+    name: "Instrumentation and Control Engineering",
+    label: "Instrumentation and Control Engineering (ICE)",
   },
   {
-    slug: "water-resources-engineering",
-    name: "Water Resources Engineering (WRE)",
+    name: "Water Resources Engineering",
+    label: "Water Resources Engineering (WRE)",
   },
-  { slug: "mechanical-engineering", name: "Mechanical Engineering" },
-  { slug: "software-engineering", name: "Software Engineering" },
+  { name: "Mechanical Engineering", label: "Mechanical Engineering" },
+  { name: "Software Engineering", label: "Software Engineering" },
 ];
 
 // Two looks for a link: the current page (blue) and every other page (grey).
@@ -36,7 +43,7 @@ function linkClass(active: boolean) {
 
 export default function Sidebar() {
   const router = useRouter();
-  // usePathname() gives the current URL path, e.g. "/programmes/ece/notes".
+  // usePathname() gives the current URL path, e.g. "/programmes/information-technology/notes".
   // It updates automatically every time the student navigates.
   const pathname = usePathname();
   const [loggedIn, setLoggedIn] = useState(false);
@@ -123,15 +130,16 @@ export default function Sidebar() {
 
         <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto pr-2">
           {PROGRAMMES.map((programme) => {
-            const href = `/programmes/${programme.slug}`;
+            // e.g. "/programmes/information-technology"
+            const href = programmeHref(programme.name);
             // startsWith: the programme stays highlighted on its
             // notes / question-papers / assignments pages too.
             const active =
               pathname === href || pathname.startsWith(`${href}/`);
 
             return (
-              <Link key={programme.slug} href={href} className={linkClass(active)}>
-                {programme.name}
+              <Link key={programme.name} href={href} className={linkClass(active)}>
+                {programme.label}
               </Link>
             );
           })}

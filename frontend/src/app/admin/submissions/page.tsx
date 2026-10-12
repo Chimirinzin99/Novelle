@@ -6,6 +6,11 @@ import { supabase } from "@/lib/supabase";
 import { BACKEND_URL } from "@/lib/config";
 import { REJECTION_REASONS } from "@/lib/rejectionReasons";
 import { resourceTypeLabel } from "@/lib/resourceTypes";
+import {
+  isAdminRole,
+  isProgrammeAdminRole,
+  isSuperAdminRole,
+} from "@/lib/roles";
 
 type Profile = {
   id: string;
@@ -112,10 +117,8 @@ export default function AdminSubmissionsPage() {
       return;
     }
 
-    if (
-      profileData.role !== "programme_admin" &&
-      profileData.role !== "super_admin"
-    ) {
+    // lib/roles.ts decides who counts as an admin.
+    if (!isAdminRole(profileData.role)) {
       router.push("/home");
       return;
     }
@@ -281,7 +284,8 @@ export default function AdminSubmissionsPage() {
           </h1>
 
           <p className="mt-2 text-sm text-gray-600">
-            {profile?.role === "programme_admin"
+            {/* Programme admins see their programme name; super admins see all of CST (lib/roles.ts) */}
+            {isProgrammeAdminRole(profile?.role)
               ? `Review submissions for ${programmeName}.`
               : "Review student submissions across CST."}
           </p>
@@ -338,7 +342,8 @@ export default function AdminSubmissionsPage() {
 
                       <p className="mt-2 text-sm text-gray-600">
                         Type: {resourceTypeLabel(submission.type)}
-                        {profile?.role === "super_admin" &&
+                        {/* Only super admins need the programme name (lib/roles.ts) */}
+                        {isSuperAdminRole(profile?.role) &&
                           submission.programme &&
                           ` · ${submission.programme.name}`}
                       </p>

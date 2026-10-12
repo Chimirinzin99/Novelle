@@ -24,7 +24,7 @@ export const getResources = async (
     let query = supabase
       .from("resources")
       .select(
-        "id, topic, type, module_name, programme_id, year, semester, file_path, video_id, uploaded_by, created_at"
+        "id, title, topic, type, module_id, module_name, programme_id, year, semester, file_path, video_id, uploaded_by, created_at"
       )
       .order("created_at", { ascending: false });
 
@@ -168,7 +168,8 @@ export const uploadResourceFile = async (
       semesterNumber = module.semester;
       programmeId = module.programme_id;
     } else {
-      // Module name typed in (/admin/notes).
+      // Module name typed in. No page sends this since Part 7 (the merged
+      // /admin/resources page always sends module_id); kept for now.
       const { module_name, year, semester } = req.body;
 
       if (!module_name || !module_name.trim()) {
@@ -397,6 +398,16 @@ export const createResource = async (
   }
 };
 
+// ------------------------------------
+// Edit a resource (PUT /api/resources/:id, JSON body)
+// Any field left out stays as it is:
+//   topic     - new title
+//   type      - note / question_paper / assignment (a video stays a video)
+//   module_id - new module; name, year, semester and programme are copied
+//               from the module, same as when uploading
+//   video_url - new YouTube link (videos only)
+// The PDF itself can't be replaced here: delete and upload again instead.
+// ------------------------------------
 export const updateResource = async (
   req: AuthenticatedRequest,
   res: Response
@@ -413,38 +424,48 @@ export const updateResource = async (
 
     const { data: existing, error: findError } = await supabase
       .from("resources")
-      .select("id, programme_id, type")
+      .select("id, programme_id, type, title")
       .eq("id", resourceId)
       .single();
 
     if (findError || !existing) {
       return res.status(404).json({
         success: false,
-        message: "Note not found.",
+        message: "Resource not found.",
       });
     }
 
+    // Programme admins may only edit their own programme's resources.
     if (
       req.user.role === "programme_admin" &&
       existing.programme_id !== req.user.programme_id
     ) {
       return res.status(403).json({
         success: false,
-        message: "You cannot modify notes from another programme.",
+        message: "You cannot edit resources from another programme.",
       });
     }
 
-    const {
-      topic,
-      type,
-      module_name,
-      year,
-      semester,
-    } = req.body;
+    const { topic, type, module_id, video_url } = req.body;
 
     const updates: Record<string, unknown> = {};
 
-    if (topic !== undefined) updates.topic = topic.trim();
+    if (topic !== undefined) {
+      if (typeof topic !== "string" || !topic.trim()) {
+        return res.status(400).json({
+          success: false,
+          message: "Topic cannot be empty.",
+        });
+      }
+
+      updates.topic = topic.trim();
+
+      // Approved student submissions also store a title, and students see
+      // `title || topic`, so keep the two the same.
+      if (existing.title !== null) {
+        updates.title = topic.trim();
+      }
+    }
 
     if (type !== undefined) {
       if (!isResourceType(type)) {
@@ -466,16 +487,63 @@ export const updateResource = async (
       updates.type = type;
     }
 
-    if (module_name !== undefined) {
-      updates.module_name = module_name.trim();
+    if (module_id !== undefined) {
+      const { data: module, error: moduleError } = await supabase
+        .from("modules")
+        .select("id, programme_id, module_name, year, semester, active")
+        .eq("id", Number(module_id))
+        .maybeSingle();
+
+      if (moduleError || !module || !module.active) {
+        return res.status(400).json({
+          success: false,
+          message: "Module not found or not active.",
+        });
+      }
+
+      // ...and may only move it to a module of their own programme.
+      if (
+        req.user.role === "programme_admin" &&
+        module.programme_id !== req.user.programme_id
+      ) {
+        return res.status(403).json({
+          success: false,
+          message: "You cannot move a resource to another programme's module.",
+        });
+      }
+
+      updates.module_id = module.id;
+      updates.module_name = module.module_name;
+      updates.year = module.year;
+      updates.semester = module.semester;
+      updates.programme_id = module.programme_id;
     }
 
-    if (year !== undefined) {
-      updates.year = Number(year);
+    if (video_url !== undefined) {
+      if (existing.type !== "video") {
+        return res.status(400).json({
+          success: false,
+          message: "Only videos have a YouTube link.",
+        });
+      }
+
+      const videoId = parseYouTubeId(video_url);
+
+      if (!videoId) {
+        return res.status(400).json({
+          success: false,
+          message: "Please enter a valid YouTube video link.",
+        });
+      }
+
+      updates.video_id = videoId;
     }
 
-    if (semester !== undefined) {
-      updates.semester = Number(semester);
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Nothing to update.",
+      });
     }
 
     const { data, error } = await supabase
@@ -490,14 +558,14 @@ export const updateResource = async (
 
       return res.status(500).json({
         success: false,
-        message: "Failed to update note.",
+        message: "Failed to update resource.",
         error: error.message,
       });
     }
 
     return res.json({
       success: true,
-      message: "Note updated successfully.",
+      message: "Resource updated successfully.",
       resource: data,
     });
   } catch (error) {
@@ -533,7 +601,7 @@ export const deleteResource = async (
     if (findError || !resource) {
       return res.status(404).json({
         success: false,
-        message: "Note not found.",
+        message: "Resource not found.",
       });
     }
 
@@ -543,7 +611,7 @@ export const deleteResource = async (
     ) {
       return res.status(403).json({
         success: false,
-        message: "You cannot delete notes from another programme.",
+        message: "You cannot delete resources from another programme.",
       });
     }
 
@@ -567,14 +635,14 @@ export const deleteResource = async (
 
       return res.status(500).json({
         success: false,
-        message: "Failed to delete note.",
+        message: "Failed to delete resource.",
         error: deleteError.message,
       });
     }
 
     return res.json({
       success: true,
-      message: "Note deleted successfully.",
+      message: "Resource deleted successfully.",
     });
   } catch (error) {
     console.error("Delete resource error:", error);

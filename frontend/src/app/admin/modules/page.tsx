@@ -4,6 +4,11 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { BACKEND_URL } from "@/lib/config";
+import {
+  isAdminRole,
+  isProgrammeAdminRole,
+  isSuperAdminRole,
+} from "@/lib/roles";
 
 type Profile = {
   id: string;
@@ -21,6 +26,12 @@ type Module = {
   active: boolean;
 };
 
+// Only needed by the super admin (programme dropdown + programme names).
+type Programme = {
+  id: number;
+  name: string;
+};
+
 export default function ModulesPage() {
   const router = useRouter();
 
@@ -35,6 +46,12 @@ export default function ModulesPage() {
   const [success, setSuccess] = useState("");
 
   const [editingId, setEditingId] = useState<number | null>(null);
+
+  // Super admin only: programme list, the programme a NEW module goes to,
+  // and the programme filter above the module list ("" = all programmes).
+  const [programmes, setProgrammes] = useState<Programme[]>([]);
+  const [formProgrammeId, setFormProgrammeId] = useState("");
+  const [listProgrammeId, setListProgrammeId] = useState("");
 
   const [moduleCode, setModuleCode] = useState("");
   const [moduleName, setModuleName] = useState("");
@@ -95,10 +112,8 @@ export default function ModulesPage() {
     }
 
     // Check admin role
-    if (
-      profileData.role !== "programme_admin" &&
-      profileData.role !== "super_admin"
-    ) {
+    // lib/roles.ts decides who counts as an admin.
+    if (!isAdminRole(profileData.role)) {
       router.push("/home");
       return null;
     }
@@ -116,6 +131,16 @@ export default function ModulesPage() {
       if (programmeData) {
         setProgrammeName(programmeData.name);
       }
+    }
+
+    // The super admin works across programmes, so load the programme list.
+    if (isSuperAdminRole(profileData.role)) {
+      const { data: programmeList } = await supabase
+        .from("programmes")
+        .select("id, name")
+        .order("name");
+
+      setProgrammes(programmeList || []);
     }
 
     return profileData;
@@ -215,6 +240,11 @@ export default function ModulesPage() {
       return;
     }
 
+    if (editingId === null && !formProgrammeId) {
+      setError("Please select a programme.");
+      return;
+    }
+
     if (!moduleCode.trim()) {
       setError("Please enter a module code.");
       return;
@@ -296,8 +326,7 @@ export default function ModulesPage() {
             },
             body: JSON.stringify({
               ...moduleData,
-              programme_id:
-                profile.programme_id,
+              programme_id: Number(formProgrammeId),
             }),
           }
         );
@@ -342,6 +371,9 @@ export default function ModulesPage() {
     setModuleName(module.module_name);
     setYear(String(module.year));
     setSemester(String(module.semester));
+    // Shown (locked) in the form: editing doesn't move a module
+    // to another programme.
+    setFormProgrammeId(String(module.programme_id));
 
     setError("");
     setSuccess("");
@@ -470,7 +502,7 @@ export default function ModulesPage() {
 
   if (loading) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-gray-50">
+      <main className="flex min-h-screen items-center justify-center bg-gray-50 text-gray-900">
         <p className="text-gray-500">
           Loading modules...
         </p>
@@ -478,8 +510,23 @@ export default function ModulesPage() {
     );
   }
 
+  // Only the super admin may add or change modules (rule in lib/roles.ts;
+  // the backend enforces it too). Programme admins just view the list.
+  const canManage = isSuperAdminRole(profile?.role);
+
+  // Programme id -> name, for the labels in the super admin's list.
+  const programmeNameById = (id: number) =>
+    programmes.find((p) => p.id === id)?.name ?? "";
+
+  // Modules shown in the list (super admin can filter by programme).
+  const visibleModules = listProgrammeId
+    ? modules.filter((m) => m.programme_id === Number(listProgrammeId))
+    : modules;
+
   return (
-    <main className="min-h-screen bg-gray-50 px-8 py-8">
+    // text-gray-900: without it the text (and the form boxes, which inherit
+    // it) takes the near-white dark-mode colour from globals.css.
+    <main className="min-h-screen bg-gray-50 px-8 py-8 text-gray-900">
       <div className="mx-auto max-w-6xl">
 
         {/* Header */}
@@ -500,16 +547,15 @@ export default function ModulesPage() {
               Modules
             </h1>
 
-            {profile?.role ===
-              "programme_admin" && (
+            {/* Heading depends on the role (helpers in lib/roles.ts) */}
+            {isProgrammeAdminRole(profile?.role) && (
               <p className="mt-2 text-gray-500">
-                Managing modules for{" "}
-                {programmeName}
+                Modules for {programmeName}. Only the super admin can add
+                or change modules.
               </p>
             )}
 
-            {profile?.role ===
-              "super_admin" && (
+            {isSuperAdminRole(profile?.role) && (
               <p className="mt-2 text-gray-500">
                 Managing modules across all
                 programmes
@@ -532,7 +578,8 @@ export default function ModulesPage() {
           </div>
         )}
 
-        {/* Add / Edit Form */}
+        {/* Add / Edit Form (super admin only) */}
+        {canManage && (
         <div className="mb-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
           <div className="mb-5">
             <h2 className="text-lg font-semibold text-gray-900">
@@ -550,6 +597,27 @@ export default function ModulesPage() {
             onSubmit={handleSubmit}
             className="grid grid-cols-1 gap-4 md:grid-cols-2"
           >
+            {/* Programme: chosen when adding; locked when editing */}
+            <div className="md:col-span-2">
+              <label className="mb-2 block text-sm font-medium text-gray-700">
+                Programme
+              </label>
+
+              <select
+                value={formProgrammeId}
+                onChange={(e) => setFormProgrammeId(e.target.value)}
+                disabled={editingId !== null}
+                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-gray-50 disabled:text-gray-500"
+              >
+                <option value="">Select programme</option>
+                {programmes.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             {/* Module Code */}
             <div>
               <label className="mb-2 block text-sm font-medium text-gray-700">
@@ -667,6 +735,7 @@ export default function ModulesPage() {
             </div>
           </form>
         </div>
+        )}
 
         {/* Module List */}
         <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
@@ -676,14 +745,30 @@ export default function ModulesPage() {
             </h2>
 
             <p className="mt-1 text-sm text-gray-500">
-              {modules.length} module
-              {modules.length !== 1
+              {visibleModules.length} module
+              {visibleModules.length !== 1
                 ? "s"
                 : ""}
             </p>
+
+            {/* Programme filter (super admin only) */}
+            {canManage && (
+              <select
+                value={listProgrammeId}
+                onChange={(e) => setListProgrammeId(e.target.value)}
+                className="mt-3 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500"
+              >
+                <option value="">All programmes</option>
+                {programmes.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
 
-          {modules.length === 0 ? (
+          {visibleModules.length === 0 ? (
             <div className="px-6 py-12 text-center">
               <p className="text-gray-500">
                 No modules have been added yet.
@@ -691,7 +776,7 @@ export default function ModulesPage() {
             </div>
           ) : (
             <div className="divide-y divide-gray-100">
-              {modules.map((module) => (
+              {visibleModules.map((module) => (
                 <div
                   key={module.id}
                   className="flex flex-col gap-4 px-6 py-5 md:flex-row md:items-center md:justify-between"
@@ -724,10 +809,14 @@ export default function ModulesPage() {
                       Year {module.year} ·
                       Semester{" "}
                       {module.semester}
+                      {/* The super admin sees modules of every programme */}
+                      {canManage &&
+                        ` · ${programmeNameById(module.programme_id)}`}
                     </p>
                   </div>
 
-                  {/* Actions */}
+                  {/* Actions (super admin only) */}
+                  {canManage && (
                   <div className="flex gap-2">
                     <button
                       onClick={() =>
@@ -762,6 +851,7 @@ export default function ModulesPage() {
                       </button>
                     )}
                   </div>
+                  )}
                 </div>
               ))}
             </div>

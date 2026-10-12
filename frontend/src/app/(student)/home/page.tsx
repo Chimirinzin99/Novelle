@@ -1,19 +1,23 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { youTubeThumbnail, youTubeWatchUrl } from "@/lib/youtube";
+import WelcomeHeader from "@/components/WelcomeHeader";
+import { programmeHref } from "@/lib/programmes";
 
-type Note = {
+// A PDF resource (note, question paper or assignment) shown on /home.
+type PdfResource = {
   id: number;
   title: string | null; // empty for admin uploads
   topic: string;
-  programme_id: number;
+  type: string; // "note" | "question_paper" | "assignment"
+  module_name: string | null;
   year: number;
   semester: number;
   file_path: string;
-  created_at: string;
 };
 
 // A video resource (YouTube link added by an admin).
@@ -29,10 +33,19 @@ type Video = {
 // How many of the newest videos to show on the home page.
 const HOME_VIDEO_LIMIT = 8;
 
+// How many of the newest question papers / assignments to show on /home
+// (notes show all of them, in a scrolling box).
+const HOME_SECTION_LIMIT = 8;
+
 export default function Home() {
   const router = useRouter();
   const [fullName, setFullName] = useState("");
-  const [notes, setNotes] = useState<Note[]>([]);
+  // The student's own programme name, e.g. "Software Engineering".
+  // Used for the "View all" links; "" until loaded (links stay hidden).
+  const [programmeName, setProgrammeName] = useState("");
+  const [notes, setNotes] = useState<PdfResource[]>([]);
+  const [questionPapers, setQuestionPapers] = useState<PdfResource[]>([]);
+  const [assignments, setAssignments] = useState<PdfResource[]>([]);
   const [videos, setVideos] = useState<Video[]>([]);
   const [favourites, setFavourites] = useState<number[]>([]);
   const [likeCounts, setLikeCounts] = useState<Record<number, number>>({});
@@ -64,7 +77,8 @@ export default function Home() {
       error: profileError,
     } = await supabase
       .from("profiles")
-      .select("full_name, programme_id")
+      // programmes(name) follows programme_id and brings back the name too.
+      .select("full_name, programme_id, programmes(name)")
       .eq("id", user.id)
       .single();
 
@@ -76,28 +90,42 @@ export default function Home() {
 
     setFullName(profile.full_name);
 
-    // Get approved notes for student's programme
+    // The joined programme comes back as { name: "..." } (or null).
+    const programme = profile.programmes as unknown as { name: string } | null;
+    setProgrammeName(programme?.name ?? "");
+
+    // Get the programme's notes, question papers and assignments in ONE
+    // request (.in = type is any of these), newest first, then split by type.
     const {
       data: resources,
       error: resourcesError,
     } = await supabase
       .from("resources")
-      .select(
-        "id, title, topic, programme_id, year, semester, file_path, created_at"
-      )
+      .select("id, title, topic, type, module_name, year, semester, file_path")
       .eq("programme_id", profile.programme_id)
-      .eq("type", "note")
+      .in("type", ["note", "question_paper", "assignment"])
       .order("created_at", { ascending: false });
 
     if (resourcesError) {
-      console.error("Error fetching notes:", resourcesError);
+      console.error("Error fetching resources:", resourcesError);
       setLoading(false);
       return;
     }
 
-    const loadedNotes = resources || [];
+    const allPdfs: PdfResource[] = resources || [];
+
+    // filter keeps one type; slice(0, N) keeps the newest N.
+    const loadedNotes = allPdfs.filter((r) => r.type === "note");
+    const loadedPapers = allPdfs
+      .filter((r) => r.type === "question_paper")
+      .slice(0, HOME_SECTION_LIMIT);
+    const loadedAssignments = allPdfs
+      .filter((r) => r.type === "assignment")
+      .slice(0, HOME_SECTION_LIMIT);
 
     setNotes(loadedNotes);
+    setQuestionPapers(loadedPapers);
+    setAssignments(loadedAssignments);
 
     // Get the newest videos for the student's programme
     const { data: videoData, error: videosError } = await supabase
@@ -139,10 +167,15 @@ export default function Home() {
       );
     }
 
-    // Get total like count for each note and video
+    // Get total like count for every card on the page
     const counts: Record<number, number> = {};
 
-    for (const item of [...loadedNotes, ...loadedVideos]) {
+    for (const item of [
+      ...loadedNotes,
+      ...loadedPapers,
+      ...loadedAssignments,
+      ...loadedVideos,
+    ]) {
       const { data, error } = await supabase.rpc(
         "get_like_count",
         {
@@ -167,7 +200,7 @@ export default function Home() {
     setLoading(false);
   }
 
-  // View note
+  // View a PDF
   async function handleView(filePath: string) {
     const { data, error } = await supabase.storage
       .from("resources")
@@ -175,14 +208,14 @@ export default function Home() {
 
     if (error || !data?.signedUrl) {
       console.error("Error creating signed URL:", error);
-      alert("Unable to open this note.");
+      alert("Unable to open this file.");
       return;
     }
 
     window.open(data.signedUrl, "_blank");
   }
 
-  // Download note
+  // Download a PDF
   async function handleDownload(filePath: string) {
     const { data, error } = await supabase.storage
       .from("resources")
@@ -195,7 +228,7 @@ export default function Home() {
         "Error creating download URL:",
         error
       );
-      alert("Unable to download this note.");
+      alert("Unable to download this file.");
       return;
     }
 
@@ -210,14 +243,14 @@ export default function Home() {
     document.body.removeChild(link);
   }
 
-  // Like / Unlike note
+  // Like / Unlike (notes, papers, assignments and videos)
   async function handleFavourite(resourceId: number) {
     const {
       data: { user },
     } = await supabase.auth.getUser();
 
     if (!user) {
-      alert("Please log in to like a note.");
+      alert("Please log in to like a resource.");
       return;
     }
 
@@ -271,7 +304,7 @@ export default function Home() {
           error
         );
 
-        alert("Unable to like this note.");
+        alert("Unable to like this resource.");
         return;
       }
 
@@ -290,98 +323,59 @@ export default function Home() {
     }
   }
 
-  return (
-    <main className="min-h-full bg-gray-200 px-8 py-10">
+  // One "Available ..." section (heading, View all link, cards).
+  // Used three times below — for notes, question papers and assignments —
+  // so the cards look the same everywhere. It's a plain function that
+  // returns JSX, so it can use handleView / favourites etc. from Home.
+  function renderPdfSection(section: {
+    title: string;
+    description: string;
+    items: PdfResource[];
+    viewAllPath: string; // "notes" -> /programmes/<slug>/notes
+    emptyTitle: string;
+    emptyText: string;
+    scroll: boolean; // true = fixed height with its own scrollbar
+  }) {
+    const { items } = section;
 
-        <div className="mx-auto max-w-7xl">
+    return (
+      <div className="mt-12">
+        <div className="mb-5 flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-semibold text-gray-900">
+              {section.title}
+            </h2>
 
-          {/* Welcome */}
-          <div className="text-center">
-
-            <h1 className="text-4xl font-bold text-gray-900">
-
-              <span className="mr-2">
-                👋
-              </span>
-
-              Welcome to{" "}
-
-              <span className="text-blue-600">
-                Novelle
-              </span>
-
-              {fullName && `, ${fullName}`}
-
-            </h1>
-
-            <p className="mt-2 text-gray-500">
-              Find notes, videos and learning resources from CST students.
-            </p>
-
-            {/* Search */}
-            <div className="mx-auto mt-7 max-w-2xl">
-
-              <input
-                type="text"
-                placeholder="Search notes, modules, programmes..."
-                className="w-full rounded-2xl border border-black bg-white px-5 py-4 text-sm !text-black placeholder:!text-gray-500 shadow-md outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
-              />
-
-            </div>
-
+            <p className="mt-1 text-sm text-gray-500">{section.description}</p>
           </div>
 
-          {/* Available Notes */}
-          <div className="mt-12">
+          {/* View all -> this category's page in the student's own programme */}
+          {programmeName && (
+            <Link
+              href={`${programmeHref(programmeName)}/${section.viewAllPath}`}
+              className="text-sm font-medium text-blue-600 hover:text-blue-800"
+            >
+              View all →
+            </Link>
+          )}
+        </div>
 
-            <div className="mb-5 flex items-center justify-between">
-
-              <div>
-
-                <h2 className="text-xl font-semibold text-gray-900">
-                  Available Notes
-                </h2>
-
-                <p className="mt-1 text-sm text-gray-500">
-                  Browse recently available study materials.
-                </p>
-
-              </div>
-
-              <button className="text-sm font-medium text-blue-600 hover:text-blue-800">
-                View all →
-              </button>
-
+        <div className={section.scroll ? "max-h-[520px] overflow-y-auto pr-3" : ""}>
+          {loading ? (
+            <div className="py-10 text-center text-sm text-gray-500">
+              Loading...
             </div>
+          ) : items.length === 0 ? (
+            <div className="rounded-xl border border-gray-200 bg-white py-12 text-center">
+              <p className="text-sm font-medium text-gray-700">
+                {section.emptyTitle}
+              </p>
 
-            {/* Notes */}
-            <div className="max-h-[520px] overflow-y-auto pr-3">
-
-              {loading ? (
-
-                <div className="py-10 text-center text-sm text-gray-500">
-                  Loading notes...
-                </div>
-
-              ) : notes.length === 0 ? (
-
-                <div className="rounded-xl border border-gray-200 bg-white py-12 text-center">
-
-                  <p className="text-sm font-medium text-gray-700">
-                    No notes available yet.
-                  </p>
-
-                  <p className="mt-1 text-xs text-gray-500">
-                    Approved notes for your programme will appear here.
-                  </p>
-
-                </div>
-
-              ) : (
-
-                <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-
-                  {notes.map((note) => {
+              <p className="mt-1 text-xs text-gray-500">{section.emptyText}</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+                  {items.map((note) => {
 
                     const isFavourite =
                       favourites.includes(note.id);
@@ -402,9 +396,9 @@ export default function Home() {
                           {note.title || note.topic}
                         </h3>
 
-                        {/* Description */}
+                        {/* Module */}
                         <p className="mt-2 text-xs leading-5 text-gray-500">
-                          Study note uploaded to Novelle.
+                          {note.module_name || "Unknown Module"}
                         </p>
 
                         {/* Year / Semester */}
@@ -475,27 +469,78 @@ export default function Home() {
 
                     );
                   })}
-
-                </div>
-
-              )}
-
             </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
-          </div>
+  return (
+    <main className="min-h-full bg-gray-200 px-8 py-10">
+
+        <div className="mx-auto max-w-7xl">
+
+          {/* Welcome + search box (shared with the /search page) */}
+          <WelcomeHeader name={fullName} />
+
+          {/* Notes: all of them, in a scrolling box */}
+          {renderPdfSection({
+            title: "Available Notes",
+            description: "Browse recently available study materials.",
+            items: notes,
+            viewAllPath: "notes",
+            emptyTitle: "No notes available yet.",
+            emptyText: "Approved notes for your programme will appear here.",
+            scroll: true,
+          })}
+
+          {/* Question papers: the newest few */}
+          {renderPdfSection({
+            title: "Available Question Papers",
+            description: "Past examination papers for your programme.",
+            items: questionPapers,
+            viewAllPath: "question-papers",
+            emptyTitle: "No question papers available yet.",
+            emptyText: "Approved question papers for your programme will appear here.",
+            scroll: false,
+          })}
+
+          {/* Assignments: the newest few */}
+          {renderPdfSection({
+            title: "Available Assignments",
+            description: "Assignments and coursework for your programme.",
+            items: assignments,
+            viewAllPath: "assignments",
+            emptyTitle: "No assignments available yet.",
+            emptyText: "Approved assignments for your programme will appear here.",
+            scroll: false,
+          })}
 
           {/* Latest Videos (only shown when the programme has some) */}
           {!loading && videos.length > 0 && (
             <div className="mt-12">
 
-              <div className="mb-5">
-                <h2 className="text-xl font-semibold text-gray-900">
-                  Latest Videos
-                </h2>
+              <div className="mb-5 flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-900">
+                    Latest Videos
+                  </h2>
 
-                <p className="mt-1 text-sm text-gray-500">
-                  Video lessons added by your programme admins.
-                </p>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Video lessons added by your programme admins.
+                  </p>
+                </div>
+
+                {/* View all -> the Videos page of the student's own programme */}
+                {programmeName && (
+                  <Link
+                    href={`${programmeHref(programmeName)}/videos`}
+                    className="text-sm font-medium text-blue-600 hover:text-blue-800"
+                  >
+                    View all →
+                  </Link>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
