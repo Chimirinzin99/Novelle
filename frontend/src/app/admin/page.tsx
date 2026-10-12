@@ -15,15 +15,13 @@ import { supabase } from "@/lib/supabase";
 import { BACKEND_URL } from "@/lib/config";
 import { ROLES, isAdminRole, isSuperAdminRole } from "@/lib/roles";
 
-// Super admin only: one row per programme in the overview table.
 type ProgrammeOverview = {
   id: number;
   name: string;
   pending: number;
-  admins: string[]; // names of active programme admins
+  admins: string[];
 };
 
-// Super admin only: user counts for the cards.
 type UserCounts = {
   students: number;
   programmeAdmins: number;
@@ -52,7 +50,6 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // Super admin overview (Part 9)
   const [userCounts, setUserCounts] = useState<UserCounts | null>(null);
   const [programmeOverview, setProgrammeOverview] = useState<
     ProgrammeOverview[]
@@ -63,7 +60,7 @@ export default function AdminPage() {
       setLoading(true);
       setError("");
 
-      // Get logged-in user
+      // Get the logged-in user.
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -73,13 +70,12 @@ export default function AdminPage() {
         return;
       }
 
-      // Get user's profile
-      const { data: profileData, error: profileError } =
-        await supabase
-          .from("profiles")
-          .select("id, full_name, email, programme_id, role")
-          .eq("id", user.id)
-          .maybeSingle();
+      // Get the user's profile.
+      const { data: profileData, error: profileError } = await supabase
+        .from("profiles")
+        .select("id, full_name, email, programme_id, role")
+        .eq("id", user.id)
+        .maybeSingle();
 
       if (profileError) {
         console.error("PROFILE ERROR:", profileError);
@@ -94,8 +90,7 @@ export default function AdminPage() {
         return;
       }
 
-      // Only admins can access this page
-      // lib/roles.ts decides who counts as an admin.
+      // Only admins can access this page.
       if (!isAdminRole(profileData.role)) {
         router.push("/home");
         return;
@@ -103,10 +98,9 @@ export default function AdminPage() {
 
       setProfile(profileData);
 
-      // Super admins see every programme (rule in lib/roles.ts).
       const isSuperAdmin = isSuperAdminRole(profileData.role);
 
-      // Get programme name
+      // Get the programme name for programme admins.
       if (profileData.programme_id) {
         const { data: programmeData, error: programmeError } =
           await supabase
@@ -116,10 +110,7 @@ export default function AdminPage() {
             .maybeSingle();
 
         if (programmeError) {
-          console.error(
-            "PROGRAMME ERROR:",
-            programmeError
-          );
+          console.error("PROGRAMME ERROR:", programmeError);
         }
 
         if (programmeData) {
@@ -129,95 +120,56 @@ export default function AdminPage() {
 
       /*
        * PROGRAMME ADMIN
-       *
-       * Only count resources belonging
-       * to their own programme.
+       * Only count resources belonging to their own programme.
        */
       if (!isSuperAdmin && profileData.programme_id) {
         const programmeId = profileData.programme_id;
 
-        // Pending submissions
-        const {
-          count: pending,
-          error: pendingError,
-        } = await supabase
+        const { count: pending, error: pendingError } = await supabase
           .from("resource_submissions")
-          .select("*", {
-            count: "exact",
-            head: true,
-          })
+          .select("*", { count: "exact", head: true })
           .eq("programme_id", programmeId)
           .eq("status", "pending");
 
         if (pendingError) {
-          console.error(
-            "PENDING COUNT ERROR:",
-            pendingError
-          );
+          console.error("PENDING COUNT ERROR:", pendingError);
         } else {
           setPendingCount(pending ?? 0);
         }
 
-        // Notes
-        const { count: notes, error: notesError } =
-          await supabase
-            .from("resources")
-            .select("*", {
-              count: "exact",
-              head: true,
-            })
-            .eq("programme_id", programmeId)
-            .eq("type", "note");
+        const { count: notes, error: notesError } = await supabase
+          .from("resources")
+          .select("*", { count: "exact", head: true })
+          .eq("programme_id", programmeId)
+          .eq("type", "note");
 
         if (notesError) {
-          console.error(
-            "NOTES COUNT ERROR:",
-            notesError
-          );
+          console.error("NOTES COUNT ERROR:", notesError);
         } else {
           setNotesCount(notes ?? 0);
         }
 
-        // Question papers
-        const {
-          count: papers,
-          error: papersError,
-        } = await supabase
+        const { count: papers, error: papersError } = await supabase
           .from("resources")
-          .select("*", {
-            count: "exact",
-            head: true,
-          })
+          .select("*", { count: "exact", head: true })
           .eq("programme_id", programmeId)
           .eq("type", "question_paper");
 
         if (papersError) {
-          console.error(
-            "PAPERS COUNT ERROR:",
-            papersError
-          );
+          console.error("PAPERS COUNT ERROR:", papersError);
         } else {
           setPapersCount(papers ?? 0);
         }
 
-        // Assignments
-        const {
-          count: assignments,
-          error: assignmentsError,
-        } = await supabase
-          .from("resources")
-          .select("*", {
-            count: "exact",
-            head: true,
-          })
-          .eq("programme_id", programmeId)
-          .eq("type", "assignment");
+        const { count: assignments, error: assignmentsError } =
+          await supabase
+            .from("resources")
+            .select("*", { count: "exact", head: true })
+            .eq("programme_id", programmeId)
+            .eq("type", "assignment");
 
         if (assignmentsError) {
-          console.error(
-            "ASSIGNMENTS COUNT ERROR:",
-            assignmentsError
-          );
+          console.error("ASSIGNMENTS COUNT ERROR:", assignmentsError);
         } else {
           setAssignmentsCount(assignments ?? 0);
         }
@@ -225,60 +177,39 @@ export default function AdminPage() {
 
       /*
        * SUPER ADMIN
-       *
-       * Count everything across CST.
+       * Count resources across CST.
        */
       if (isSuperAdmin) {
-        // Pending submissions
-        const { count: pending } =
-          await supabase
-            .from("resource_submissions")
-            .select("*", {
-              count: "exact",
-              head: true,
-            })
-            .eq("status", "pending");
+        const { count: pending } = await supabase
+          .from("resource_submissions")
+          .select("*", { count: "exact", head: true })
+          .eq("status", "pending");
 
         setPendingCount(pending ?? 0);
 
-        // Notes
-        const { count: notes } =
-          await supabase
-            .from("resources")
-            .select("*", {
-              count: "exact",
-              head: true,
-            })
-            .eq("type", "note");
+        const { count: notes } = await supabase
+          .from("resources")
+          .select("*", { count: "exact", head: true })
+          .eq("type", "note");
 
         setNotesCount(notes ?? 0);
 
-        // Question papers
-        const { count: papers } =
-          await supabase
-            .from("resources")
-            .select("*", {
-              count: "exact",
-              head: true,
-            })
-            .eq("type", "question_paper");
+        const { count: papers } = await supabase
+          .from("resources")
+          .select("*", { count: "exact", head: true })
+          .eq("type", "question_paper");
 
         setPapersCount(papers ?? 0);
 
-        // Assignments
-        const { count: assignments } =
-          await supabase
-            .from("resources")
-            .select("*", {
-              count: "exact",
-              head: true,
-            })
-            .eq("type", "assignment");
+        const { count: assignments } = await supabase
+          .from("resources")
+          .select("*", { count: "exact", head: true })
+          .eq("type", "assignment");
 
         setAssignmentsCount(assignments ?? 0);
 
-        // Users + per-programme overview. Profiles of other users can't be
-        // read from the browser (RLS), so users come from the backend.
+        // Load users from the backend because profile RLS may prevent
+        // reading other users directly from the browser.
         try {
           const {
             data: { session },
@@ -314,7 +245,7 @@ export default function AdminPage() {
           setUserCounts({
             students: users.filter((u) => u.role === ROLES.student).length,
             programmeAdmins: users.filter(
-              (u) => u.role === ROLES.programmeAdmin
+              (u) => u.role === ROLES.programmeAdmin,
             ).length,
             deactivated: users.filter((u) => !u.is_active).length,
           });
@@ -326,20 +257,19 @@ export default function AdminPage() {
               id: programme.id,
               name: programme.name,
               pending: pendingRows.filter(
-                (row) => row.programme_id === programme.id
+                (row) => row.programme_id === programme.id,
               ).length,
               admins: users
                 .filter(
                   (u) =>
                     u.role === ROLES.programmeAdmin &&
                     u.is_active &&
-                    u.programme_id === programme.id
+                    u.programme_id === programme.id,
                 )
                 .map((u) => u.full_name),
-            }))
+            })),
           );
         } catch (overviewError) {
-          // The cards above still work; only the overview is missing.
           console.error("OVERVIEW ERROR:", overviewError);
         }
       }
@@ -350,7 +280,6 @@ export default function AdminPage() {
     loadAdmin();
   }, [router]);
 
-  // Logout
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.push("/login");
@@ -359,9 +288,7 @@ export default function AdminPage() {
   if (loading) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-slate-50">
-        <p className="text-sm text-gray-500">
-          Loading admin dashboard...
-        </p>
+        <p className="text-sm text-gray-500">Loading admin dashboard...</p>
       </main>
     );
   }
@@ -373,10 +300,7 @@ export default function AdminPage() {
           <h1 className="text-lg font-semibold text-red-600">
             Unable to load dashboard
           </h1>
-
-          <p className="mt-2 text-sm text-gray-600">
-            {error}
-          </p>
+          <p className="mt-2 text-sm text-gray-600">{error}</p>
         </div>
       </main>
     );
@@ -386,15 +310,12 @@ export default function AdminPage() {
     return null;
   }
 
-  // Used below to switch the wording/cards for super admins (lib/roles.ts).
   const isSuperAdmin = isSuperAdminRole(profile.role);
 
   return (
     <main className="flex min-h-screen bg-slate-50 text-gray-900">
-
       {/* Sidebar */}
       <aside className="hidden w-64 shrink-0 border-r border-gray-200 bg-white md:flex md:flex-col">
-
         {/* Logo */}
         <div className="border-b border-gray-200 px-6 py-5">
           <button
@@ -405,31 +326,24 @@ export default function AdminPage() {
           </button>
 
           <p className="mt-1 text-xs text-gray-500">
-            {isSuperAdmin
-              ? "Super Admin"
-              : "Programme Admin"}
+            {isSuperAdmin ? "Super Admin" : "Programme Admin"}
           </p>
         </div>
 
         {/* Navigation */}
         <nav className="flex-1 px-3 py-5">
-
           <p className="mb-3 px-3 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
             Management
           </p>
 
           <button
-            onClick={() =>
-              router.push("/admin/submissions")
-            }
+            onClick={() => router.push("/admin/submissions")}
             className="mb-1 flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-sm font-medium text-gray-700 transition hover:bg-gray-100 hover:text-gray-900"
           >
             <ClipboardCheck className="h-5 w-5" />
             <span>Pending Submissions</span>
           </button>
 
-          {/* One page manages every resource type (notes, question papers,
-              assignments, videos) since Part 7 merged the upload pages. */}
           <button
             onClick={() => router.push("/admin/resources")}
             className="mb-1 flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-sm font-medium text-gray-700 transition hover:bg-gray-100 hover:text-gray-900"
@@ -447,7 +361,7 @@ export default function AdminPage() {
             <span>{isSuperAdmin ? "Manage Modules" : "Modules"}</span>
           </button>
 
-          {/* Super admin only: roles, programme admins, deactivation. */}
+          {/* Only super admins can manage users. */}
           {isSuperAdmin && (
             <button
               onClick={() => router.push("/admin/users")}
@@ -457,20 +371,15 @@ export default function AdminPage() {
               <span>Manage Users</span>
             </button>
           )}
-
         </nav>
 
         {/* Bottom */}
         <div className="border-t border-gray-200 p-4">
-
           <div className="mb-3 px-2">
             <p className="truncate text-sm font-medium text-gray-900">
               {profile.full_name || "Admin"}
             </p>
-
-            <p className="truncate text-xs text-gray-500">
-              {profile.email}
-            </p>
+            <p className="truncate text-xs text-gray-500">{profile.email}</p>
           </div>
 
           <button
@@ -480,18 +389,14 @@ export default function AdminPage() {
             <LogOut className="h-5 w-5" />
             <span>Logout</span>
           </button>
-
         </div>
       </aside>
 
       {/* Main Content */}
       <section className="min-w-0 flex-1 overflow-y-auto">
-
         <div className="w-full px-6 py-8 md:px-8 lg:px-10">
-
           {/* Mobile top */}
           <div className="mb-8 flex items-center justify-between md:hidden">
-
             <div>
               <button
                 onClick={() => router.push("/")}
@@ -499,11 +404,8 @@ export default function AdminPage() {
               >
                 Novelle
               </button>
-
               <p className="mt-1 text-xs text-gray-500">
-                {isSuperAdmin
-                  ? "Super Admin"
-                  : "Programme Admin"}
+                {isSuperAdmin ? "Super Admin" : "Programme Admin"}
               </p>
             </div>
 
@@ -514,23 +416,16 @@ export default function AdminPage() {
             >
               <LogOut className="h-5 w-5" />
             </button>
-
           </div>
 
           {/* Welcome */}
           <div className="mb-8">
-
             <p className="text-sm font-medium text-blue-600">
-              {isSuperAdmin
-                ? "Super Admin"
-                : "Programme Admin"}
+              {isSuperAdmin ? "Super Admin" : "Programme Admin"}
             </p>
 
             <h1 className="mt-1 text-3xl font-bold tracking-tight text-gray-900">
-              Welcome back
-              {profile.full_name
-                ? `, ${profile.full_name}`
-                : ""}
+              Welcome back{profile.full_name ? `, ${profile.full_name}` : ""}
             </h1>
 
             <p className="mt-2 text-sm text-gray-500">
@@ -538,148 +433,112 @@ export default function AdminPage() {
                 ? "Overview of Novelle resources across CST."
                 : `Overview of ${programmeName} resources.`}
             </p>
-
           </div>
 
           {/* Programme */}
           {!isSuperAdmin && (
             <div className="mb-6 rounded-2xl border border-gray-200 bg-white px-5 py-4 shadow-sm">
-
               <p className="text-xs font-medium uppercase tracking-wide text-gray-400">
                 Programme
               </p>
-
               <p className="mt-1 text-base font-semibold text-gray-900">
                 {programmeName}
               </p>
-
             </div>
           )}
 
           {/* Statistics */}
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
-
             {/* Notes */}
             <button
               onClick={() => router.push("/admin/resources")}
               className="group rounded-2xl border border-gray-200 bg-white p-6 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-md"
             >
               <div className="flex items-start justify-between">
-
                 <div>
                   <p className="text-sm font-medium text-gray-500">
                     Total Notes
                   </p>
-
                   <p className="mt-4 text-4xl font-bold tracking-tight text-gray-900">
                     {notesCount}
                   </p>
-
-                  <p className="mt-2 text-xs text-gray-400">
-                    Published notes
-                  </p>
+                  <p className="mt-2 text-xs text-gray-400">Published notes</p>
                 </div>
-
                 <div className="rounded-xl bg-gray-100 p-3 text-gray-700">
                   <FileText className="h-5 w-5" />
                 </div>
-
               </div>
             </button>
 
             {/* Question Papers */}
             <button
-              onClick={() =>
-                router.push("/admin/resources")
-              }
+              onClick={() => router.push("/admin/resources")}
               className="group rounded-2xl border border-gray-200 bg-white p-6 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-md"
             >
               <div className="flex items-start justify-between">
-
                 <div>
                   <p className="text-sm font-medium text-gray-500">
                     Question Papers
                   </p>
-
                   <p className="mt-4 text-4xl font-bold tracking-tight text-gray-900">
                     {papersCount}
                   </p>
-
                   <p className="mt-2 text-xs text-gray-400">
                     Published papers
                   </p>
                 </div>
-
                 <div className="rounded-xl bg-gray-100 p-3 text-gray-700">
                   <FileQuestion className="h-5 w-5" />
                 </div>
-
               </div>
             </button>
 
             {/* Assignments */}
             <button
-              onClick={() =>
-                router.push("/admin/resources")
-              }
+              onClick={() => router.push("/admin/resources")}
               className="group rounded-2xl border border-gray-200 bg-white p-6 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-md"
             >
               <div className="flex items-start justify-between">
-
                 <div>
                   <p className="text-sm font-medium text-gray-500">
                     Assignments
                   </p>
-
                   <p className="mt-4 text-4xl font-bold tracking-tight text-gray-900">
                     {assignmentsCount}
                   </p>
-
                   <p className="mt-2 text-xs text-gray-400">
                     Published assignments
                   </p>
                 </div>
-
                 <div className="rounded-xl bg-gray-100 p-3 text-gray-700">
                   <ClipboardList className="h-5 w-5" />
                 </div>
-
               </div>
             </button>
 
             {/* Pending */}
             <button
-              onClick={() =>
-                router.push("/admin/submissions")
-              }
+              onClick={() => router.push("/admin/submissions")}
               className="group rounded-2xl border border-gray-200 bg-white p-6 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-md"
             >
               <div className="flex items-start justify-between">
-
                 <div>
                   <p className="text-sm font-medium text-gray-500">
                     Pending Submissions
                   </p>
-
                   <p className="mt-4 text-4xl font-bold tracking-tight text-gray-900">
                     {pendingCount}
                   </p>
-
-                  <p className="mt-2 text-xs text-gray-400">
-                    Need review
-                  </p>
+                  <p className="mt-2 text-xs text-gray-400">Need review</p>
                 </div>
-
                 <div className="rounded-xl bg-gray-100 p-3 text-gray-700">
                   <ClipboardCheck className="h-5 w-5" />
                 </div>
-
               </div>
             </button>
-
           </div>
 
-          {/* Super admin overview: users and programmes */}
+          {/* Super admin overview */}
           {isSuperAdmin && userCounts && (
             <>
               <h2 className="mb-4 mt-10 text-lg font-semibold text-gray-900">
@@ -714,16 +573,13 @@ export default function AdminPage() {
                         <p className="text-sm font-medium text-gray-500">
                           {card.label}
                         </p>
-
                         <p className="mt-4 text-4xl font-bold tracking-tight text-gray-900">
                           {card.value}
                         </p>
-
                         <p className="mt-2 text-xs text-gray-400">
                           {card.note}
                         </p>
                       </div>
-
                       <div className="rounded-xl bg-gray-100 p-3 text-gray-700">
                         <Users className="h-5 w-5" />
                       </div>
@@ -760,7 +616,9 @@ export default function AdminPage() {
                         <td className="px-5 py-3">
                           {programme.pending > 0 ? (
                             <button
-                              onClick={() => router.push("/admin/submissions")}
+                              onClick={() =>
+                                router.push("/admin/submissions")
+                              }
                               className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-700 hover:bg-amber-200"
                             >
                               {programme.pending} pending
@@ -776,7 +634,6 @@ export default function AdminPage() {
                               {programme.admins.join(", ")}
                             </span>
                           ) : (
-                            // No admin yet: only the super admin can review here.
                             <button
                               onClick={() => router.push("/admin/users")}
                               className="text-sm text-blue-600 hover:underline"
@@ -792,11 +649,8 @@ export default function AdminPage() {
               </div>
             </>
           )}
-
         </div>
-
       </section>
-
     </main>
   );
 }

@@ -391,10 +391,18 @@ export default function Home() {
                       >
 
                         {/* Title */}
-                        <h3 className="text-sm font-semibold text-gray-900">
-                          {/* Admin uploads fill "topic"; approved submissions fill "title". */}
-                          {note.title || note.topic}
-                        </h3>
+
+{/* Title + Resource Type */}
+<div className="flex items-start justify-between gap-2">
+  <h3 className="text-sm font-semibold text-gray-900">
+    {note.title || note.topic}
+  </h3>
+
+  <span className="shrink-0 rounded-full bg-indigo-50 px-2 py-1 text-[10px] font-medium text-indigo-600">
+    Note
+  </span>
+</div>
+
 
                         {/* Module */}
                         <p className="mt-2 text-xs leading-5 text-gray-500">
