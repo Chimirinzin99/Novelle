@@ -223,25 +223,35 @@ export default function AdminVideosPage() {
         return;
       }
 
-      const { error: insertError } = await supabase
-        .from("videos")
-        .insert({
-          title: title.trim(),
-          youtube_url: youtubeUrl.trim(),
-          programme_id: Number(programmeId),
-          module_id: Number(moduleId),
-          year: Number(year),
-          semester: Number(semester),
-          uploaded_by: user.id,
-        });
+     
+const { data: savedVideo, error: insertError } = await supabase
+  .from("admin_videos")
+  .insert({
+    title: title.trim(),
+    youtube_url: youtubeUrl.trim(),
+    programme_id: Number(programmeId),
+    module_id: Number(moduleId),
+    year: Number(year),
+    semester: Number(semester),
+    uploaded_by: user.id,
+  })
+  .select("id, title, programme_id")
+  .single();
 
-      if (insertError) {
-        console.error(insertError);
-        setError(insertError.message);
-        return;
-      }
+if (insertError) {
+  console.error("VIDEO INSERT ERROR:", insertError);
+  setError(insertError.message);
+  return;
+}
 
-      setMessage("Video added successfully.");
+if (!savedVideo) {
+  setError("The video could not be confirmed as saved.");
+  return;
+}
+
+console.log("VIDEO SAVED:", savedVideo);
+setMessage("Video added successfully.");
+
 
       // Clear form
       setTitle("");

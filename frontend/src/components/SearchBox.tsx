@@ -39,12 +39,7 @@ export default function SearchBox({ initialQuery = "" }: SearchBoxProps) {
         className="w-full rounded-2xl border border-black bg-white px-5 py-4 text-sm !text-black placeholder:!text-gray-500 shadow-md outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
       />
 
-      <button
-        type="submit"
-        className="shrink-0 rounded-2xl bg-blue-600 px-6 text-sm font-semibold text-white shadow-md transition hover:bg-blue-700"
-      >
-        Search
-      </button>
+
     </form>
   );
 }

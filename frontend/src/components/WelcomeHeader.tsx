@@ -15,13 +15,13 @@ export default function WelcomeHeader({
   return (
     <div className="text-center">
       <h1 className="text-4xl font-bold text-gray-900">
-        <span className="mr-2">👋</span>
+        
         Welcome to <span className="text-blue-600">Novelle</span>
         {name && `, ${name}`}
       </h1>
 
       <p className="mt-2 text-gray-500">
-        Find notes, videos and learning resources from CST students.
+        Find notes, videos and learning resources from Cstians.
       </p>
 
       {/* Enter or "Search" goes to /search?q=... (all programmes).

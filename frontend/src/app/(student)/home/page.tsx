@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -8,40 +9,33 @@ import { youTubeThumbnail, youTubeWatchUrl } from "@/lib/youtube";
 import WelcomeHeader from "@/components/WelcomeHeader";
 import { programmeHref } from "@/lib/programmes";
 
-// A PDF resource (note, question paper or assignment) shown on /home.
 type PdfResource = {
   id: number;
-  title: string | null; // empty for admin uploads
+  title: string | null;
   topic: string;
-  type: string; // "note" | "question_paper" | "assignment"
+  type: string;
   module_name: string | null;
   year: number;
   semester: number;
   file_path: string;
 };
 
-// A video resource (YouTube link added by an admin).
 type Video = {
   id: number;
   title: string | null;
   topic: string;
   year: number;
   semester: number;
-  video_id: string; // 11-character YouTube ID
+  video_id: string;
 };
 
-// How many of the newest videos to show on the home page.
 const HOME_VIDEO_LIMIT = 8;
-
-// How many of the newest question papers / assignments to show on /home
-// (notes show all of them, in a scrolling box).
 const HOME_SECTION_LIMIT = 8;
 
 export default function Home() {
   const router = useRouter();
+
   const [fullName, setFullName] = useState("");
-  // The student's own programme name, e.g. "Software Engineering".
-  // Used for the "View all" links; "" until loaded (links stay hidden).
   const [programmeName, setProgrammeName] = useState("");
   const [notes, setNotes] = useState<PdfResource[]>([]);
   const [questionPapers, setQuestionPapers] = useState<PdfResource[]>([]);
@@ -58,26 +52,18 @@ export default function Home() {
   async function loadStudentData() {
     setLoading(true);
 
-    // Get logged-in user
     const {
       data: { user },
       error: userError,
     } = await supabase.auth.getUser();
 
-        if (userError || !user) {
-      // Not logged in: send them to the login page.
-      // replace() instead of push() so the Back button doesn't return here.
+    if (userError || !user) {
       router.replace("/login");
       return;
     }
 
-    // Get student's profile
-    const {
-      data: profile,
-      error: profileError,
-    } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from("profiles")
-      // programmes(name) follows programme_id and brings back the name too.
       .select("full_name, programme_id, programmes(name)")
       .eq("id", user.id)
       .single();
@@ -90,18 +76,17 @@ export default function Home() {
 
     setFullName(profile.full_name);
 
-    // The joined programme comes back as { name: "..." } (or null).
-    const programme = profile.programmes as unknown as { name: string } | null;
+    const programme = profile.programmes as unknown as {
+      name: string;
+    } | null;
+
     setProgrammeName(programme?.name ?? "");
 
-    // Get the programme's notes, question papers and assignments in ONE
-    // request (.in = type is any of these), newest first, then split by type.
-    const {
-      data: resources,
-      error: resourcesError,
-    } = await supabase
+    const { data: resources, error: resourcesError } = await supabase
       .from("resources")
-      .select("id, title, topic, type, module_name, year, semester, file_path")
+      .select(
+        "id, title, topic, type, module_name, year, semester, file_path"
+      )
       .eq("programme_id", profile.programme_id)
       .in("type", ["note", "question_paper", "assignment"])
       .order("created_at", { ascending: false });
@@ -114,20 +99,20 @@ export default function Home() {
 
     const allPdfs: PdfResource[] = resources || [];
 
-    // filter keeps one type; slice(0, N) keeps the newest N.
-    const loadedNotes = allPdfs.filter((r) => r.type === "note");
+    const loadedNotes = allPdfs.filter((resource) => resource.type === "note");
+
     const loadedPapers = allPdfs
-      .filter((r) => r.type === "question_paper")
+      .filter((resource) => resource.type === "question_paper")
       .slice(0, HOME_SECTION_LIMIT);
+
     const loadedAssignments = allPdfs
-      .filter((r) => r.type === "assignment")
+      .filter((resource) => resource.type === "assignment")
       .slice(0, HOME_SECTION_LIMIT);
 
     setNotes(loadedNotes);
     setQuestionPapers(loadedPapers);
     setAssignments(loadedAssignments);
 
-    // Get the newest videos for the student's programme
     const { data: videoData, error: videosError } = await supabase
       .from("resources")
       .select("id, title, topic, year, semester, video_id")
@@ -137,37 +122,25 @@ export default function Home() {
       .limit(HOME_VIDEO_LIMIT);
 
     if (videosError) {
-      // Not fatal: the notes still show without the videos row.
       console.error("Error fetching videos:", videosError);
     }
 
     const loadedVideos: Video[] = videoData || [];
-
     setVideos(loadedVideos);
 
-    // Get student's own likes
-    const {
-      data: favouriteData,
-      error: favouriteError,
-    } = await supabase
+    const { data: favouriteData, error: favouriteError } = await supabase
       .from("favourites")
       .select("resource_id")
       .eq("user_id", user.id);
 
     if (favouriteError) {
-      console.error(
-        "Error fetching favourites:",
-        favouriteError
-      );
+      console.error("Error fetching favourites:", favouriteError);
     } else {
       setFavourites(
-        (favouriteData || []).map(
-          (item) => item.resource_id
-        )
+        (favouriteData || []).map((item) => item.resource_id)
       );
     }
 
-    // Get total like count for every card on the page
     const counts: Record<number, number> = {};
 
     for (const item of [
@@ -176,19 +149,15 @@ export default function Home() {
       ...loadedAssignments,
       ...loadedVideos,
     ]) {
-      const { data, error } = await supabase.rpc(
-        "get_like_count",
-        {
-          p_resource_id: item.id,
-        }
-      );
+      const { data, error } = await supabase.rpc("get_like_count", {
+        p_resource_id: item.id,
+      });
 
       if (error) {
         console.error(
           `Error getting likes for resource ${item.id}:`,
           error
         );
-
         counts[item.id] = 0;
       } else {
         counts[item.id] = Number(data) || 0;
@@ -196,11 +165,9 @@ export default function Home() {
     }
 
     setLikeCounts(counts);
-
     setLoading(false);
   }
 
-  // View a PDF
   async function handleView(filePath: string) {
     const { data, error } = await supabase.storage
       .from("resources")
@@ -215,7 +182,6 @@ export default function Home() {
     window.open(data.signedUrl, "_blank");
   }
 
-  // Download a PDF
   async function handleDownload(filePath: string) {
     const { data, error } = await supabase.storage
       .from("resources")
@@ -224,16 +190,12 @@ export default function Home() {
       });
 
     if (error || !data?.signedUrl) {
-      console.error(
-        "Error creating download URL:",
-        error
-      );
+      console.error("Error creating download URL:", error);
       alert("Unable to download this file.");
       return;
     }
 
     const link = document.createElement("a");
-
     link.href = data.signedUrl;
     link.download = "";
     link.target = "_blank";
@@ -243,7 +205,6 @@ export default function Home() {
     document.body.removeChild(link);
   }
 
-  // Like / Unlike (notes, papers, assignments and videos)
   async function handleFavourite(resourceId: number) {
     const {
       data: { user },
@@ -257,7 +218,6 @@ export default function Home() {
     const isFavourite = favourites.includes(resourceId);
 
     if (isFavourite) {
-      // Remove like
       const { error } = await supabase
         .from("favourites")
         .delete()
@@ -265,389 +225,332 @@ export default function Home() {
         .eq("resource_id", resourceId);
 
       if (error) {
-        console.error(
-          "Error removing like:",
-          error
-        );
-
+        console.error("Error removing like:", error);
         alert("Unable to remove like.");
         return;
       }
 
-      // Update liked notes
       setFavourites((current) =>
-        current.filter(
-          (id) => id !== resourceId
-        )
+        current.filter((id) => id !== resourceId)
       );
 
-      // Decrease count
       setLikeCounts((current) => ({
         ...current,
-        [resourceId]: Math.max(
-          (current[resourceId] || 0) - 1,
-          0
-        ),
+        [resourceId]: Math.max((current[resourceId] || 0) - 1, 0),
       }));
     } else {
-      // Add like
-      const { error } = await supabase
-        .from("favourites")
-        .insert({
-          user_id: user.id,
-          resource_id: resourceId,
-        });
+      const { error } = await supabase.from("favourites").insert({
+        user_id: user.id,
+        resource_id: resourceId,
+      });
 
       if (error) {
-        console.error(
-          "Error adding like:",
-          error
-        );
-
+        console.error("Error adding like:", error);
         alert("Unable to like this resource.");
         return;
       }
 
-      // Update liked notes
-      setFavourites((current) => [
-        ...current,
-        resourceId,
-      ]);
+      setFavourites((current) => [...current, resourceId]);
 
-      // Increase count
       setLikeCounts((current) => ({
         ...current,
-        [resourceId]:
-          (current[resourceId] || 0) + 1,
+        [resourceId]: (current[resourceId] || 0) + 1,
       }));
     }
   }
 
-  // One "Available ..." section (heading, View all link, cards).
-  // Used three times below — for notes, question papers and assignments —
-  // so the cards look the same everywhere. It's a plain function that
-  // returns JSX, so it can use handleView / favourites etc. from Home.
   function renderPdfSection(section: {
     title: string;
     description: string;
     items: PdfResource[];
-    viewAllPath: string; // "notes" -> /programmes/<slug>/notes
+    viewAllPath: string;
     emptyTitle: string;
     emptyText: string;
-    scroll: boolean; // true = fixed height with its own scrollbar
+    scroll: boolean;
   }) {
     const { items } = section;
 
     return (
-      <div className="mt-12">
+      <section className="mt-12">
         <div className="mb-5 flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-semibold text-gray-900">
+            <h2 className="text-xl font-semibold tracking-tight text-[#24344D]">
               {section.title}
             </h2>
 
-            <p className="mt-1 text-sm text-gray-500">{section.description}</p>
+            <p className="mt-1 text-sm text-slate-500">
+              {section.description}
+            </p>
           </div>
 
-          {/* View all -> this category's page in the student's own programme */}
           {programmeName && (
             <Link
               href={`${programmeHref(programmeName)}/${section.viewAllPath}`}
-              className="text-sm font-medium text-blue-600 hover:text-blue-800"
+              className="text-sm font-semibold text-[#456FAD] transition-colors hover:text-[#294C78]"
             >
               View all →
             </Link>
           )}
         </div>
 
-        <div className={section.scroll ? "max-h-[520px] overflow-y-auto pr-3" : ""}>
+        <div
+          className={
+            section.scroll
+              ? "max-h-[520px] overflow-y-auto pr-3"
+              : ""
+          }
+        >
           {loading ? (
-            <div className="py-10 text-center text-sm text-gray-500">
+            <div className="py-10 text-center text-sm text-slate-500">
               Loading...
             </div>
           ) : items.length === 0 ? (
-            <div className="rounded-xl border border-gray-200 bg-white py-12 text-center">
-              <p className="text-sm font-medium text-gray-700">
+            <div className="rounded-xl border border-[#E7E5DF] bg-white py-12 text-center">
+              <p className="text-sm font-medium text-[#24344D]">
                 {section.emptyTitle}
               </p>
 
-              <p className="mt-1 text-xs text-gray-500">{section.emptyText}</p>
+              <p className="mt-1 text-xs text-slate-500">
+                {section.emptyText}
+              </p>
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-                  {items.map((note) => {
+              {items.map((note) => {
+                const isFavourite = favourites.includes(note.id);
+                const likes = likeCounts[note.id] || 0;
 
-                    const isFavourite =
-                      favourites.includes(note.id);
+                return (
+                  <div
+                    key={note.id}
+                    className="flex h-[210px] flex-col rounded-xl border border-[#E7E5DF] bg-white p-4 shadow-sm transition duration-200 hover:-translate-y-1 hover:border-[#C8D5E7] hover:shadow-md"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <h3 className="text-sm font-semibold text-[#24344D]">
+                        {note.title || note.topic}
+                      </h3>
 
-                    const likes =
-                      likeCounts[note.id] || 0;
+                      <span className="shrink-0 rounded-full bg-[#E7EEF8] px-2 py-1 text-[10px] font-medium text-[#294C78]">
+                        Note
+                      </span>
+                    </div>
 
-                    return (
+                    <p className="mt-2 text-xs leading-5 text-slate-500">
+                      {note.module_name || "Unknown Module"}
+                    </p>
 
-                      <div
-                        key={note.id}
-                        className="flex h-[210px] flex-col rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition hover:-translate-y-1 hover:shadow-lg "
+                    <div className="mt-3 flex items-center justify-between text-[10px] text-slate-400">
+                      <span>Year {note.year}</span>
+                      <span>Semester {note.semester}</span>
+                    </div>
+
+                    <div className="mt-auto flex items-center gap-2 border-t border-[#E7E5DF] pt-3">
+                      <button
+                        onClick={() => handleView(note.file_path)}
+                        className="flex-1 rounded-md bg-[#294C78] px-2 py-2 text-xs font-medium text-white transition-colors hover:bg-[#203B60]"
                       >
+                        View
+                      </button>
 
-                        {/* Title */}
+                      <button
+                        onClick={() => handleDownload(note.file_path)}
+                        className="flex-1 rounded-md border border-[#D9DEE7] bg-white px-2 py-2 text-xs font-medium text-[#294C78] transition-colors hover:bg-[#F0F4FA]"
+                      >
+                        Download
+                      </button>
 
-{/* Title + Resource Type */}
-<div className="flex items-start justify-between gap-2">
-  <h3 className="text-sm font-semibold text-gray-900">
-    {note.title || note.topic}
-  </h3>
+                      <button
+                        onClick={() => handleFavourite(note.id)}
+                        title={isFavourite ? "Unlike" : "Like"}
+                        className={`flex h-9 w-14 items-center justify-center gap-1 rounded-md border transition ${
+                          isFavourite
+                            ? "border-red-200 bg-red-50 text-red-500"
+                            : "border-[#D9DEE7] text-slate-500 hover:bg-red-50 hover:text-red-500"
+                        }`}
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          fill={isFavourite ? "currentColor" : "none"}
+                          stroke="currentColor"
+                          strokeWidth={isFavourite ? 0 : 2}
+                          className="h-4 w-4"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"
+                          />
+                        </svg>
 
-  <span className="shrink-0 rounded-full bg-indigo-50 px-2 py-1 text-[10px] font-medium text-indigo-600">
-    Note
-  </span>
-</div>
-
-
-                        {/* Module */}
-                        <p className="mt-2 text-xs leading-5 text-gray-500">
-                          {note.module_name || "Unknown Module"}
-                        </p>
-
-                        {/* Year / Semester */}
-                        <div className="mt-3 flex items-center justify-between text-[10px] text-gray-400">
-
-                          <span>
-                            Year {note.year}
-                          </span>
-
-                          <span>
-                            Semester {note.semester}
-                          </span>
-
-                        </div>
-
-                        {/* Buttons */}
-                        <div className="mt-auto flex items-center gap-2 border-t pt-3">
-
-                          <button
-                            onClick={() =>
-                              handleView(note.file_path)
-                            }
-                            className="flex-1 rounded-md bg-black px-2 py-2 text-xs font-medium text-white hover:bg-gray-700"
-                          >
-                            View
-                          </button>
-
-                          <button
-                            onClick={() =>
-                              handleDownload(note.file_path)
-                            }
-                            className="flex-1 rounded-md border border-gray-200 px-2 py-2 text-xs font-medium text-gray-600 hover:bg-gray-50"
-                          >
-                            Download
-                          </button>
-
-                          {/* Like */}
-                          <button
-  onClick={() => handleFavourite(note.id)}
-  title={isFavourite ? "Unlike" : "Like"}
-  className={`flex h-9 w-14 items-center justify-center gap-1 rounded-md border transition ${
-    isFavourite
-      ? "border-red-200 bg-red-50 text-red-500"
-      : "border-gray-200 text-gray-500 hover:bg-red-50 hover:text-red-500"
-  }`}
->
-  {isFavourite ? (
-    /* Filled Heart SVG */
-    <svg xmlns="http://w3.org" viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
-      <path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" />
-    </svg>
-  ) : (
-    /* Outline Heart SVG */
-    <svg xmlns="http://w3.org" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="h-4 w-4">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
-    </svg>
-  )}
-
-  <span className="text-xs leading-none">
-    {likes}
-  </span>
-</button>
-
-
-                        </div>
-
-                      </div>
-
-                    );
-                  })}
+                        <span className="text-xs leading-none">{likes}</span>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
-      </div>
+      </section>
     );
   }
 
   return (
-    <main className="min-h-full bg-gray-200 px-8 py-10">
+    <main className="min-h-full bg-[#FCFBF8] px-8 py-10">
+      <div className="mx-auto max-w-7xl">
+        {/* Existing welcome and search header */}
+        <WelcomeHeader name={fullName} />
 
-        <div className="mx-auto max-w-7xl">
+        {renderPdfSection({
+          title: "Available Notes",
+          description: "Browse recently available study materials.",
+          items: notes,
+          viewAllPath: "notes",
+          emptyTitle: "No notes available yet.",
+          emptyText: "Approved notes for your programme will appear here.",
+          scroll: true,
+        })}
 
-          {/* Welcome + search box (shared with the /search page) */}
-          <WelcomeHeader name={fullName} />
+        {renderPdfSection({
+          title: "Available Question Papers",
+          description: "Past examination papers for your programme.",
+          items: questionPapers,
+          viewAllPath: "question-papers",
+          emptyTitle: "No question papers available yet.",
+          emptyText:
+            "Approved question papers for your programme will appear here.",
+          scroll: false,
+        })}
 
-          {/* Notes: all of them, in a scrolling box */}
-          {renderPdfSection({
-            title: "Available Notes",
-            description: "Browse recently available study materials.",
-            items: notes,
-            viewAllPath: "notes",
-            emptyTitle: "No notes available yet.",
-            emptyText: "Approved notes for your programme will appear here.",
-            scroll: true,
-          })}
+        {renderPdfSection({
+          title: "Available Assignments",
+          description: "Assignments and coursework for your programme.",
+          items: assignments,
+          viewAllPath: "assignments",
+          emptyTitle: "No assignments available yet.",
+          emptyText:
+            "Approved assignments for your programme will appear here.",
+          scroll: false,
+        })}
 
-          {/* Question papers: the newest few */}
-          {renderPdfSection({
-            title: "Available Question Papers",
-            description: "Past examination papers for your programme.",
-            items: questionPapers,
-            viewAllPath: "question-papers",
-            emptyTitle: "No question papers available yet.",
-            emptyText: "Approved question papers for your programme will appear here.",
-            scroll: false,
-          })}
+        {!loading && videos.length > 0 && (
+          <section className="mt-12">
+            <div className="mb-5 flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-semibold tracking-tight text-[#24344D]">
+                  Latest Videos
+                </h2>
 
-          {/* Assignments: the newest few */}
-          {renderPdfSection({
-            title: "Available Assignments",
-            description: "Assignments and coursework for your programme.",
-            items: assignments,
-            viewAllPath: "assignments",
-            emptyTitle: "No assignments available yet.",
-            emptyText: "Approved assignments for your programme will appear here.",
-            scroll: false,
-          })}
-
-          {/* Latest Videos (only shown when the programme has some) */}
-          {!loading && videos.length > 0 && (
-            <div className="mt-12">
-
-              <div className="mb-5 flex items-center justify-between">
-                <div>
-                  <h2 className="text-xl font-semibold text-gray-900">
-                    Latest Videos
-                  </h2>
-
-                  <p className="mt-1 text-sm text-gray-500">
-                    Video lessons added by your programme admins.
-                  </p>
-                </div>
-
-                {/* View all -> the Videos page of the student's own programme */}
-                {programmeName && (
-                  <Link
-                    href={`${programmeHref(programmeName)}/videos`}
-                    className="text-sm font-medium text-blue-600 hover:text-blue-800"
-                  >
-                    View all →
-                  </Link>
-                )}
+                <p className="mt-1 text-sm text-slate-500">
+                  Video lessons added by your programme admins.
+                </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-                {videos.map((video) => {
-                  const isFavourite = favourites.includes(video.id);
-                  const likes = likeCounts[video.id] || 0;
+              {programmeName && (
+                <Link
+                  href={`${programmeHref(programmeName)}/videos`}
+                  className="text-sm font-semibold text-[#456FAD] transition-colors hover:text-[#294C78]"
+                >
+                  View all →
+                </Link>
+              )}
+            </div>
 
-                  return (
-                    <div
-                      key={video.id}
-                      className="flex flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+              {videos.map((video) => {
+                const isFavourite = favourites.includes(video.id);
+                const likes = likeCounts[video.id] || 0;
+
+                return (
+                  <div
+                    key={video.id}
+                    className="flex flex-col overflow-hidden rounded-xl border border-[#E7E5DF] bg-white shadow-sm transition duration-200 hover:-translate-y-1 hover:border-[#C8D5E7] hover:shadow-md"
+                  >
+                    <a
+                      href={youTubeWatchUrl(video.video_id)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group relative block"
                     >
-                      {/* Thumbnail: opens the video on YouTube in a new tab */}
-                      <a
-                        href={youTubeWatchUrl(video.video_id)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="group relative block"
-                      >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={youTubeThumbnail(video.video_id)}
-                          alt={video.title || video.topic}
-                          loading="lazy"
-                          className="aspect-video w-full bg-gray-100 object-cover"
-                        />
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={youTubeThumbnail(video.video_id)}
+                        alt={video.title || video.topic}
+                        loading="lazy"
+                        className="aspect-video w-full bg-[#F0F2F5] object-cover"
+                      />
 
-                        {/* Play button on top of the thumbnail */}
-                        <span className="absolute inset-0 flex items-center justify-center bg-black/0 transition group-hover:bg-black/20">
-                          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-black/70 text-white">
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              viewBox="0 0 24 24"
-                              fill="currentColor"
-                              className="ml-0.5 h-5 w-5"
-                            >
-                              <path d="M8 5.14v13.72a1 1 0 001.5.86l11-6.86a1 1 0 000-1.72l-11-6.86A1 1 0 008 5.14z" />
-                            </svg>
-                          </span>
+                      <span className="absolute inset-0 flex items-center justify-center bg-black/0 transition group-hover:bg-black/20">
+                        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-black/70 text-white">
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="currentColor"
+                            className="ml-0.5 h-5 w-5"
+                          >
+                            <path d="M8 5.14v13.72a1 1 0 001.5.86l11-6.86a1 1 0 000-1.72l-11-6.86A1 1 0 008 5.14z" />
+                          </svg>
                         </span>
-                      </a>
+                      </span>
+                    </a>
 
-                      <div className="flex flex-1 flex-col p-4">
-                        <h3 className="text-sm font-semibold text-gray-900">
-                          {video.title || video.topic}
-                        </h3>
+                    <div className="flex flex-1 flex-col p-4">
+                      <h3 className="text-sm font-semibold text-[#24344D]">
+                        {video.title || video.topic}
+                      </h3>
 
-                        <p className="mt-1 text-[10px] text-gray-400">
-                          Year {video.year} · Semester {video.semester}
-                        </p>
+                      <p className="mt-1 text-[10px] text-slate-400">
+                        Year {video.year} · Semester {video.semester}
+                      </p>
 
-                        <div className="mt-auto flex items-center gap-2 border-t pt-3">
-                          <a
-                            href={youTubeWatchUrl(video.video_id)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex-1 rounded-md bg-black px-2 py-2 text-center text-xs font-medium text-white hover:bg-gray-700"
+                      <div className="mt-auto flex items-center gap-2 border-t border-[#E7E5DF] pt-3">
+                        <a
+                          href={youTubeWatchUrl(video.video_id)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex-1 rounded-md bg-[#294C78] px-2 py-2 text-center text-xs font-medium text-white transition-colors hover:bg-[#203B60]"
+                        >
+                          Watch
+                        </a>
+
+                        <button
+                          onClick={() => handleFavourite(video.id)}
+                          title={isFavourite ? "Unlike" : "Like"}
+                          className={`flex h-9 w-14 items-center justify-center gap-1 rounded-md border transition ${
+                            isFavourite
+                              ? "border-red-200 bg-red-50 text-red-500"
+                              : "border-[#D9DEE7] text-slate-500 hover:bg-red-50 hover:text-red-500"
+                          }`}
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill={isFavourite ? "currentColor" : "none"}
+                            stroke="currentColor"
+                            strokeWidth={isFavourite ? 0 : 2}
+                            className="h-4 w-4"
                           >
-                            Watch
-                          </a>
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"
+                            />
+                          </svg>
 
-                          {/* Like (same handler and counts as the notes) */}
-                          <button
-                            onClick={() => handleFavourite(video.id)}
-                            title={isFavourite ? "Unlike" : "Like"}
-                            className={`flex h-9 w-14 items-center justify-center gap-1 rounded-md border transition ${
-                              isFavourite
-                                ? "border-red-200 bg-red-50 text-red-500"
-                                : "border-gray-200 text-gray-500 hover:bg-red-50 hover:text-red-500"
-                            }`}
-                          >
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              viewBox="0 0 24 24"
-                              fill={isFavourite ? "currentColor" : "none"}
-                              stroke="currentColor"
-                              strokeWidth={isFavourite ? 0 : 2}
-                              className="h-4 w-4"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"
-                              />
-                            </svg>
-
-                            <span className="text-xs leading-none">{likes}</span>
-                          </button>
-                        </div>
+                          <span className="text-xs leading-none">
+                            {likes}
+                          </span>
+                        </button>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
+                  </div>
+                );
+              })}
             </div>
-          )}
-
-        </div>
-
+          </section>
+        )}
+      </div>
     </main>
   );
 }

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -10,6 +11,8 @@ import {
   LogOut,
   Layers,
   Users,
+  Video,
+  Database,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { BACKEND_URL } from "@/lib/config";
@@ -46,6 +49,8 @@ export default function AdminPage() {
   const [notesCount, setNotesCount] = useState(0);
   const [papersCount, setPapersCount] = useState(0);
   const [assignmentsCount, setAssignmentsCount] = useState(0);
+  const [videosCount, setVideosCount] = useState(0);
+  const [totalResourcesCount, setTotalResourcesCount] = useState(0);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -60,221 +65,343 @@ export default function AdminPage() {
       setLoading(true);
       setError("");
 
-      // Get the logged-in user.
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      try {
+        const {
+          data: { user },
+          error: authError,
+        } = await supabase.auth.getUser();
 
-      if (!user) {
-        router.push("/login");
-        return;
-      }
+        if (authError) throw authError;
 
-      // Get the user's profile.
-      const { data: profileData, error: profileError } = await supabase
-        .from("profiles")
-        .select("id, full_name, email, programme_id, role")
-        .eq("id", user.id)
-        .maybeSingle();
-
-      if (profileError) {
-        console.error("PROFILE ERROR:", profileError);
-        setError(profileError.message);
-        setLoading(false);
-        return;
-      }
-
-      if (!profileData) {
-        setError("Your profile could not be found.");
-        setLoading(false);
-        return;
-      }
-
-      // Only admins can access this page.
-      if (!isAdminRole(profileData.role)) {
-        router.push("/home");
-        return;
-      }
-
-      setProfile(profileData);
-
-      const isSuperAdmin = isSuperAdminRole(profileData.role);
-
-      // Get the programme name for programme admins.
-      if (profileData.programme_id) {
-        const { data: programmeData, error: programmeError } =
-          await supabase
-            .from("programmes")
-            .select("name")
-            .eq("id", profileData.programme_id)
-            .maybeSingle();
-
-        if (programmeError) {
-          console.error("PROGRAMME ERROR:", programmeError);
+        if (!user) {
+          router.push("/login");
+          return;
         }
 
-        if (programmeData) {
-          setProgrammeName(programmeData.name);
-        }
-      }
+        const { data: profileData, error: profileError } = await supabase
+          .from("profiles")
+          .select("id, full_name, email, programme_id, role")
+          .eq("id", user.id)
+          .maybeSingle();
 
-      /*
-       * PROGRAMME ADMIN
-       * Only count resources belonging to their own programme.
-       */
-      if (!isSuperAdmin && profileData.programme_id) {
+        if (profileError) throw profileError;
+
+        if (!profileData) {
+          setError("Your profile could not be found.");
+          return;
+        }
+
+        if (!isAdminRole(profileData.role)) {
+          router.push("/home");
+          return;
+        }
+
+        setProfile(profileData);
+
+        const isSuperAdmin = isSuperAdminRole(profileData.role);
         const programmeId = profileData.programme_id;
 
-        const { count: pending, error: pendingError } = await supabase
-          .from("resource_submissions")
-          .select("*", { count: "exact", head: true })
-          .eq("programme_id", programmeId)
-          .eq("status", "pending");
+        if (programmeId) {
+          const { data: programmeData, error: programmeError } =
+            await supabase
+              .from("programmes")
+              .select("name")
+              .eq("id", programmeId)
+              .maybeSingle();
 
-        if (pendingError) {
-          console.error("PENDING COUNT ERROR:", pendingError);
-        } else {
-          setPendingCount(pending ?? 0);
-        }
-
-        const { count: notes, error: notesError } = await supabase
-          .from("resources")
-          .select("*", { count: "exact", head: true })
-          .eq("programme_id", programmeId)
-          .eq("type", "note");
-
-        if (notesError) {
-          console.error("NOTES COUNT ERROR:", notesError);
-        } else {
-          setNotesCount(notes ?? 0);
-        }
-
-        const { count: papers, error: papersError } = await supabase
-          .from("resources")
-          .select("*", { count: "exact", head: true })
-          .eq("programme_id", programmeId)
-          .eq("type", "question_paper");
-
-        if (papersError) {
-          console.error("PAPERS COUNT ERROR:", papersError);
-        } else {
-          setPapersCount(papers ?? 0);
-        }
-
-        const { count: assignments, error: assignmentsError } =
-          await supabase
-            .from("resources")
-            .select("*", { count: "exact", head: true })
-            .eq("programme_id", programmeId)
-            .eq("type", "assignment");
-
-        if (assignmentsError) {
-          console.error("ASSIGNMENTS COUNT ERROR:", assignmentsError);
-        } else {
-          setAssignmentsCount(assignments ?? 0);
-        }
-      }
-
-      /*
-       * SUPER ADMIN
-       * Count resources across CST.
-       */
-      if (isSuperAdmin) {
-        const { count: pending } = await supabase
-          .from("resource_submissions")
-          .select("*", { count: "exact", head: true })
-          .eq("status", "pending");
-
-        setPendingCount(pending ?? 0);
-
-        const { count: notes } = await supabase
-          .from("resources")
-          .select("*", { count: "exact", head: true })
-          .eq("type", "note");
-
-        setNotesCount(notes ?? 0);
-
-        const { count: papers } = await supabase
-          .from("resources")
-          .select("*", { count: "exact", head: true })
-          .eq("type", "question_paper");
-
-        setPapersCount(papers ?? 0);
-
-        const { count: assignments } = await supabase
-          .from("resources")
-          .select("*", { count: "exact", head: true })
-          .eq("type", "assignment");
-
-        setAssignmentsCount(assignments ?? 0);
-
-        // Load users from the backend because profile RLS may prevent
-        // reading other users directly from the browser.
-        try {
-          const {
-            data: { session },
-          } = await supabase.auth.getSession();
-
-          const [usersResponse, pendingResult, programmesResult] =
-            await Promise.all([
-              fetch(`${BACKEND_URL}/api/users`, {
-                headers: {
-                  Authorization: `Bearer ${session?.access_token}`,
-                },
-              }),
-              supabase
-                .from("resource_submissions")
-                .select("programme_id")
-                .eq("status", "pending"),
-              supabase.from("programmes").select("id, name").order("name"),
-            ]);
-
-          const usersData = await usersResponse.json();
-
-          if (!usersResponse.ok) {
-            throw new Error(usersData.message || "Failed to load users.");
+          if (programmeError) {
+            console.error("PROGRAMME ERROR:", programmeError);
           }
 
-          const users: {
-            full_name: string;
-            role: string;
-            programme_id: number | null;
-            is_active: boolean;
-          }[] = usersData.users || [];
-
-          setUserCounts({
-            students: users.filter((u) => u.role === ROLES.student).length,
-            programmeAdmins: users.filter(
-              (u) => u.role === ROLES.programmeAdmin,
-            ).length,
-            deactivated: users.filter((u) => !u.is_active).length,
-          });
-
-          const pendingRows = pendingResult.data || [];
-
-          setProgrammeOverview(
-            (programmesResult.data || []).map((programme) => ({
-              id: programme.id,
-              name: programme.name,
-              pending: pendingRows.filter(
-                (row) => row.programme_id === programme.id,
-              ).length,
-              admins: users
-                .filter(
-                  (u) =>
-                    u.role === ROLES.programmeAdmin &&
-                    u.is_active &&
-                    u.programme_id === programme.id,
-                )
-                .map((u) => u.full_name),
-            })),
-          );
-        } catch (overviewError) {
-          console.error("OVERVIEW ERROR:", overviewError);
+          if (programmeData) {
+            setProgrammeName(programmeData.name);
+          }
         }
-      }
 
-      setLoading(false);
+        /*
+         * Programme admin:
+         * Count resources and video links for their own programme.
+         */
+        if (!isSuperAdmin && programmeId) {
+          const [
+            pendingResult,
+            notesResult,
+            papersResult,
+            assignmentsResult,
+            resourcesResult,
+            videosResult,
+          ] = await Promise.all([
+            supabase
+              .from("resource_submissions")
+              .select("*", { count: "exact", head: true })
+              .eq("programme_id", programmeId)
+              .eq("status", "pending"),
+
+            supabase
+              .from("resources")
+              .select("*", { count: "exact", head: true })
+              .eq("programme_id", programmeId)
+              .eq("type", "note"),
+
+            supabase
+              .from("resources")
+              .select("*", { count: "exact", head: true })
+              .eq("programme_id", programmeId)
+              .eq("type", "question_paper"),
+
+            supabase
+              .from("resources")
+              .select("*", { count: "exact", head: true })
+              .eq("programme_id", programmeId)
+              .eq("type", "assignment"),
+
+            supabase
+              .from("resources")
+              .select("*", { count: "exact", head: true })
+              .eq("programme_id", programmeId),
+
+            // Total saved video links in this programme.
+            
+ // Total saved video links in this programme.
+supabase
+  .from("resources")
+  .select("id", { count: "exact", head: true })
+  .eq("programme_id", programmeId)
+  .eq("type", "video"),
+
+          ]);
+
+          if (pendingResult.error) {
+            console.error("PENDING COUNT ERROR:", pendingResult.error);
+          } else {
+            setPendingCount(pendingResult.count ?? 0);
+          }
+
+          if (notesResult.error) {
+            console.error("NOTES COUNT ERROR:", notesResult.error);
+          } else {
+            setNotesCount(notesResult.count ?? 0);
+          }
+
+          if (papersResult.error) {
+            console.error("PAPERS COUNT ERROR:", papersResult.error);
+          } else {
+            setPapersCount(papersResult.count ?? 0);
+          }
+
+          if (assignmentsResult.error) {
+            console.error(
+              "ASSIGNMENTS COUNT ERROR:",
+              assignmentsResult.error
+            );
+          } else {
+            setAssignmentsCount(assignmentsResult.count ?? 0);
+          }
+
+          if (resourcesResult.error) {
+            console.error(
+              "TOTAL RESOURCES COUNT ERROR:",
+              resourcesResult.error
+            );
+          } else {
+            setTotalResourcesCount(resourcesResult.count ?? 0);
+          }
+
+          if (videosResult.error) {
+            console.error("VIDEOS COUNT ERROR:", videosResult.error);
+          } else {
+            setVideosCount(videosResult.count ?? 0);
+          }
+        }
+
+        /*
+         * Super admin:
+         * Count resources and video links across all programmes.
+         */
+        if (isSuperAdmin) {
+          const [
+            pendingResult,
+            notesResult,
+            papersResult,
+            assignmentsResult,
+            resourcesResult,
+            videosResult,
+          ] = await Promise.all([
+            supabase
+              .from("resource_submissions")
+              .select("*", { count: "exact", head: true })
+              .eq("status", "pending"),
+
+            supabase
+              .from("resources")
+              .select("*", { count: "exact", head: true })
+              .eq("type", "note"),
+
+            supabase
+              .from("resources")
+              .select("*", { count: "exact", head: true })
+              .eq("type", "question_paper"),
+
+            supabase
+              .from("resources")
+              .select("*", { count: "exact", head: true })
+              .eq("type", "assignment"),
+
+            supabase
+              .from("resources")
+              .select("*", { count: "exact", head: true }),
+
+            // Total saved video links across CST.
+            supabase
+              
+  .from("resources")
+  .select("id", { count: "exact", head: true })
+  .eq("type", "video")
+          ]);
+
+          if (pendingResult.error) {
+            console.error("PENDING COUNT ERROR:", pendingResult.error);
+          } else {
+            setPendingCount(pendingResult.count ?? 0);
+          }
+
+          if (notesResult.error) {
+            console.error("NOTES COUNT ERROR:", notesResult.error);
+          } else {
+            setNotesCount(notesResult.count ?? 0);
+          }
+
+          if (papersResult.error) {
+            console.error("PAPERS COUNT ERROR:", papersResult.error);
+          } else {
+            setPapersCount(papersResult.count ?? 0);
+          }
+
+          if (assignmentsResult.error) {
+            console.error(
+              "ASSIGNMENTS COUNT ERROR:",
+              assignmentsResult.error
+            );
+          } else {
+            setAssignmentsCount(assignmentsResult.count ?? 0);
+          }
+
+          if (resourcesResult.error) {
+            console.error(
+              "TOTAL RESOURCES COUNT ERROR:",
+              resourcesResult.error
+            );
+          } else {
+            setTotalResourcesCount(resourcesResult.count ?? 0);
+          }
+
+          if (videosResult.error) {
+            console.error("VIDEOS COUNT ERROR:", videosResult.error);
+          } else {
+            setVideosCount(videosResult.count ?? 0);
+          }
+
+          // Load users from the backend.
+          try {
+            const {
+              data: { session },
+            } = await supabase.auth.getSession();
+
+            const [usersResponse, pendingRowsResult, programmesResult] =
+              await Promise.all([
+                fetch(`${BACKEND_URL}/api/users`, {
+                  headers: {
+                    Authorization: `Bearer ${session?.access_token}`,
+                  },
+                }),
+
+                supabase
+                  .from("resource_submissions")
+                  .select("programme_id")
+                  .eq("status", "pending"),
+
+                supabase
+                  .from("programmes")
+                  .select("id, name")
+                  .order("name"),
+              ]);
+
+            const usersData = await usersResponse.json();
+
+            if (!usersResponse.ok) {
+              throw new Error(
+                usersData.message || "Failed to load users."
+              );
+            }
+
+            const users: {
+              full_name: string;
+              role: string;
+              programme_id: number | null;
+              is_active: boolean;
+            }[] = usersData.users || [];
+
+            setUserCounts({
+              students: users.filter(
+                (u) => u.role === ROLES.student
+              ).length,
+
+              programmeAdmins: users.filter(
+                (u) => u.role === ROLES.programmeAdmin
+              ).length,
+
+              deactivated: users.filter(
+                (u) => !u.is_active
+              ).length,
+            });
+
+            if (pendingRowsResult.error) {
+              console.error(
+                "PROGRAMME PENDING ERROR:",
+                pendingRowsResult.error
+              );
+            }
+
+            if (programmesResult.error) {
+              console.error("PROGRAMMES ERROR:", programmesResult.error);
+            }
+
+            const pendingRows = pendingRowsResult.data || [];
+
+            setProgrammeOverview(
+              (programmesResult.data || []).map((programme) => ({
+                id: programme.id,
+                name: programme.name,
+
+                pending: pendingRows.filter(
+                  (row) => row.programme_id === programme.id
+                ).length,
+
+                admins: users
+                  .filter(
+                    (u) =>
+                      u.role === ROLES.programmeAdmin &&
+                      u.is_active &&
+                      u.programme_id === programme.id
+                  )
+                  .map((u) => u.full_name),
+              }))
+            );
+          } catch (overviewError) {
+            console.error("OVERVIEW ERROR:", overviewError);
+          }
+        }
+      } catch (loadError) {
+        console.error("ADMIN DASHBOARD ERROR:", loadError);
+
+        setError(
+          loadError instanceof Error
+            ? loadError.message
+            : "Unable to load dashboard."
+        );
+      } finally {
+        setLoading(false);
+      }
     };
 
     loadAdmin();
@@ -288,7 +415,9 @@ export default function AdminPage() {
   if (loading) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-slate-50">
-        <p className="text-sm text-gray-500">Loading admin dashboard...</p>
+        <p className="text-sm text-gray-500">
+          Loading admin dashboard...
+        </p>
       </main>
     );
   }
@@ -316,7 +445,6 @@ export default function AdminPage() {
     <main className="flex min-h-screen bg-slate-50 text-gray-900">
       {/* Sidebar */}
       <aside className="hidden w-64 shrink-0 border-r border-gray-200 bg-white md:flex md:flex-col">
-        {/* Logo */}
         <div className="border-b border-gray-200 px-6 py-5">
           <button
             onClick={() => router.push("/")}
@@ -330,7 +458,6 @@ export default function AdminPage() {
           </p>
         </div>
 
-        {/* Navigation */}
         <nav className="flex-1 px-3 py-5">
           <p className="mb-3 px-3 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
             Management
@@ -352,7 +479,6 @@ export default function AdminPage() {
             <span>Manage Resources</span>
           </button>
 
-          {/* Super admin manages modules; programme admins can view them. */}
           <button
             onClick={() => router.push("/admin/modules")}
             className="mb-1 flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-sm font-medium text-gray-700 transition hover:bg-gray-100 hover:text-gray-900"
@@ -361,7 +487,6 @@ export default function AdminPage() {
             <span>{isSuperAdmin ? "Manage Modules" : "Modules"}</span>
           </button>
 
-          {/* Only super admins can manage users. */}
           {isSuperAdmin && (
             <button
               onClick={() => router.push("/admin/users")}
@@ -373,13 +498,14 @@ export default function AdminPage() {
           )}
         </nav>
 
-        {/* Bottom */}
         <div className="border-t border-gray-200 p-4">
           <div className="mb-3 px-2">
             <p className="truncate text-sm font-medium text-gray-900">
               {profile.full_name || "Admin"}
             </p>
-            <p className="truncate text-xs text-gray-500">{profile.email}</p>
+            <p className="truncate text-xs text-gray-500">
+              {profile.email}
+            </p>
           </div>
 
           <button
@@ -404,6 +530,7 @@ export default function AdminPage() {
               >
                 Novelle
               </button>
+
               <p className="mt-1 text-xs text-gray-500">
                 {isSuperAdmin ? "Super Admin" : "Programme Admin"}
               </p>
@@ -425,7 +552,8 @@ export default function AdminPage() {
             </p>
 
             <h1 className="mt-1 text-3xl font-bold tracking-tight text-gray-900">
-              Welcome back{profile.full_name ? `, ${profile.full_name}` : ""}
+              Welcome back
+              {profile.full_name ? `, ${profile.full_name}` : ""}
             </h1>
 
             <p className="mt-2 text-sm text-gray-500">
@@ -441,6 +569,7 @@ export default function AdminPage() {
               <p className="text-xs font-medium uppercase tracking-wide text-gray-400">
                 Programme
               </p>
+
               <p className="mt-1 text-base font-semibold text-gray-900">
                 {programmeName}
               </p>
@@ -448,8 +577,8 @@ export default function AdminPage() {
           )}
 
           {/* Statistics */}
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
-            {/* Notes */}
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+            {/* Total Resources */}
             <button
               onClick={() => router.push("/admin/resources")}
               className="group rounded-2xl border border-gray-200 bg-white p-6 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-md"
@@ -457,66 +586,23 @@ export default function AdminPage() {
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-500">
-                    Total Notes
+                    Total Resources
                   </p>
                   <p className="mt-4 text-4xl font-bold tracking-tight text-gray-900">
-                    {notesCount}
-                  </p>
-                  <p className="mt-2 text-xs text-gray-400">Published notes</p>
-                </div>
-                <div className="rounded-xl bg-gray-100 p-3 text-gray-700">
-                  <FileText className="h-5 w-5" />
-                </div>
-              </div>
-            </button>
-
-            {/* Question Papers */}
-            <button
-              onClick={() => router.push("/admin/resources")}
-              className="group rounded-2xl border border-gray-200 bg-white p-6 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-md"
-            >
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-500">
-                    Question Papers
-                  </p>
-                  <p className="mt-4 text-4xl font-bold tracking-tight text-gray-900">
-                    {papersCount}
+                    {totalResourcesCount}
                   </p>
                   <p className="mt-2 text-xs text-gray-400">
-                    Published papers
+                    All resource records
                   </p>
                 </div>
+
                 <div className="rounded-xl bg-gray-100 p-3 text-gray-700">
-                  <FileQuestion className="h-5 w-5" />
+                  <Database className="h-5 w-5" />
                 </div>
               </div>
             </button>
 
-            {/* Assignments */}
-            <button
-              onClick={() => router.push("/admin/resources")}
-              className="group rounded-2xl border border-gray-200 bg-white p-6 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-md"
-            >
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-500">
-                    Assignments
-                  </p>
-                  <p className="mt-4 text-4xl font-bold tracking-tight text-gray-900">
-                    {assignmentsCount}
-                  </p>
-                  <p className="mt-2 text-xs text-gray-400">
-                    Published assignments
-                  </p>
-                </div>
-                <div className="rounded-xl bg-gray-100 p-3 text-gray-700">
-                  <ClipboardList className="h-5 w-5" />
-                </div>
-              </div>
-            </button>
-
-            {/* Pending */}
+            {/* Pending Submissions */}
             <button
               onClick={() => router.push("/admin/submissions")}
               className="group rounded-2xl border border-gray-200 bg-white p-6 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-md"
@@ -531,11 +617,105 @@ export default function AdminPage() {
                   </p>
                   <p className="mt-2 text-xs text-gray-400">Need review</p>
                 </div>
+
                 <div className="rounded-xl bg-gray-100 p-3 text-gray-700">
                   <ClipboardCheck className="h-5 w-5" />
                 </div>
               </div>
             </button>
+
+            {/* Total Notes */}
+            <button
+              onClick={() => router.push("/admin/resources")}
+              className="group rounded-2xl border border-gray-200 bg-white p-6 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-md"
+            >
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-500">
+                    Total Notes
+                  </p>
+                  <p className="mt-4 text-4xl font-bold tracking-tight text-gray-900">
+                    {notesCount}
+                  </p>
+                  <p className="mt-2 text-xs text-gray-400">
+                    Published notes
+                  </p>
+                </div>
+
+                <div className="rounded-xl bg-gray-100 p-3 text-gray-700">
+                  <FileText className="h-5 w-5" />
+                </div>
+              </div>
+            </button>
+
+            {/* Total Question Papers */}
+            <button
+              onClick={() => router.push("/admin/resources")}
+              className="group rounded-2xl border border-gray-200 bg-white p-6 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-md"
+            >
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-500">
+                    Total Question Papers
+                  </p>
+                  <p className="mt-4 text-4xl font-bold tracking-tight text-gray-900">
+                    {papersCount}
+                  </p>
+                  <p className="mt-2 text-xs text-gray-400">
+                    Published papers
+                  </p>
+                </div>
+
+                <div className="rounded-xl bg-gray-100 p-3 text-gray-700">
+                  <FileQuestion className="h-5 w-5" />
+                </div>
+              </div>
+            </button>
+
+            {/* Total Assignments */}
+            <button
+              onClick={() => router.push("/admin/resources")}
+              className="group rounded-2xl border border-gray-200 bg-white p-6 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-md"
+            >
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-500">
+                    Total Assignments
+                  </p>
+                  <p className="mt-4 text-4xl font-bold tracking-tight text-gray-900">
+                    {assignmentsCount}
+                  </p>
+                  <p className="mt-2 text-xs text-gray-400">
+                    Published assignments
+                  </p>
+                </div>
+
+                <div className="rounded-xl bg-gray-100 p-3 text-gray-700">
+                  <ClipboardList className="h-5 w-5" />
+                </div>
+              </div>
+            </button>
+
+            {/* Total Videos */}
+            <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-500">
+                    Total Videos
+                  </p>
+                  <p className="mt-4 text-4xl font-bold tracking-tight text-gray-900">
+                    {videosCount}
+                  </p>
+                  <p className="mt-2 text-xs text-gray-400">
+                    YouTube links uploaded by admins
+                  </p>
+                </div>
+
+                <div className="rounded-xl bg-gray-100 p-3 text-gray-700">
+                  <Video className="h-5 w-5" />
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Super admin overview */}
@@ -580,6 +760,7 @@ export default function AdminPage() {
                           {card.note}
                         </p>
                       </div>
+
                       <div className="rounded-xl bg-gray-100 p-3 text-gray-700">
                         <Users className="h-5 w-5" />
                       </div>
