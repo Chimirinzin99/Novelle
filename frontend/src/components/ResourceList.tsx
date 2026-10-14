@@ -1,13 +1,11 @@
+
+
 "use client";
 
-// One student page that lists a programme's PDF resources of ONE type
-// (notes, question papers or assignments): back link, header, filters,
-// cards with View / Download / Like.
-//
-// The Notes, Question Papers and Assignments pages are each just
-//   <ResourceList type="note" ... />
-// with different words, so a fix made here fixes all three pages.
-// (Videos keep their own page because their cards show YouTube thumbnails.)
+
+// Shared resource list for Notes, Question Papers and Assignments.
+// Handles fetching, filters, PDF viewing/downloading and favourites.
+
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -17,24 +15,25 @@ import FilterBar from "@/components/FilterBar";
 import { findProgrammeBySlug } from "@/lib/programmes";
 import type { ResourceTypeCode } from "@/lib/resourceTypes";
 
+
 type ResourceListProps = {
-  // Which rows to show. Exclude<...> = any type code except "video".
   type: Exclude<ResourceTypeCode, "video">;
-  heading: string; // "Notes"
-  description: string; // line under the heading
-  singular: string; // "note"   -> "1 note", "Unable to open this note."
-  plural: string; // "notes"  -> "5 notes", "No notes found"
+  heading: string;
+  description: string;
+  singular: string;
+  plural: string;
 };
 
-// One card's data, from the resources table.
+
 type Resource = {
   id: number;
-  name: string; // title (approved submissions) or topic (admin uploads)
+  name: string;
   year: number;
   semester: number;
   module_name: string;
   file_path: string | null;
 };
+
 
 export default function ResourceList({
   type,
@@ -44,35 +43,37 @@ export default function ResourceList({
   plural,
 }: ResourceListProps) {
   const params = useParams();
-
-  // The slug from the URL, e.g. "information-technology"
   const programmeSlug = decodeURIComponent(params.programme as string);
 
-  // The programme's real name, shown in the header once it has loaded.
-  const [programme, setProgramme] = useState("");
 
+  const [programme, setProgramme] = useState("");
   const [resources, setResources] = useState<Resource[]>([]);
   const [favourites, setFavourites] = useState<number[]>([]);
   const [likeCounts, setLikeCounts] = useState<Record<number, number>>({});
 
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
 
   const [selectedYear, setSelectedYear] = useState("All Years");
   const [selectedSemester, setSelectedSemester] = useState("All Semesters");
   const [selectedModule, setSelectedModule] = useState("All Modules");
 
+
   useEffect(() => {
     fetchResources();
-    // Reload when the student moves to another programme or type.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [programmeSlug, type]);
+
 
   async function fetchResources() {
     setLoading(true);
     setError("");
 
-    // 1. Find the programme whose slugified name matches the URL slug.
+
     const programmeData = await findProgrammeBySlug(programmeSlug);
+
 
     if (!programmeData) {
       setError(`Unable to find programme "${programmeSlug}".`);
@@ -80,15 +81,17 @@ export default function ResourceList({
       return;
     }
 
+
     setProgramme(programmeData.name);
 
-    // 2. This programme's resources of this type, newest first.
+
     const { data, error: loadError } = await supabase
       .from("resources")
       .select("id, title, topic, year, semester, module_name, file_path")
       .eq("programme_id", programmeData.id)
       .eq("type", type)
       .order("created_at", { ascending: false });
+
 
     if (loadError) {
       console.error(`Load ${plural} error:`, loadError);
@@ -97,9 +100,9 @@ export default function ResourceList({
       return;
     }
 
+
     const loaded: Resource[] = (data || []).map((item) => ({
       id: item.id,
-      // Student submissions have a title; admin uploads only a topic.
       name: item.title || item.topic,
       year: item.year,
       semester: item.semester,
@@ -107,12 +110,14 @@ export default function ResourceList({
       file_path: item.file_path,
     }));
 
+
     setResources(loaded);
 
-    // 3. Which of these the logged-in student has liked.
+
     const {
       data: { user },
     } = await supabase.auth.getUser();
+
 
     if (user) {
       const { data: favouriteData, error: favouriteError } = await supabase
@@ -120,16 +125,19 @@ export default function ResourceList({
         .select("resource_id")
         .eq("user_id", user.id);
 
+
       if (favouriteError) {
         console.error("Favourite loading error:", favouriteError);
       } else {
         setFavourites((favouriteData || []).map((f) => f.resource_id));
       }
+    } else {
+      setFavourites([]);
     }
 
-    // 4. Total likes per resource. Promise.all starts all the calls at
-    //    once and waits for every one, instead of one after another.
+
     const counts: Record<number, number> = {};
+
 
     await Promise.all(
       loaded.map(async (resource) => {
@@ -138,34 +146,43 @@ export default function ResourceList({
           { p_resource_id: resource.id }
         );
 
+
         counts[resource.id] = likeError ? 0 : Number(likeCount) || 0;
       })
     );
+
 
     setLikeCounts(counts);
     setLoading(false);
   }
 
-  // A short-lived link to the private PDF. download: true makes the
-  // browser save the file instead of opening it.
+
   async function openFile(filePath: string | null, download: boolean) {
     if (!filePath) {
       setError(`This ${singular} does not have a file.`);
       return;
     }
 
+
     const { data, error: urlError } = await supabase.storage
       .from("resources")
-      .createSignedUrl(filePath, 3600, download ? { download: true } : {});
+      .createSignedUrl(
+        filePath,
+        3600,
+        download ? { download: true } : {}
+      );
+
 
     if (urlError || !data?.signedUrl) {
       console.error("Signed URL error:", urlError);
-      setError(`Unable to ${download ? "download" : "open"} this ${singular}.`);
+      setError(
+        `Unable to ${download ? "download" : "open"} this ${singular}.`
+      );
       return;
     }
 
+
     if (download) {
-      // A temporary <a> clicked in code starts the download.
       const link = document.createElement("a");
       link.href = data.signedUrl;
       link.download = "";
@@ -173,20 +190,22 @@ export default function ResourceList({
       link.click();
       document.body.removeChild(link);
     } else {
-      window.open(data.signedUrl, "_blank");
+      window.open(data.signedUrl, "_blank", "noopener,noreferrer");
     }
   }
 
-  // Like / unlike.
+
   async function handleFavourite(resourceId: number) {
     const {
       data: { user },
     } = await supabase.auth.getUser();
 
+
     if (!user) {
       setError(`Please log in to like a ${singular}.`);
       return;
     }
+
 
     if (favourites.includes(resourceId)) {
       const { error: deleteError } = await supabase
@@ -195,23 +214,33 @@ export default function ResourceList({
         .eq("user_id", user.id)
         .eq("resource_id", resourceId);
 
+
       if (deleteError) {
         console.error("Remove like error:", deleteError);
         setError("Unable to remove like.");
         return;
       }
 
-      setFavourites((current) => current.filter((id) => id !== resourceId));
+
+      setFavourites((current) =>
+        current.filter((id) => id !== resourceId)
+      );
+
+
       setLikeCounts((current) => ({
         ...current,
         [resourceId]: Math.max((current[resourceId] || 0) - 1, 0),
       }));
+
+
       return;
     }
+
 
     const { error: insertError } = await supabase
       .from("favourites")
       .insert({ user_id: user.id, resource_id: resourceId });
+
 
     if (insertError) {
       console.error("Add like error:", insertError);
@@ -219,30 +248,40 @@ export default function ResourceList({
       return;
     }
 
+
     setFavourites((current) => [...current, resourceId]);
+
+
     setLikeCounts((current) => ({
       ...current,
       [resourceId]: (current[resourceId] || 0) + 1,
     }));
   }
 
-  // Module dropdown options, taken from the loaded resources.
+
   const modules = [...new Set(resources.map((r) => r.module_name))];
 
-  const filtered = resources.filter((r) => {
+
+  const filtered = resources.filter((resource) => {
     const yearMatch =
       selectedYear === "All Years" ||
-      r.year.toString() === selectedYear.replace("Year ", "");
+      resource.year?.toString() === selectedYear.replace("Year ", "");
+
 
     const semesterMatch =
       selectedSemester === "All Semesters" ||
-      r.semester.toString() === selectedSemester.replace("Semester ", "");
+      resource.semester?.toString() ===
+        selectedSemester.replace("Semester ", "");
+
 
     const moduleMatch =
-      selectedModule === "All Modules" || r.module_name === selectedModule;
+      selectedModule === "All Modules" ||
+      resource.module_name === selectedModule;
+
 
     return yearMatch && semesterMatch && moduleMatch;
   });
+
 
   function clearFilters() {
     setSelectedYear("All Years");
@@ -250,66 +289,100 @@ export default function ResourceList({
     setSelectedModule("All Modules");
   }
 
+
   return (
-    <main className="min-h-full bg-gray-200 text-gray-900">
-      <section className="min-w-0 flex-1 px-6 py-8 md:px-10 lg:px-12">
-        {/* Back to the programme page */}
+    <main className="min-h-full bg-[#FCFBF8] text-[#24344D]">
+      <section className="min-w-0 flex-1 px-5 py-7 md:px-10 md:py-9 lg:px-12">
+        {/* Back navigation */}
         <Link
           href={`/programmes/${encodeURIComponent(programmeSlug)}`}
-          className="mb-8 inline-flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-gray-900"
+          className="mb-7 inline-flex items-center gap-2 rounded-xl border border-[#E7E5DF] bg-white px-4 py-2.5 text-sm font-medium text-[#294C78] shadow-sm transition hover:border-[#C8D5E7] hover:bg-[#E7EEF8] focus:outline-none focus:ring-2 focus:ring-[#294C78]/30"
         >
-          ← Back
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={1.8}
+            className="h-4 w-4"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M15.75 19.5 8.25 12l7.5-7.5"
+            />
+          </svg>
+          Back to programme
         </Link>
 
-        {/* Header */}
-        <div className="mb-10">
-          <p className="text-sm font-medium text-blue-600">{programme}</p>
+
+        {/* Page heading */}
+        <div className="mb-8">
+          <p className="text-sm font-semibold text-[#456FAD]">
+            {programme || "Loading programme…"}
+          </p>
+
 
           <div className="mt-2 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
             <div>
-              <h1 className="text-3xl font-semibold tracking-tight text-gray-900 md:text-4xl">
+              <h1 className="text-3xl font-bold tracking-tight text-[#24344D] md:text-4xl">
                 {heading}
               </h1>
 
-              <p className="mt-2 text-sm text-gray-500">{description}</p>
+
+              <p className="mt-2 text-sm leading-6 text-slate-500">
+                {description}
+              </p>
             </div>
 
+
             {!loading && (
-              <div className="text-sm font-medium text-gray-500">
-                {filtered.length} {filtered.length === 1 ? singular : plural}
-              </div>
+              <span className="inline-flex w-fit items-center rounded-full border border-[#E7E5DF] bg-white px-3 py-1.5 text-sm font-medium text-[#294C78]">
+                {filtered.length}{" "}
+                {filtered.length === 1 ? singular : plural}
+              </span>
             )}
           </div>
         </div>
 
-        {/* Filters */}
-        <FilterBar
-          year={selectedYear}
-          onYearChange={setSelectedYear}
-          semester={selectedSemester}
-          onSemesterChange={setSelectedSemester}
-          modules={modules}
-          module={selectedModule}
-          onModuleChange={setSelectedModule}
-          onClear={clearFilters}
-        />
 
-        {/* Error */}
+        {/* Filters */}
+        <div className="mb-6">
+          <FilterBar
+            year={selectedYear}
+            onYearChange={setSelectedYear}
+            semester={selectedSemester}
+            onSemesterChange={setSelectedSemester}
+            modules={modules}
+            module={selectedModule}
+            onModuleChange={setSelectedModule}
+            onClear={clearFilters}
+          />
+        </div>
+
+
+        {/* Error message */}
         {error && (
-          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
+          <div
+            role="alert"
+            className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700"
+          >
             {error}
           </div>
         )}
 
-        {/* Loading / empty / cards */}
+
+        {/* Loading, empty state, or resources */}
         {loading ? (
-          <div className="rounded-2xl border border-gray-200 bg-white p-10 text-center">
-            <p className="text-sm text-gray-500">Loading {plural}...</p>
+          <div className="rounded-2xl border border-[#E7E5DF] bg-white p-10 text-center shadow-sm">
+            <div className="mx-auto mb-3 h-6 w-6 animate-spin rounded-full border-2 border-[#D9E3F2] border-t-[#294C78]" />
+            <p className="text-sm text-slate-500">
+              Loading {plural}…
+            </p>
           </div>
         ) : filtered.length === 0 ? (
-          <div className="rounded-2xl border border-gray-200 bg-white p-12 text-center">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-gray-100 text-gray-400">
-              {/* Document icon */}
+          <div className="rounded-2xl border border-[#E7E5DF] bg-white px-6 py-14 text-center shadow-sm">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#E7EEF8] text-[#294C78]">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 fill="none"
@@ -326,72 +399,109 @@ export default function ResourceList({
               </svg>
             </div>
 
-            <h2 className="mt-5 text-lg font-semibold text-gray-900">
+
+            <h2 className="mt-5 text-lg font-semibold text-[#24344D]">
               No {plural} found
             </h2>
 
-            <p className="mt-2 text-sm text-gray-500">
-              Try changing your filters or check back later.
+
+            <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500">
+              There are no matching {plural} for these filters yet. Try
+              changing your selections or check back later.
             </p>
 
+
             <button
+              type="button"
               onClick={clearFilters}
-              className="mt-6 rounded-lg bg-gray-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-gray-700"
+              className="mt-6 rounded-xl bg-[#294C78] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#203B60] focus:outline-none focus:ring-2 focus:ring-[#294C78]/30 focus:ring-offset-2"
             >
-              Clear Filters
+              Clear filters
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {filtered.map((resource) => {
               const isFavourite = favourites.includes(resource.id);
               const likes = likeCounts[resource.id] || 0;
 
+
               return (
-                <div
+                <article
                   key={resource.id}
-                  className="flex h-[210px] flex-col rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
+                  className="group flex min-h-[215px] flex-col rounded-2xl border border-[#E7E5DF] bg-white p-5 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-[#C8D5E7] hover:shadow-md"
                 >
-                  {/* Name (title or topic) */}
-                  <h3 className="text-sm font-semibold text-gray-900">
+                  <div className="mb-4 flex items-start justify-between gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#E7EEF8] text-[#294C78]">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        strokeWidth={1.6}
+                        stroke="currentColor"
+                        className="h-5 w-5"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
+                        />
+                      </svg>
+                    </div>
+
+
+                    <span className="rounded-full bg-[#F5F3EE] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                      Year {resource.year}
+                    </span>
+                  </div>
+
+
+                  <h3 className="line-clamp-2 text-sm font-semibold leading-5 text-[#24344D]">
                     {resource.name}
                   </h3>
 
-                  {/* Module */}
-                  <p className="mt-2 text-xs leading-5 text-gray-500">
+
+                  <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-500">
                     {resource.module_name}
                   </p>
 
-                  {/* Year / Semester */}
-                  <div className="mt-3 flex items-center justify-between text-[10px] text-gray-400">
-                    <span>Year {resource.year}</span>
-                    <span>Semester {resource.semester}</span>
+
+                  <div className="mt-3 text-xs text-slate-400">
+                    Semester {resource.semester}
                   </div>
 
-                  {/* Buttons */}
-                  <div className="mt-auto flex items-center gap-2 border-t pt-3">
+
+                  <div className="mt-auto flex items-center gap-2 border-t border-[#F0EEE8] pt-4">
                     <button
+                      type="button"
                       onClick={() => openFile(resource.file_path, false)}
-                      className="flex-1 rounded-md bg-blue-600 px-2 py-2 text-xs font-medium text-white hover:bg-blue-700"
+                      className="flex-1 rounded-lg bg-[#294C78] px-2 py-2.5 text-xs font-semibold text-white transition hover:bg-[#203B60] focus:outline-none focus:ring-2 focus:ring-[#294C78]/30"
                     >
                       View
                     </button>
 
+
                     <button
+                      type="button"
                       onClick={() => openFile(resource.file_path, true)}
-                      className="flex-1 rounded-md border border-gray-200 px-2 py-2 text-xs font-medium text-gray-600 hover:bg-gray-50"
+                      className="flex-1 rounded-lg border border-[#D9DEE7] bg-white px-2 py-2.5 text-xs font-semibold text-[#294C78] transition hover:bg-[#F0F4FA] focus:outline-none focus:ring-2 focus:ring-[#294C78]/30"
                     >
                       Download
                     </button>
 
-                    {/* Like: filled heart when liked, outline when not */}
+
                     <button
+                      type="button"
                       onClick={() => handleFavourite(resource.id)}
                       title={isFavourite ? "Unlike" : "Like"}
-                      className={`flex h-9 w-14 items-center justify-center gap-1 rounded-md border transition ${
+                      aria-label={
+                        isFavourite ? "Unlike resource" : "Like resource"
+                      }
+                      aria-pressed={isFavourite}
+                      className={`flex h-9 min-w-11 items-center justify-center gap-1 rounded-lg border px-2 transition focus:outline-none focus:ring-2 focus:ring-red-300 ${
                         isFavourite
                           ? "border-red-200 bg-red-50 text-red-500"
-                          : "border-gray-200 text-gray-500 hover:bg-red-50 hover:text-red-500"
+                          : "border-[#E7E5DF] bg-white text-slate-500 hover:border-red-200 hover:bg-red-50 hover:text-red-500"
                       }`}
                     >
                       <svg
@@ -399,7 +509,7 @@ export default function ResourceList({
                         viewBox="0 0 24 24"
                         fill={isFavourite ? "currentColor" : "none"}
                         stroke="currentColor"
-                        strokeWidth={isFavourite ? 0 : 2}
+                        strokeWidth={isFavourite ? 0 : 1.8}
                         className="h-4 w-4"
                       >
                         <path
@@ -409,10 +519,11 @@ export default function ResourceList({
                         />
                       </svg>
 
+
                       <span className="text-xs leading-none">{likes}</span>
                     </button>
                   </div>
-                </div>
+                </article>
               );
             })}
           </div>
@@ -421,3 +532,6 @@ export default function ResourceList({
     </main>
   );
 }
+
+
+

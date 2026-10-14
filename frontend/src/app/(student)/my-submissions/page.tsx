@@ -1,11 +1,13 @@
 "use client";
 
+
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { rejectionReasonLabel } from "@/lib/rejectionReasons";
 import { resourceTypeLabel } from "@/lib/resourceTypes";
+
 
 // One row from resource_submissions, plus the programme name joined in.
 type Submission = {
@@ -20,7 +22,9 @@ type Submission = {
   programmes: { name: string } | null;
 };
 
+
 type StatusFilter = "all" | "pending" | "approved" | "rejected";
+
 
 // Colours and wording for each status, kept in one place.
 const STATUS_STYLES = {
@@ -28,6 +32,7 @@ const STATUS_STYLES = {
   approved: { label: "Approved", className: "bg-green-100 text-green-800" },
   rejected: { label: "Rejected", className: "bg-red-100 text-red-700" },
 };
+
 
 // "2026-10-07T16:20:00Z" -> "7 Oct 2026"
 function formatDate(value: string) {
@@ -38,31 +43,38 @@ function formatDate(value: string) {
   });
 }
 
+
 export default function MySubmissionsPage() {
   const router = useRouter();
+
 
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [filter, setFilter] = useState<StatusFilter>("all");
 
+
   useEffect(() => {
     loadSubmissions();
   }, []);
 
+
   async function loadSubmissions() {
     setLoading(true);
     setError("");
+
 
     // Not logged in -> send to login (same guard as /home).
     const {
       data: { user },
     } = await supabase.auth.getUser();
 
+
     if (!user) {
       router.replace("/login");
       return;
     }
+
 
     // programmes(name) follows the programme_id foreign key and
     // brings back the programme's name in the same request.
@@ -78,6 +90,7 @@ export default function MySubmissionsPage() {
       .eq("submitted_by", user.id)
       .order("created_at", { ascending: false }); // newest first
 
+
     if (error) {
       console.error("Load submissions error:", error);
       setError("Could not load your submissions.");
@@ -85,8 +98,10 @@ export default function MySubmissionsPage() {
       setSubmissions((data ?? []) as unknown as Submission[]);
     }
 
+
     setLoading(false);
   }
+
 
   // Open the student's own PDF. Allowed by the storage policy from
   // migration 002 (files in submissions/<their-id>/).
@@ -95,14 +110,17 @@ export default function MySubmissionsPage() {
       .from("resources")
       .createSignedUrl(filePath, 60); // link valid for 60 seconds
 
+
     if (error || !data) {
       console.error("View file error:", error);
       alert("Could not open this file.");
       return;
     }
 
+
     window.open(data.signedUrl, "_blank");
   }
+
 
   // How many submissions have each status (for the filter buttons).
   const counts = {
@@ -112,13 +130,18 @@ export default function MySubmissionsPage() {
     rejected: submissions.filter((s) => s.status === "rejected").length,
   };
 
+
   const visible =
     filter === "all"
       ? submissions
       : submissions.filter((s) => s.status === filter);
 
+
   return (
-    <main className="min-h-full bg-gray-200 px-6 py-8 text-gray-900 md:px-10 lg:px-12">
+   
+<main className="min-h-full bg-[#FCFBF8] px-6 py-8 text-gray-900 md:px-10 lg:px-12">
+
+
       {/* Header */}
       <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
@@ -130,7 +153,9 @@ export default function MySubmissionsPage() {
           </p>
         </div>
 
+
       </div>
+
 
       {/* Status filter buttons */}
       <div className="mb-6 flex flex-wrap gap-2">
@@ -154,11 +179,13 @@ export default function MySubmissionsPage() {
         )}
       </div>
 
+
       {error && (
         <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
           {error}
         </div>
       )}
+
 
       {loading ? (
         <div className="rounded-2xl bg-white p-10 text-center text-sm text-gray-500">
@@ -190,6 +217,7 @@ export default function MySubmissionsPage() {
           {visible.map((submission) => {
             const status = STATUS_STYLES[submission.status];
 
+
             return (
               <div
                 key={submission.id}
@@ -205,6 +233,7 @@ export default function MySubmissionsPage() {
                     </span>
                   </div>
 
+
                   <p className="mt-1 text-sm text-gray-500">
                     {resourceTypeLabel(submission.type)}
                     {" · "}
@@ -215,6 +244,7 @@ export default function MySubmissionsPage() {
                       ` · Reviewed ${formatDate(submission.reviewed_at)}`}
                   </p>
 
+
                   {/* Only rejected submissions have a reason */}
                   {submission.status === "rejected" && (
                     <p className="mt-2 text-sm text-red-700">
@@ -224,6 +254,7 @@ export default function MySubmissionsPage() {
                     </p>
                   )}
                 </div>
+
 
                 <button
                   onClick={() => viewFile(submission.file_path)}
@@ -239,3 +270,4 @@ export default function MySubmissionsPage() {
     </main>
   );
 }
+
