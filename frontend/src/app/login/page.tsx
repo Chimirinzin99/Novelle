@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from "react";
@@ -20,10 +19,8 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
 
-    // Remove accidental spaces and make email lowercase
     const cleanEmail = email.trim().toLowerCase();
 
-    // Check RUB email
     if (!cleanEmail.endsWith("@rub.edu.bt")) {
       setError(
         "Please use your RUB email address, for example: yourname@rub.edu.bt"
@@ -32,7 +29,7 @@ export default function LoginPage() {
       return;
     }
 
-    // Login with Supabase
+    // Login
     const { data, error } = await supabase.auth.signInWithPassword({
       email: cleanEmail,
       password,
@@ -44,14 +41,25 @@ export default function LoginPage() {
       return;
     }
 
-    // Make sure we have the logged-in user
+    // --------------------------
+    // DEBUG (Temporary)
+    // --------------------------
+    console.log("ACCESS TOKEN:");
+    console.log(data.session?.access_token);
+
+    console.log("SESSION:");
+    console.log(data.session);
+
+    console.log("USER:");
+    console.log(data.user);
+    // --------------------------
+
     if (!data.user) {
       setError("Login failed. Please try again.");
       setLoading(false);
       return;
     }
 
-    // Get the user's role from the profiles table
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
       .select("role")
@@ -72,21 +80,18 @@ export default function LoginPage() {
     }
 
     // Redirect according to role
-    if (
-      profile.role === "programme_admin" ||
-      profile.role === "super_admin"
-    ) {
+    if (profile.role === "super_admin") {
+      router.push("/super-admin");
+    } else if (profile.role === "programme_admin") {
       router.push("/admin");
     } else {
-      router.push("/home");
+      router.push("/");
     }
   };
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-gray-50 px-6">
       <div className="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
-
-        {/* Header */}
         <div className="mb-8 text-center">
           <h1 className="text-3xl font-bold text-gray-900">
             Welcome to Novelle
@@ -97,10 +102,7 @@ export default function LoginPage() {
           </p>
         </div>
 
-        {/* Login Form */}
         <form onSubmit={handleLogin} className="space-y-5">
-
-          {/* Email */}
           <div>
             <label className="mb-2 block text-sm font-medium text-gray-700">
               RUB Email
@@ -116,7 +118,6 @@ export default function LoginPage() {
             />
           </div>
 
-          {/* Password */}
           <div>
             <label className="mb-2 block text-sm font-medium text-gray-700">
               Password
@@ -132,14 +133,12 @@ export default function LoginPage() {
             />
           </div>
 
-          {/* Error */}
           {error && (
             <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">
               {error}
             </div>
           )}
 
-          {/* Login Button */}
           <button
             type="submit"
             disabled={loading}
@@ -147,13 +146,10 @@ export default function LoginPage() {
           >
             {loading ? "Logging in..." : "Login"}
           </button>
-
         </form>
 
-        {/* Register */}
         <p className="mt-6 text-center text-sm text-gray-500">
           Don't have an account?{" "}
-
           <a
             href="/register"
             className="font-medium text-black hover:underline"
@@ -161,9 +157,7 @@ export default function LoginPage() {
             Register
           </a>
         </p>
-
       </div>
     </main>
   );
 }
-

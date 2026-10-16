@@ -1,3 +1,4 @@
+
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
@@ -11,6 +12,7 @@ import { requireRole } from "./middleware/role";
 import modulesRoutes from "./routes/modules.routes";
 import resourcesRoutes from "./routes/resources.routes";
 import submissionsRoutes from "./routes/submissions.routes";
+import superAdminRoutes from "./routes/super-admin.routes";
 
 const app = express();
 
@@ -26,7 +28,10 @@ app.use("/api/resources", resourcesRoutes);
 // Submissions API (admin review)
 app.use("/api/submissions", submissionsRoutes);
 
-const PORT = 5000;
+// Super Admin API
+app.use("/api/super-admin", superAdminRoutes);
+
+const PORT = 5001;
 
 // ------------------------------------
 // Basic backend test
@@ -156,3 +161,4 @@ app.listen(PORT, () => {
     `Novelle backend running on http://localhost:${PORT}`
   );
 });
+
