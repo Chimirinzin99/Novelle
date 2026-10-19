@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { BACKEND_URL } from "@/lib/config";
 import { REJECTION_REASONS } from "@/lib/rejectionReasons";
@@ -255,10 +256,17 @@ export default function AdminSubmissionsPage() {
 
   if (loading) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-gray-50">
-        <p className="text-base font-medium text-gray-700">
-          Loading submissions...
-        </p>
+      <main className="min-h-screen bg-gray-50 px-5 py-8 text-gray-900 md:px-8">
+        <div className="mx-auto max-w-6xl">
+          <button
+            type="button"
+            onClick={() => router.push("/admin")}
+            className="mb-8 inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-100"
+          >
+            <ArrowLeft className="h-4 w-4" /> Back to Dashboard
+          </button>
+          <p className="text-base font-medium text-gray-700">Loading submissions...</p>
+        </div>
       </main>
     );
   }
@@ -269,10 +277,11 @@ export default function AdminSubmissionsPage() {
         {/* Header */}
         <div className="mb-8">
           <button
+            type="button"
             onClick={() => router.push("/admin")}
-            className="mb-3 text-sm font-medium text-blue-600 hover:underline"
+            className="mb-5 inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-100"
           >
-            ← Back to Admin Dashboard
+            <ArrowLeft className="h-4 w-4" /> Back to Dashboard
           </button>
 
           <p className="text-sm font-semibold text-blue-600">

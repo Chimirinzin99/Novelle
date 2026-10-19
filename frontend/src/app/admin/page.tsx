@@ -8,11 +8,11 @@ import {
   FileText,
   FileQuestion,
   ClipboardList,
-  LogOut,
-  Layers,
-  Users,
+  Bell,
+  ArrowLeft,
   Video,
   Database,
+  Users,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { BACKEND_URL } from "@/lib/config";
@@ -46,6 +46,7 @@ export default function AdminPage() {
   const [programmeName, setProgrammeName] = useState("");
 
   const [pendingCount, setPendingCount] = useState(0);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notesCount, setNotesCount] = useState(0);
   const [papersCount, setPapersCount] = useState(0);
   const [assignmentsCount, setAssignmentsCount] = useState(0);
@@ -407,11 +408,6 @@ supabase
     loadAdmin();
   }, [router]);
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    router.push("/login");
-  };
-
   if (loading) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-slate-50">
@@ -442,125 +438,86 @@ supabase
   const isSuperAdmin = isSuperAdminRole(profile.role);
 
   return (
-    <main className="flex min-h-screen bg-slate-50 text-gray-900">
-      {/* Sidebar */}
-      <aside className="hidden w-64 shrink-0 border-r border-gray-200 bg-white md:flex md:flex-col">
-        <div className="border-b border-gray-200 px-6 py-5">
-          <button
-            onClick={() => router.push("/")}
-            className="text-2xl font-bold tracking-tight text-gray-900"
-          >
-            Novelle
-          </button>
-
-          <p className="mt-1 text-xs text-gray-500">
-            {isSuperAdmin ? "Super Admin" : "Programme Admin"}
-          </p>
-        </div>
-
-        <nav className="flex-1 px-3 py-5">
-          <p className="mb-3 px-3 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
-            Management
-          </p>
-
-          <button
-            onClick={() => router.push("/admin/submissions")}
-            className="mb-1 flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-sm font-medium text-gray-700 transition hover:bg-gray-100 hover:text-gray-900"
-          >
-            <ClipboardCheck className="h-5 w-5" />
-            <span>Pending Submissions</span>
-          </button>
-
-          <button
-            onClick={() => router.push("/admin/resources")}
-            className="mb-1 flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-sm font-medium text-gray-700 transition hover:bg-gray-100 hover:text-gray-900"
-          >
-            <FileText className="h-5 w-5" />
-            <span>Manage Resources</span>
-          </button>
-
-          <button
-            onClick={() => router.push("/admin/modules")}
-            className="mb-1 flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-sm font-medium text-gray-700 transition hover:bg-gray-100 hover:text-gray-900"
-          >
-            <Layers className="h-5 w-5" />
-            <span>{isSuperAdmin ? "Manage Modules" : "Modules"}</span>
-          </button>
-
-          {isSuperAdmin && (
-            <button
-              onClick={() => router.push("/admin/users")}
-              className="mb-1 flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-sm font-medium text-gray-700 transition hover:bg-gray-100 hover:text-gray-900"
-            >
-              <Users className="h-5 w-5" />
-              <span>Manage Users</span>
-            </button>
-          )}
-        </nav>
-
-        <div className="border-t border-gray-200 p-4">
-          <div className="mb-3 px-2">
-            <p className="truncate text-sm font-medium text-gray-900">
-              {profile.full_name || "Admin"}
-            </p>
-            <p className="truncate text-xs text-gray-500">
-              {profile.email}
-            </p>
-          </div>
-
-          <button
-            onClick={handleLogout}
-            className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-gray-900"
-          >
-            <LogOut className="h-5 w-5" />
-            <span>Logout</span>
-          </button>
-        </div>
-      </aside>
-
-      {/* Main Content */}
-      <section className="min-w-0 flex-1 overflow-y-auto">
-        <div className="w-full px-6 py-8 md:px-8 lg:px-10">
-          {/* Mobile top */}
-          <div className="mb-8 flex items-center justify-between md:hidden">
+    <main className="min-h-full bg-slate-50 text-gray-900">
+      <div className="w-full px-5 py-6 md:px-8 md:py-8 lg:px-10">
+          {/* Welcome */}
+          <div className="mb-8 flex items-start justify-between gap-4">
             <div>
-              <button
-                onClick={() => router.push("/")}
-                className="text-2xl font-bold text-gray-900"
-              >
-                Novelle
-              </button>
-
-              <p className="mt-1 text-xs text-gray-500">
+              <p className="text-sm font-medium text-blue-600">
                 {isSuperAdmin ? "Super Admin" : "Programme Admin"}
+              </p>
+
+              <h1 className="mt-1 text-3xl font-bold tracking-tight text-gray-900">
+                Welcome back
+                {profile.full_name ? `, ${profile.full_name}` : ""}
+              </h1>
+
+              <p className="mt-2 text-sm text-gray-500">
+                {isSuperAdmin
+                  ? "Overview of Novelle resources across CST."
+                  : `Overview of ${programmeName} resources.`}
               </p>
             </div>
 
-            <button
-              onClick={handleLogout}
-              className="rounded-lg border border-gray-200 bg-white p-2.5 text-gray-600"
-              title="Logout"
-            >
-              <LogOut className="h-5 w-5" />
-            </button>
-          </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <button
+                type="button"
+                onClick={() => router.push("/")}
+                aria-label="Back to Novelle site"
+                className="inline-flex h-11 items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 text-sm font-medium text-gray-600 shadow-sm transition hover:bg-gray-50 hover:text-gray-900"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                <span className="hidden sm:inline">Back to site</span>
+              </button>
+              <div className="relative">
+              <button
+                type="button"
+                onClick={() => setNotificationsOpen((open) => !open)}
+                aria-label={`Notifications${pendingCount ? `, ${pendingCount} pending submissions` : ""}`}
+                aria-expanded={notificationsOpen}
+                className="relative flex h-11 w-11 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-600 shadow-sm transition hover:bg-gray-50 hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              >
+                <Bell className="h-5 w-5" />
+                {pendingCount > 0 && (
+                  <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold text-white ring-2 ring-slate-50">
+                    {pendingCount > 99 ? "99+" : pendingCount}
+                  </span>
+                )}
+              </button>
 
-          {/* Welcome */}
-          <div className="mb-8">
-            <p className="text-sm font-medium text-blue-600">
-              {isSuperAdmin ? "Super Admin" : "Programme Admin"}
-            </p>
-
-            <h1 className="mt-1 text-3xl font-bold tracking-tight text-gray-900">
-              Welcome back
-              {profile.full_name ? `, ${profile.full_name}` : ""}
-            </h1>
-
-            <p className="mt-2 text-sm text-gray-500">
-              {isSuperAdmin
-                ? "Overview of Novelle resources across CST."
-                : `Overview of ${programmeName} resources.`}
-            </p>
+              {notificationsOpen && (
+                <div className="absolute right-0 top-14 z-30 w-[min(21rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-gray-200 bg-white p-4 shadow-xl">
+                  <div className="flex items-center justify-between gap-3">
+                    <h2 className="font-semibold text-gray-900">Notifications</h2>
+                    {pendingCount > 0 && (
+                      <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
+                        {pendingCount} pending
+                      </span>
+                    )}
+                  </div>
+                  {pendingCount > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => router.push("/admin/submissions")}
+                      className="mt-3 w-full rounded-xl bg-slate-50 p-3 text-left transition hover:bg-blue-50"
+                    >
+                      <p className="text-sm font-semibold text-gray-900">
+                        Student submissions need review
+                      </p>
+                      <p className="mt-1 text-xs leading-5 text-gray-500">
+                        {pendingCount} {pendingCount === 1 ? "resource is" : "resources are"} waiting for approval.
+                      </p>
+                      <span className="mt-2 inline-block text-xs font-semibold text-blue-700">Review submissions</span>
+                    </button>
+                  ) : (
+                    <p className="mt-3 rounded-xl bg-slate-50 p-3 text-sm text-gray-500">
+                      You’re all caught up. No pending submissions to review.
+                    </p>
+                  )}
+                </div>
+              )}
+              </div>
+            </div>
           </div>
 
           {/* Programme */}
@@ -580,7 +537,7 @@ supabase
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
             {/* Total Resources */}
             <button
-              onClick={() => router.push("/admin/resources")}
+              onClick={() => router.push("/admin/all-resources")}
               className="group rounded-2xl border border-gray-200 bg-white p-6 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-md"
             >
               <div className="flex items-start justify-between">
@@ -626,7 +583,7 @@ supabase
 
             {/* Total Notes */}
             <button
-              onClick={() => router.push("/admin/resources")}
+              onClick={() => router.push("/admin/all-resources?type=note")}
               className="group rounded-2xl border border-gray-200 bg-white p-6 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-md"
             >
               <div className="flex items-start justify-between">
@@ -650,7 +607,7 @@ supabase
 
             {/* Total Question Papers */}
             <button
-              onClick={() => router.push("/admin/resources")}
+              onClick={() => router.push("/admin/all-resources?type=question_paper")}
               className="group rounded-2xl border border-gray-200 bg-white p-6 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-md"
             >
               <div className="flex items-start justify-between">
@@ -674,7 +631,7 @@ supabase
 
             {/* Total Assignments */}
             <button
-              onClick={() => router.push("/admin/resources")}
+              onClick={() => router.push("/admin/all-resources?type=assignment")}
               className="group rounded-2xl border border-gray-200 bg-white p-6 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-md"
             >
               <div className="flex items-start justify-between">
@@ -697,7 +654,11 @@ supabase
             </button>
 
             {/* Total Videos */}
-            <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+            <button
+              type="button"
+              onClick={() => router.push("/admin/all-resources?type=video")}
+              className="group rounded-2xl border border-gray-200 bg-white p-6 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-md"
+            >
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-500">
@@ -715,7 +676,7 @@ supabase
                   <Video className="h-5 w-5" />
                 </div>
               </div>
-            </div>
+            </button>
           </div>
 
           {/* Super admin overview */}
@@ -831,7 +792,6 @@ supabase
             </>
           )}
         </div>
-      </section>
     </main>
   );
 }

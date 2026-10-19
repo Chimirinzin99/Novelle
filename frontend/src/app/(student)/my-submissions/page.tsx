@@ -44,9 +44,21 @@ export default function MySubmissionsPage() {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [filter, setFilter] = useState<StatusFilter>("all");
 
   useEffect(() => {
+    const savedNotice = sessionStorage.getItem("novelle:upload-notice");
+
+    if (savedNotice) {
+      setNotice(savedNotice);
+      sessionStorage.removeItem("novelle:upload-notice");
+
+      const timeout = window.setTimeout(() => setNotice(""), 8000);
+      loadSubmissions();
+      return () => window.clearTimeout(timeout);
+    }
+
     loadSubmissions();
   }, []);
 
@@ -118,14 +130,72 @@ export default function MySubmissionsPage() {
       : submissions.filter((s) => s.status === filter);
 
   return (
-    <main className="min-h-full bg-gray-200 px-6 py-8 text-gray-900 md:px-10 lg:px-12">
+    
+<main className="min-h-full bg-[#FCFBF8] px-5 py-7 text-[#24344D] md:px-10 md:py-9 lg:px-12">
+
+      {notice && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed right-5 top-5 z-50 flex max-w-[calc(100vw-2.5rem)] items-start gap-3 rounded-xl border border-green-200 bg-white px-4 py-3 text-sm text-green-800 shadow-lg sm:max-w-md"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={1.8}
+            className="mt-0.5 h-5 w-5 shrink-0 text-green-600"
+            aria-hidden="true"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="m5 12.5 4.5 4L19 7"
+            />
+            <circle cx="12" cy="12" r="9" />
+          </svg>
+          <p className="flex-1 leading-5">{notice}</p>
+          <button
+            type="button"
+            onClick={() => setNotice("")}
+            aria-label="Dismiss notification"
+            className="rounded-md px-1 text-lg leading-5 text-slate-400 transition hover:bg-green-50 hover:text-slate-700 focus:outline-none focus:ring-2 focus:ring-green-300"
+          >
+            ×
+          </button>
+        </div>
+      )}
+
+      <Link
+        href="/profile"
+        className="mb-7 inline-flex items-center gap-2 rounded-xl border border-[#E7E5DF] bg-white px-4 py-2.5 text-sm font-medium text-[#294C78] shadow-sm transition hover:border-[#C8D5E7] hover:bg-[#E7EEF8] focus:outline-none focus:ring-2 focus:ring-[#294C78]/30"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.8}
+          className="h-4 w-4"
+          aria-hidden="true"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M15.75 19.5 8.25 12l7.5-7.5"
+          />
+        </svg>
+        Back to profile
+      </Link>
+
       {/* Header */}
       <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">
+          <h1 className="text-3xl font-bold tracking-tight text-[#24344D] md:text-4xl">
             My Submissions
           </h1>
-          <p className="mt-2 text-sm text-gray-500">
+          <p className="mt-2 text-sm leading-6 text-slate-500">
             Everything you have uploaded and where it is in the review.
           </p>
         </div>
@@ -138,11 +208,13 @@ export default function MySubmissionsPage() {
           (option) => (
             <button
               key={option}
+              type="button"
               onClick={() => setFilter(option)}
+              aria-pressed={filter === option}
               className={
                 filter === option
-                  ? "rounded-full bg-gray-900 px-4 py-1.5 text-sm font-medium text-white"
-                  : "rounded-full bg-white px-4 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-50"
+                  ? "rounded-full bg-[#294C78] px-4 py-2 text-sm font-semibold text-white shadow-sm"
+                  : "rounded-full border border-[#E7E5DF] bg-white px-4 py-2 text-sm font-medium text-slate-600 transition hover:border-[#C8D5E7] hover:bg-[#F0F4FA]"
               }
             >
               {option === "all"
@@ -155,30 +227,30 @@ export default function MySubmissionsPage() {
       </div>
 
       {error && (
-        <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
+        <div role="alert" className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
           {error}
         </div>
       )}
 
       {loading ? (
-        <div className="rounded-2xl bg-white p-10 text-center text-sm text-gray-500">
+        <div className="rounded-2xl border border-[#E7E5DF] bg-white p-10 text-center text-sm text-slate-500 shadow-sm">
           Loading your submissions...
         </div>
       ) : visible.length === 0 ? (
         // Empty state
-        <div className="rounded-2xl bg-white p-12 text-center">
-          <h3 className="text-lg font-semibold">
+        <div className="rounded-2xl border border-[#E7E5DF] bg-white p-12 text-center shadow-sm">
+          <h3 className="text-lg font-semibold text-[#24344D]">
             {submissions.length === 0
               ? "You haven't uploaded anything yet"
               : "Nothing with this status"}
           </h3>
-          <p className="mt-2 text-sm text-gray-500">
+          <p className="mt-2 text-sm text-slate-500">
             Uploaded notes appear here while they are reviewed.
           </p>
           {submissions.length === 0 && (
             <Link
               href="/submit-note"
-              className="mt-6 inline-block rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700"
+              className="mt-6 inline-block rounded-lg bg-[#294C78] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#203B60] focus:outline-none focus:ring-2 focus:ring-[#294C78]/30 focus:ring-offset-2"
             >
               Upload your first note
             </Link>
@@ -193,11 +265,11 @@ export default function MySubmissionsPage() {
             return (
               <div
                 key={submission.id}
-                className="flex flex-col gap-4 rounded-2xl bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between"
+                className="flex flex-col gap-4 rounded-2xl border border-[#E7E5DF] bg-white p-5 shadow-sm transition hover:border-[#C8D5E7] sm:flex-row sm:items-center sm:justify-between"
               >
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="font-semibold">{submission.title}</h3>
+                    <h3 className="font-semibold text-[#24344D]">{submission.title}</h3>
                     <span
                       className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${status.className}`}
                     >
@@ -205,7 +277,7 @@ export default function MySubmissionsPage() {
                     </span>
                   </div>
 
-                  <p className="mt-1 text-sm text-gray-500">
+                  <p className="mt-1 text-sm leading-6 text-slate-500">
                     {resourceTypeLabel(submission.type)}
                     {" · "}
                     {submission.programmes?.name ?? "Unknown programme"}
@@ -227,7 +299,7 @@ export default function MySubmissionsPage() {
 
                 <button
                   onClick={() => viewFile(submission.file_path)}
-                  className="shrink-0 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  className="shrink-0 rounded-lg border border-[#D9DEE7] px-4 py-2 text-sm font-semibold text-[#294C78] transition hover:bg-[#F0F4FA] focus:outline-none focus:ring-2 focus:ring-[#294C78]/30"
                 >
                   View
                 </button>

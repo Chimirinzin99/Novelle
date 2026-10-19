@@ -9,9 +9,9 @@
 //   - Video is a type like any other, using a YouTube link instead of a PDF.
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
-  Search,
   UserCircle,
   LogOut,
   X,
@@ -72,6 +72,7 @@ type Profile = {
 };
 
 export default function ManageResourcesPage() {
+  const router = useRouter();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [programmeName, setProgrammeName] = useState("");
   const [resources, setResources] = useState<Resource[]>([]);
@@ -104,7 +105,6 @@ export default function ManageResourcesPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  const [search, setSearch] = useState("");
   const [profileOpen, setProfileOpen] = useState(false);
 
   // Edit window. `editing` is the resource being edited (null = closed);
@@ -186,7 +186,7 @@ export default function ManageResourcesPage() {
       }
 
       // Load the module list and the resources at the same time.
-      await Promise.all([loadModules(), loadResources()]);
+      await loadModules();
 
       setLoading(false);
     } catch (err) {
@@ -307,8 +307,8 @@ export default function ManageResourcesPage() {
         return;
       }
 
-      if (file.size > 10 * 1024 * 1024) {
-        setError("PDF must be smaller than 10 MB.");
+      if (file.size > 5 * 1024 * 1024) {
+        setError("PDF must be 5 MB or smaller.");
         return;
       }
     }
@@ -384,7 +384,6 @@ export default function ManageResourcesPage() {
         fileInput.value = "";
       }
 
-      await loadResources();
     } catch (err) {
       console.error(err);
       setError("Unable to connect to the backend.");
@@ -706,27 +705,6 @@ function ResourceCard({
       ? "No active modules for this year/semester"
       : "Select module";
 
-  const filteredResources = resources.filter((resource) => {
-    const searchText = search.toLowerCase().trim();
-
-    if (!searchText) {
-      return true;
-    }
-
-    return (
-      resource.topic.toLowerCase().includes(searchText) ||
-      resource.module_name
-        .toLowerCase()
-        .includes(searchText) ||
-      resourceTypeLabel(resource.type)
-        .toLowerCase()
-        .includes(searchText)
-    );
-  });
-
-  const filteredRecentResources =
-    filteredResources.slice(0, 6);
-
   if (loading) {
     return (
       <main className="min-h-screen bg-slate-50 p-8">
@@ -760,11 +738,11 @@ function ResourceCard({
         <div className="mx-auto flex h-16 max-w-[1500px] items-center gap-4 px-5 md:px-8">
 
           <button
-            onClick={() => window.history.back()}
+            onClick={() => router.push("/admin")}
             className="flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-2 text-xs font-medium text-gray-700 transition hover:border-gray-400 hover:bg-gray-50"
           >
             <ArrowLeft className="h-4 w-4" />
-            Back
+            Back to Dashboard
           </button>
 
           <div className="hidden h-6 w-px bg-gray-200 sm:block" />
@@ -784,30 +762,6 @@ function ResourceCard({
                   profile programme isn't shown here. */}
               {isSuperAdmin ? "All programmes" : programmeName || "Programme"}
             </span>
-          </div>
-
-          <div className="relative ml-auto hidden w-full max-w-sm md:block">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-
-            <input
-              type="text"
-              value={search}
-              onChange={(e) =>
-                setSearch(e.target.value)
-              }
-              placeholder="Search resources..."
-              className="w-full rounded-lg border border-gray-200 bg-gray-50 py-2.5 pl-9 pr-9 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-gray-400 focus:bg-white focus:ring-2 focus:ring-gray-100"
-            />
-
-            {search && (
-              <button
-                onClick={() => setSearch("")}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
-                title="Clear search"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            )}
           </div>
 
           <div className="relative">
@@ -865,33 +819,6 @@ function ResourceCard({
           </div>
         </div>
       </nav>
-
-      {/* ================= MOBILE SEARCH ================= */}
-
-      <div className="border-b border-gray-200 bg-white px-5 py-3 md:hidden">
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-
-          <input
-            type="text"
-            value={search}
-            onChange={(e) =>
-              setSearch(e.target.value)
-            }
-            placeholder="Search resources..."
-            className="w-full rounded-lg border border-gray-200 bg-gray-50 py-2.5 pl-9 pr-9 text-sm outline-none focus:border-gray-400 focus:bg-white"
-          />
-
-          {search && (
-            <button
-              onClick={() => setSearch("")}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-1 text-gray-400 hover:bg-gray-100"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
-          )}
-        </div>
-      </div>
 
       {/* ================= MAIN CONTENT ================= */}
 
@@ -1144,7 +1071,7 @@ function ResourceCard({
                     </p>
 
                     <p className="mt-1 text-[10px] text-gray-400">
-                      PDF only · Maximum size: 10 MB
+                      PDF only · Maximum size: 5 MB
                     </p>
 
                     <input
@@ -1185,91 +1112,18 @@ function ResourceCard({
             </form>
           </div>
 
-          {/* RECENTLY UPLOADED */}
-
-          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-
-            <div className="mb-5 flex items-center justify-between">
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900">
-                  Recently Uploaded
-                </h2>
-
-                <p className="mt-1 text-xs text-gray-500">
-                  {search
-                    ? `Search results for "${search}"`
-                    : "Your latest uploaded resources."}
-                </p>
-              </div>
-
-              <span className="rounded-full bg-gray-100 px-3 py-1 text-[11px] font-medium text-gray-500">
-                {filteredResources.length} items
-              </span>
-            </div>
-
-            {filteredRecentResources.length === 0 ? (
-              <div className="flex min-h-[250px] items-center justify-center rounded-xl border border-dashed border-gray-200 bg-gray-50">
-                <p className="text-xs text-gray-500">
-                  {search
-                    ? "No matching resources found."
-                    : "No resources uploaded yet."}
-                </p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
-                {filteredRecentResources.map(
-                  (resource) => (
-                    <ResourceCard
-                      key={resource.id}
-                      resource={resource}
-                    />
-                  )
-                )}
-              </div>
-            )}
+          <div className="flex min-h-64 flex-col items-center justify-center rounded-2xl border border-dashed border-gray-300 bg-white p-8 text-center">
+            <FileText className="h-8 w-8 text-gray-400" />
+            <h2 className="mt-4 text-base font-semibold text-gray-900">Your resource library is separate</h2>
+            <p className="mt-2 max-w-sm text-sm leading-6 text-gray-500">Browse, search, and remove published resources from the All Resources page.</p>
+            <button
+              type="button"
+              onClick={() => router.push("/admin/all-resources")}
+              className="mt-5 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
+            >
+              Browse all resources
+            </button>
           </div>
-        </div>
-
-        {/* ================= ALL RESOURCES ================= */}
-
-        <div className="mt-8">
-
-          <div className="mb-5 flex items-end justify-between">
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900">
-                All Uploaded Resources
-              </h2>
-
-              <p className="mt-1 text-sm text-gray-500">
-                Manage all your notes, question papers, assignments and videos.
-              </p>
-            </div>
-
-            <span className="rounded-full bg-white px-3 py-1 text-xs font-medium text-gray-500 shadow-sm">
-              {filteredResources.length} items
-            </span>
-          </div>
-
-          {filteredResources.length === 0 ? (
-            <div className="rounded-xl border border-gray-200 bg-white p-12 text-center shadow-sm">
-              <p className="text-sm text-gray-500">
-                {search
-                  ? "No matching resources found."
-                  : "No items uploaded yet."}
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
-              {filteredResources.map(
-                (resource) => (
-                  <ResourceCard
-                    key={resource.id}
-                    resource={resource}
-                  />
-                )
-              )}
-            </div>
-          )}
         </div>
 
       </div>

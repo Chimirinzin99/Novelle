@@ -3,9 +3,17 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { programmeHref } from "@/lib/programmes";
+import {
+  getNotifications,
+  markAllNotificationsRead,
+  markNotificationRead,
+  notificationsUpdatedEvent,
+  type AppNotification,
+} from "@/lib/notifications";
 
 const PROGRAMMES = [
   { name: "Civil Engineering", label: "Civil Engineering" },
@@ -34,6 +42,8 @@ type IconName =
   | "home"
   | "library"
   | "heart"
+  | "user"
+  | "bell"
   | "graduation"
   | "settings"
   | "logout"
@@ -90,6 +100,20 @@ function Icon({
         <path d="M20.8 4.8a5.5 5.5 0 0 0-7.8 0L12 5.9l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21l7.8-7.3 1.1-1.1a5.5 5.5 0 0 0-.1-7.8Z" />
       )}
 
+      {name === "user" && (
+        <>
+          <circle cx="12" cy="8" r="4" />
+          <path d="M4.5 21a7.5 7.5 0 0 1 15 0" />
+        </>
+      )}
+
+      {name === "bell" && (
+        <>
+          <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9Z" />
+          <path d="M10 21h4" />
+        </>
+      )}
+
       {name === "graduation" && (
         <>
           <path d="m2 9 10-5 10 5-10 5z" />
@@ -140,9 +164,19 @@ export default function Sidebar() {
   const router = useRouter();
   const pathname = usePathname();
   const [loggedIn, setLoggedIn] = useState(false);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
 
   useEffect(() => {
     let mounted = true;
+
+    const syncNotifications = () => {
+      if (mounted) setNotifications(getNotifications());
+    };
+
+    syncNotifications();
+    window.addEventListener(notificationsUpdatedEvent, syncNotifications);
+    window.addEventListener("storage", syncNotifications);
 
     const checkUser = async () => {
       const {
@@ -167,8 +201,18 @@ export default function Sidebar() {
     return () => {
       mounted = false;
       subscription.unsubscribe();
+      window.removeEventListener(notificationsUpdatedEvent, syncNotifications);
+      window.removeEventListener("storage", syncNotifications);
     };
   }, []);
+
+  const unreadCount = notifications.filter((notification) => !notification.read).length;
+
+  function openNotification(notification: AppNotification) {
+    markNotificationRead(notification.id);
+    setNotificationsOpen(false);
+    router.push(notification.href);
+  }
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -183,8 +227,15 @@ export default function Sidebar() {
         href="/home"
         className="mb-8 flex shrink-0 items-center gap-3 rounded-xl px-2 py-1"
       >
-        <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#294C78] text-[#F4E6C5] shadow-sm">
-          <Icon name="book" className="h-6 w-6" />
+        <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[#E7E5DF] bg-[#FFFCF6] shadow-sm">
+          <Image
+            src="/novelle-logo.jpeg"
+            alt="Novelle logo"
+            width={825}
+            height={509}
+            priority
+            className="h-7 w-11 object-contain"
+          />
         </span>
 
         <span>
@@ -218,27 +269,102 @@ export default function Sidebar() {
         </Link>
       </nav>
 
-      {/* My Library */}
+      {/* My Account */}
       <section className="mt-8 shrink-0">
-        <p className="mb-3 px-3 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
-          My Library
-        </p>
+        <div className="mb-3 flex items-center justify-between px-3">
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
+            My Account
+          </p>
+
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setNotificationsOpen((open) => !open)}
+              aria-label={`Notifications${unreadCount ? `, ${unreadCount} unread` : ""}`}
+              aria-expanded={notificationsOpen}
+              className="relative rounded-lg p-1.5 text-slate-500 transition hover:bg-[#F0F2F5] hover:text-[#294C78] focus:outline-none focus:ring-2 focus:ring-[#294C78]/30"
+            >
+              <Icon name="bell" className="h-5 w-5" />
+              {unreadCount > 0 && (
+                <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold leading-none text-white">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              )}
+            </button>
+
+            {notificationsOpen && (
+              <div
+                role="dialog"
+                aria-label="Notifications"
+                className="absolute left-[calc(100%+0.75rem)] top-0 z-[60] w-80 max-w-[calc(100vw-18rem)] overflow-hidden rounded-2xl border border-[#E7E5DF] bg-white shadow-xl"
+              >
+                <div className="flex items-center justify-between border-b border-[#F0EEE8] px-4 py-3">
+                  <h2 className="text-sm font-semibold text-[#24344D]">
+                    Notifications
+                  </h2>
+                  {unreadCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        markAllNotificationsRead();
+                        setNotifications(getNotifications());
+                      }}
+                      className="text-xs font-medium text-[#456FAD] hover:text-[#294C78]"
+                    >
+                      Mark all read
+                    </button>
+                  )}
+                </div>
+
+                {notifications.length === 0 ? (
+                  <p className="px-4 py-8 text-center text-sm text-slate-500">
+                    You’re all caught up.
+                  </p>
+                ) : (
+                  <ul className="max-h-72 divide-y divide-[#F0EEE8] overflow-y-auto">
+                    {notifications.map((notification) => (
+                      <li key={notification.id}>
+                        <button
+                          type="button"
+                          onClick={() => openNotification(notification)}
+                          className={`flex w-full items-start gap-3 px-4 py-3 text-left transition hover:bg-[#F5F8FD] ${
+                            notification.read ? "bg-white" : "bg-[#F5F8FD]"
+                          }`}
+                        >
+                          <span
+                            className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${
+                              notification.read ? "bg-transparent" : "bg-[#456FAD]"
+                            }`}
+                            aria-hidden="true"
+                          />
+                          <span className="min-w-0">
+                            <span className="block text-sm leading-5 text-[#24344D]">
+                              {notification.message}
+                            </span>
+                            <time
+                              dateTime={notification.createdAt}
+                              className="mt-1 block text-xs text-slate-400"
+                            >
+                              {new Date(notification.createdAt).toLocaleString()}
+                            </time>
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
 
         <nav className="space-y-1">
           <Link
-            href="/my-submissions"
-            className={navClass(pathname === "/my-submissions")}
+            href="/profile"
+            className={navClass(pathname === "/profile")}
           >
-            <Icon name="library" />
-            <span>My Submissions</span>
-          </Link>
-
-          <Link
-            href="/liked"
-            className={navClass(pathname === "/liked")}
-          >
-            <Icon name="heart" />
-            <span>Liked Resources</span>
+            <Icon name="user" />
+            <span>Profile</span>
           </Link>
         </nav>
       </section>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { youTubeThumbnail, youTubeWatchUrl } from "@/lib/youtube";
@@ -104,35 +105,59 @@ export default function LikedPage() {
   }
 
   return (
-    <main className="min-h-full bg-gray-200 px-6 py-8 text-gray-900 md:px-10 lg:px-12">
+    
+<main className="min-h-full bg-[#FCFBF8] px-5 py-7 text-[#24344D] md:px-10 md:py-9 lg:px-12">
+
+      <Link
+        href="/profile"
+        className="mb-7 inline-flex items-center gap-2 rounded-xl border border-[#E7E5DF] bg-white px-4 py-2.5 text-sm font-medium text-[#294C78] shadow-sm transition hover:border-[#C8D5E7] hover:bg-[#E7EEF8] focus:outline-none focus:ring-2 focus:ring-[#294C78]/30"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.8}
+          className="h-4 w-4"
+          aria-hidden="true"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M15.75 19.5 8.25 12l7.5-7.5"
+          />
+        </svg>
+        Back to profile
+      </Link>
+
       <div className="mb-8">
-        <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">
+        <h1 className="text-3xl font-bold tracking-tight text-[#24344D] md:text-4xl">
           Liked
         </h1>
-        <p className="mt-2 text-sm text-gray-500">
+        <p className="mt-2 text-sm leading-6 text-slate-500">
           Notes, papers and videos you have liked, from every programme, in one place.
         </p>
       </div>
 
       {error && (
-        <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
+        <div role="alert" className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
           {error}
         </div>
       )}
 
       {loading ? (
-        <div className="rounded-2xl bg-white p-10 text-center text-sm text-gray-500">
+        <div className="rounded-2xl border border-[#E7E5DF] bg-white p-10 text-center text-sm text-slate-500 shadow-sm">
           Loading your liked resources...
         </div>
       ) : items.length === 0 ? (
-        <div className="rounded-2xl bg-white p-12 text-center">
-          <h3 className="text-lg font-semibold">Nothing liked yet</h3>
-          <p className="mt-2 text-sm text-gray-500">
+        <div className="rounded-2xl border border-[#E7E5DF] bg-white p-12 text-center shadow-sm">
+          <h3 className="text-lg font-semibold text-[#24344D]">Nothing liked yet</h3>
+          <p className="mt-2 text-sm text-slate-500">
             Tap the heart on any note or video and it will show up here.
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {items.map((item) => {
             // Safe: null resources were filtered out in loadLiked.
             const resource = item.resources!;
@@ -140,7 +165,7 @@ export default function LikedPage() {
             return (
               <div
                 key={item.id}
-                className="flex flex-col rounded-2xl bg-white p-5 shadow-sm"
+                className="flex flex-col rounded-2xl border border-[#E7E5DF] bg-white p-5 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-[#C8D5E7] hover:shadow-md"
               >
                 {/* Videos show their YouTube thumbnail */}
                 {resource.video_id && (
@@ -149,37 +174,37 @@ export default function LikedPage() {
                     src={youTubeThumbnail(resource.video_id)}
                     alt=""
                     loading="lazy"
-                    className="mb-4 aspect-video w-full rounded-lg bg-gray-100 object-cover"
+                    className="mb-4 aspect-video w-full rounded-xl bg-[#F0F2F5] object-cover"
                   />
                 )}
 
-                <p className="text-xs font-medium text-blue-600">
+                <p className="text-xs font-semibold text-[#456FAD]">
                   {resource.programmes?.name ?? "Unknown programme"}
                 </p>
 
                 {/* Admin uploads fill "topic"; approved submissions fill "title". */}
-                <h3 className="mt-1 font-semibold">
+                <h3 className="mt-1 line-clamp-2 font-semibold text-[#24344D]">
                   {resource.title || resource.topic}
                 </h3>
 
-                <p className="mt-2 text-sm text-gray-500">
+                <p className="mt-2 text-sm text-slate-500">
                   {resource.module_name ?? "Unknown module"}
                 </p>
 
-                <p className="mt-1 text-xs text-gray-400">
+                <p className="mt-1 text-xs text-slate-500">
                   {resource.year ? `Year ${resource.year}` : ""}
                   {resource.year && resource.semester ? " · " : ""}
                   {resource.semester ? `Semester ${resource.semester}` : ""}
                 </p>
 
-                <div className="mt-auto flex gap-2 pt-5">
+                <div className="mt-auto flex gap-2 border-t border-[#F0EEE8] pt-4">
                   {resource.video_id ? (
                     // Video: open it on YouTube (nothing to download).
                     <a
                       href={youTubeWatchUrl(resource.video_id)}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex-1 rounded-lg bg-blue-600 px-3 py-2 text-center text-sm font-medium text-white hover:bg-blue-700"
+                      className="flex-1 rounded-lg bg-[#294C78] px-3 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-[#203B60] focus:outline-none focus:ring-2 focus:ring-[#294C78]/30 focus:ring-offset-2"
                     >
                       Watch
                     </a>
@@ -188,13 +213,13 @@ export default function LikedPage() {
                     <>
                       <button
                         onClick={() => openFile(resource.file_path!, false)}
-                        className="flex-1 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                        className="flex-1 rounded-lg bg-[#294C78] px-3 py-2.5 text-sm font-semibold text-white transition hover:bg-[#203B60] focus:outline-none focus:ring-2 focus:ring-[#294C78]/30 focus:ring-offset-2"
                       >
                         View
                       </button>
                       <button
                         onClick={() => openFile(resource.file_path!, true)}
-                        className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                        className="rounded-lg border border-[#D9DEE7] px-3 py-2.5 text-sm font-semibold text-[#294C78] transition hover:bg-[#F0F4FA] focus:outline-none focus:ring-2 focus:ring-[#294C78]/30"
                       >
                         Download
                       </button>
@@ -205,7 +230,8 @@ export default function LikedPage() {
                   <button
                     onClick={() => unlike(item.id)}
                     title="Unlike"
-                    className="flex w-12 items-center justify-center rounded-lg border border-red-200 bg-red-50 text-red-500 transition hover:bg-red-100"
+                    aria-label={`Unlike ${resource.title || resource.topic}`}
+                    className="flex w-12 items-center justify-center rounded-lg border border-red-200 bg-red-50 text-red-500 transition hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-300"
                   >
                     <svg
                       xmlns="http://www.w3.org/2000/svg"

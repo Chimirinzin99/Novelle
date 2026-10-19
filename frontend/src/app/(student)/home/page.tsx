@@ -99,7 +99,9 @@ export default function Home() {
 
     const allPdfs: PdfResource[] = resources || [];
 
-    const loadedNotes = allPdfs.filter((resource) => resource.type === "note");
+    const loadedNotes = allPdfs
+      .filter((resource) => resource.type === "note")
+      .slice(0, HOME_SECTION_LIMIT);
 
     const loadedPapers = allPdfs
       .filter((resource) => resource.type === "question_paper")
@@ -266,13 +268,12 @@ export default function Home() {
     viewAllPath: string;
     emptyTitle: string;
     emptyText: string;
-    scroll: boolean;
   }) {
     const { items } = section;
 
     return (
-      <section className="mt-12">
-        <div className="mb-5 flex items-center justify-between">
+      <section className="mt-10 sm:mt-12">
+        <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-xl font-semibold tracking-tight text-[#24344D]">
               {section.title}
@@ -286,20 +287,14 @@ export default function Home() {
           {programmeName && (
             <Link
               href={`${programmeHref(programmeName)}/${section.viewAllPath}`}
-              className="text-sm font-semibold text-[#456FAD] transition-colors hover:text-[#294C78]"
+              className="inline-flex w-fit items-center gap-2 rounded-lg border border-[#D9DEE7] bg-white px-4 py-2 text-sm font-semibold text-[#294C78] shadow-sm transition hover:border-[#B8C9DF] hover:bg-[#F0F4FA] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#456FAD] focus-visible:ring-offset-2"
             >
-              View all →
+              View all {section.title.replace("Available ", "").toLowerCase()}
             </Link>
           )}
         </div>
 
-        <div
-          className={
-            section.scroll
-              ? "max-h-[520px] overflow-y-auto pr-3"
-              : ""
-          }
-        >
+        <div>
           {loading ? (
             <div className="py-10 text-center text-sm text-slate-500">
               Loading...
@@ -315,7 +310,7 @@ export default function Home() {
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
               {items.map((note) => {
                 const isFavourite = favourites.includes(note.id);
                 const likes = likeCounts[note.id] || 0;
@@ -323,10 +318,10 @@ export default function Home() {
                 return (
                   <div
                     key={note.id}
-                    className="flex h-[210px] flex-col rounded-xl border border-[#E7E5DF] bg-white p-4 shadow-sm transition duration-200 hover:-translate-y-1 hover:border-[#C8D5E7] hover:shadow-md"
+                    className="flex min-h-[205px] flex-col rounded-2xl border border-[#E7E5DF] bg-white p-5 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-[#C8D5E7] hover:shadow-md"
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <h3 className="text-sm font-semibold text-[#24344D]">
+                      <h3 className="line-clamp-2 min-h-10 text-sm font-semibold leading-5 text-[#24344D]">
                         {note.title || note.topic}
                       </h3>
 
@@ -335,26 +330,26 @@ export default function Home() {
                       </span>
                     </div>
 
-                    <p className="mt-2 text-xs leading-5 text-slate-500">
+                    <p className="mt-2 line-clamp-2 min-h-5 text-xs leading-5 text-slate-500">
                       {note.module_name || "Unknown Module"}
                     </p>
 
-                    <div className="mt-3 flex items-center justify-between text-[10px] text-slate-400">
+                    <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
                       <span>Year {note.year}</span>
                       <span>Semester {note.semester}</span>
                     </div>
 
-                    <div className="mt-auto flex items-center gap-2 border-t border-[#E7E5DF] pt-3">
+                    <div className="mt-auto flex items-center gap-2 border-t border-[#F0EEE8] pt-4">
                       <button
                         onClick={() => handleView(note.file_path)}
-                        className="flex-1 rounded-md bg-[#294C78] px-2 py-2 text-xs font-medium text-white transition-colors hover:bg-[#203B60]"
+                        className="flex-1 rounded-lg bg-[#294C78] px-2 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-[#203B60] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#294C78]/40 focus-visible:ring-offset-2"
                       >
                         View
                       </button>
 
                       <button
                         onClick={() => handleDownload(note.file_path)}
-                        className="flex-1 rounded-md border border-[#D9DEE7] bg-white px-2 py-2 text-xs font-medium text-[#294C78] transition-colors hover:bg-[#F0F4FA]"
+                        className="flex-1 rounded-lg border border-[#D9DEE7] bg-white px-2 py-2.5 text-xs font-semibold text-[#294C78] transition-colors hover:bg-[#F0F4FA] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#294C78]/30 focus-visible:ring-offset-2"
                       >
                         Download
                       </button>
@@ -362,6 +357,8 @@ export default function Home() {
                       <button
                         onClick={() => handleFavourite(note.id)}
                         title={isFavourite ? "Unlike" : "Like"}
+                        aria-label={`${isFavourite ? "Unlike" : "Like"} ${note.title || note.topic}; ${likes} likes`}
+                        aria-pressed={isFavourite}
                         className={`flex h-9 w-14 items-center justify-center gap-1 rounded-md border transition ${
                           isFavourite
                             ? "border-red-200 bg-red-50 text-red-500"
@@ -397,7 +394,7 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-full bg-[#FCFBF8] px-8 py-10">
+    <main className="min-h-full bg-[#FCFBF8] px-4 py-7 sm:px-6 sm:py-9 lg:px-8">
       <div className="mx-auto max-w-7xl">
         {/* Existing welcome and search header */}
         <WelcomeHeader name={fullName} />
@@ -409,7 +406,6 @@ export default function Home() {
           viewAllPath: "notes",
           emptyTitle: "No notes available yet.",
           emptyText: "Approved notes for your programme will appear here.",
-          scroll: true,
         })}
 
         {renderPdfSection({
@@ -420,7 +416,6 @@ export default function Home() {
           emptyTitle: "No question papers available yet.",
           emptyText:
             "Approved question papers for your programme will appear here.",
-          scroll: false,
         })}
 
         {renderPdfSection({
@@ -431,12 +426,11 @@ export default function Home() {
           emptyTitle: "No assignments available yet.",
           emptyText:
             "Approved assignments for your programme will appear here.",
-          scroll: false,
         })}
 
         {!loading && videos.length > 0 && (
-          <section className="mt-12">
-            <div className="mb-5 flex items-center justify-between">
+          <section className="mt-10 sm:mt-12">
+            <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h2 className="text-xl font-semibold tracking-tight text-[#24344D]">
                   Latest Videos
@@ -450,14 +444,14 @@ export default function Home() {
               {programmeName && (
                 <Link
                   href={`${programmeHref(programmeName)}/videos`}
-                  className="text-sm font-semibold text-[#456FAD] transition-colors hover:text-[#294C78]"
+                  className="inline-flex w-fit items-center gap-2 rounded-lg border border-[#D9DEE7] bg-white px-4 py-2 text-sm font-semibold text-[#294C78] shadow-sm transition hover:border-[#B8C9DF] hover:bg-[#F0F4FA] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#456FAD] focus-visible:ring-offset-2"
                 >
-                  View all →
+                  View all videos 
                 </Link>
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
               {videos.map((video) => {
                 const isFavourite = favourites.includes(video.id);
                 const likes = likeCounts[video.id] || 0;
@@ -496,11 +490,11 @@ export default function Home() {
                     </a>
 
                     <div className="flex flex-1 flex-col p-4">
-                      <h3 className="text-sm font-semibold text-[#24344D]">
+                      <h3 className="line-clamp-2 min-h-10 text-sm font-semibold leading-5 text-[#24344D]">
                         {video.title || video.topic}
                       </h3>
 
-                      <p className="mt-1 text-[10px] text-slate-400">
+                      <p className="mt-2 text-xs text-slate-500">
                         Year {video.year} · Semester {video.semester}
                       </p>
 
@@ -517,6 +511,8 @@ export default function Home() {
                         <button
                           onClick={() => handleFavourite(video.id)}
                           title={isFavourite ? "Unlike" : "Like"}
+                          aria-label={`${isFavourite ? "Unlike" : "Like"} ${video.title || video.topic}; ${likes} likes`}
+                          aria-pressed={isFavourite}
                           className={`flex h-9 w-14 items-center justify-center gap-1 rounded-md border transition ${
                             isFavourite
                               ? "border-red-200 bg-red-50 text-red-500"

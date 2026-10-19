@@ -1,4 +1,5 @@
 import { Response } from "express";
+import crypto from "crypto";
 
 import { supabase } from "../config/supabase";
 import { AuthenticatedRequest } from "../middleware/auth";
@@ -7,6 +8,82 @@ import {
   REJECTION_REASONS,
   SUBMISSION_STATUSES,
 } from "../constants/submissions";
+
+const RESOURCE_BUCKET = "resources";
+const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
+
+export const uploadStudentSubmission = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
+  let uploadedPath: string | null = null;
+
+  try {
+    const title = typeof req.body?.title === "string" ? req.body.title.trim() : "";
+    const type = req.body?.type;
+
+    if (!req.user?.id) {
+      return res.status(401).json({ success: false, message: "Authentication required." });
+    }
+    if (!title || title.length > 120) {
+      return res.status(400).json({ success: false, message: "Enter a title up to 120 characters." });
+    }
+    if (type !== "note" && type !== "question_paper" && type !== "assignment") {
+      return res.status(400).json({ success: false, message: "Invalid submission type." });
+    }
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: "Please upload a PDF file." });
+    }
+    if (req.file.size > MAX_UPLOAD_BYTES) {
+      return res.status(413).json({ success: false, message: "PDF must be 5 MB or smaller." });
+    }
+    if (req.file.mimetype !== "application/pdf" || !req.file.originalname.toLowerCase().endsWith(".pdf")) {
+      return res.status(400).json({ success: false, message: "Only PDF files are allowed." });
+    }
+    if (!req.user.programme_id) {
+      return res.status(400).json({ success: false, message: "Your account has no programme assigned." });
+    }
+
+    const safeFileName = req.file.originalname.replace(/[^a-zA-Z0-9._-]/g, "_");
+    uploadedPath = `submissions/${req.user.id}/${crypto.randomUUID()}-${safeFileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from(RESOURCE_BUCKET)
+      .upload(uploadedPath, req.file.buffer, {
+        contentType: "application/pdf",
+        cacheControl: "3600",
+        upsert: false,
+      });
+    if (uploadError) throw uploadError;
+
+    const { data, error: insertError } = await supabase
+      .from("resource_submissions")
+      .insert({
+        title,
+        type,
+        programme_id: req.user.programme_id,
+        file_path: uploadedPath,
+        submitted_by: req.user.id,
+        status: "pending",
+      })
+      .select("id, status")
+      .single();
+
+    if (insertError) throw insertError;
+
+    return res.status(201).json({
+      success: true,
+      message: "Resource submitted for admin review.",
+      submission: data,
+    });
+  } catch (error) {
+    if (uploadedPath) {
+      await supabase.storage.from(RESOURCE_BUCKET).remove([uploadedPath]);
+    }
+    console.error("Student submission upload error:", error);
+    return res.status(500).json({ success: false, message: "Failed to submit resource." });
+  }
+};
 
 type SubmissionRow = {
   id: number;
