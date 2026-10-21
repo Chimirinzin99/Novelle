@@ -1,7 +1,6 @@
-
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
@@ -166,6 +165,8 @@ export default function Sidebar() {
   const [loggedIn, setLoggedIn] = useState(false);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  // The bell + its panel, so a click outside them can close the panel.
+  const notificationsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -206,6 +207,27 @@ export default function Sidebar() {
     };
   }, []);
 
+  // Close the notification panel on a click outside it, or on Escape.
+  useEffect(() => {
+    if (!notificationsOpen) return;
+
+    const handleClick = (event: MouseEvent) => {
+      if (!notificationsRef.current?.contains(event.target as Node)) {
+        setNotificationsOpen(false);
+      }
+    };
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setNotificationsOpen(false);
+    };
+
+    document.addEventListener("mousedown", handleClick);
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      document.removeEventListener("mousedown", handleClick);
+      document.removeEventListener("keydown", handleKey);
+    };
+  }, [notificationsOpen]);
+
   const unreadCount = notifications.filter((notification) => !notification.read).length;
 
   function openNotification(notification: AppNotification) {
@@ -221,7 +243,10 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="sticky top-0 flex h-screen w-64 shrink-0 flex-col border-r border-[#E7E5DF] bg-[#FCFBF8] px-4 py-5">
+    // z-40: `sticky` puts the sidebar on its own layer. Without a z-index
+    // that layer sits at 0, so the page on the right (drawn later) covered
+    // the notification panel. z-40 keeps the sidebar and its panel on top.
+    <aside className="sticky top-0 z-40 flex h-screen w-64 shrink-0 flex-col border-r border-[#E7E5DF] bg-[#FCFBF8] px-4 py-5">
       {/* Brand */}
       <Link
         href="/home"
@@ -272,11 +297,11 @@ export default function Sidebar() {
       {/* My Account */}
       <section className="mt-8 shrink-0">
         <div className="mb-3 flex items-center justify-between px-3">
-          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-600">
             My Account
           </p>
 
-          <div className="relative">
+          <div ref={notificationsRef} className="relative">
             <button
               type="button"
               onClick={() => setNotificationsOpen((open) => !open)}
@@ -372,12 +397,12 @@ export default function Sidebar() {
       {/* Scrollable programme list */}
       <section className="mt-8 flex min-h-0 flex-1 flex-col">
         <div className="mb-3 flex shrink-0 items-center justify-between px-3">
-          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-600">
             Programmes
           </p>
           <Icon
             name="graduation"
-            className="h-4 w-4 text-slate-400"
+            className="h-4 w-4 text-slate-600"
           />
         </div>
 

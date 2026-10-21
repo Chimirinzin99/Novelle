@@ -131,9 +131,19 @@ export default function LoginPage() {
 
           {/* Password */}
           <div>
-            <label className="mb-2 block text-sm font-medium text-gray-700">
-              Password
-            </label>
+            <div className="mb-2 flex items-center justify-between">
+              <label className="block text-sm font-medium text-gray-700">
+                Password
+              </label>
+
+              {/* Opens the page that emails a reset link */}
+              <a
+                href="/reset-password"
+                className="text-sm font-medium text-gray-500 hover:text-black hover:underline"
+              >
+                Forgot password?
+              </a>
+            </div>
 
             <input
               type="password"
