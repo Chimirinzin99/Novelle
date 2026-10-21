@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
@@ -13,6 +12,9 @@ import {
   Video,
   Database,
   Users,
+  CheckCircle2,
+  XCircle,
+  Percent,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { BACKEND_URL } from "@/lib/config";
@@ -21,8 +23,27 @@ import { ROLES, isAdminRole, isSuperAdminRole } from "@/lib/roles";
 type ProgrammeOverview = {
   id: number;
   name: string;
+  resources: number;
   pending: number;
   admins: string[];
+};
+
+// Shape of GET /api/stats/overview (backend/src/controllers/stats.controller.ts).
+type OverviewStats = {
+  totalResources: number;
+  resourcesByType: Record<string, number>;
+  submissionsByStatus: Record<string, number>;
+  resourcesByProgramme: {
+    programme_id: number;
+    name: string;
+    short_name: string;
+    resources: number;
+  }[];
+};
+
+type ReviewCounts = {
+  approved: number;
+  rejected: number;
 };
 
 type UserCounts = {
@@ -57,6 +78,7 @@ export default function AdminPage() {
   const [error, setError] = useState("");
 
   const [userCounts, setUserCounts] = useState<UserCounts | null>(null);
+  const [reviewCounts, setReviewCounts] = useState<ReviewCounts | null>(null);
   const [programmeOverview, setProgrammeOverview] = useState<
     ProgrammeOverview[]
   >([]);
@@ -162,14 +184,11 @@ export default function AdminPage() {
               .eq("programme_id", programmeId),
 
             // Total saved video links in this programme.
-            
- // Total saved video links in this programme.
-supabase
-  .from("resources")
-  .select("id", { count: "exact", head: true })
-  .eq("programme_id", programmeId)
-  .eq("type", "video"),
-
+            supabase
+              .from("resources")
+              .select("id", { count: "exact", head: true })
+              .eq("programme_id", programmeId)
+              .eq("type", "video"),
           ]);
 
           if (pendingResult.error) {
@@ -217,180 +236,112 @@ supabase
 
         /*
          * Super admin:
-         * Count resources and video links across all programmes.
+         * Counts come from the backend:
+         *   GET /api/stats/overview  -> resource + submission counts
+         *   GET /api/users           -> user counts and programme admins
+         * The backend counts with the service-role key, so the browser
+         * doesn't need permission to read every row itself.
+         * Pending submissions per programme are still read here
+         * (RLS already lets a super admin see every submission).
          */
         if (isSuperAdmin) {
-          const [
-            pendingResult,
-            notesResult,
-            papersResult,
-            assignmentsResult,
-            resourcesResult,
-            videosResult,
-          ] = await Promise.all([
-            supabase
-              .from("resource_submissions")
-              .select("*", { count: "exact", head: true })
-              .eq("status", "pending"),
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
 
-            supabase
-              .from("resources")
-              .select("*", { count: "exact", head: true })
-              .eq("type", "note"),
+          const authHeaders = {
+            Authorization: `Bearer ${session?.access_token}`,
+          };
 
-            supabase
-              .from("resources")
-              .select("*", { count: "exact", head: true })
-              .eq("type", "question_paper"),
+          const [statsResponse, usersResponse, pendingRowsResult] =
+            await Promise.all([
+              fetch(`${BACKEND_URL}/api/stats/overview`, {
+                headers: authHeaders,
+              }),
 
-            supabase
-              .from("resources")
-              .select("*", { count: "exact", head: true })
-              .eq("type", "assignment"),
+              fetch(`${BACKEND_URL}/api/users`, {
+                headers: authHeaders,
+              }),
 
-            supabase
-              .from("resources")
-              .select("*", { count: "exact", head: true }),
+              // Pending submissions per programme, for the table below.
+              supabase
+                .from("resource_submissions")
+                .select("programme_id")
+                .eq("status", "pending"),
+            ]);
 
-            // Total saved video links across CST.
-            supabase
-              
-  .from("resources")
-  .select("id", { count: "exact", head: true })
-  .eq("type", "video")
-          ]);
-
-          if (pendingResult.error) {
-            console.error("PENDING COUNT ERROR:", pendingResult.error);
-          } else {
-            setPendingCount(pendingResult.count ?? 0);
+          const statsData = await statsResponse.json();
+          if (!statsResponse.ok) {
+            throw new Error(
+              statsData.message || "Failed to load statistics."
+            );
           }
 
-          if (notesResult.error) {
-            console.error("NOTES COUNT ERROR:", notesResult.error);
-          } else {
-            setNotesCount(notesResult.count ?? 0);
+          const usersData = await usersResponse.json();
+          if (!usersResponse.ok) {
+            throw new Error(usersData.message || "Failed to load users.");
           }
 
-          if (papersResult.error) {
-            console.error("PAPERS COUNT ERROR:", papersResult.error);
-          } else {
-            setPapersCount(papersResult.count ?? 0);
-          }
-
-          if (assignmentsResult.error) {
+          if (pendingRowsResult.error) {
             console.error(
-              "ASSIGNMENTS COUNT ERROR:",
-              assignmentsResult.error
+              "PROGRAMME PENDING ERROR:",
+              pendingRowsResult.error
             );
-          } else {
-            setAssignmentsCount(assignmentsResult.count ?? 0);
           }
 
-          if (resourcesResult.error) {
-            console.error(
-              "TOTAL RESOURCES COUNT ERROR:",
-              resourcesResult.error
-            );
-          } else {
-            setTotalResourcesCount(resourcesResult.count ?? 0);
-          }
+          // Resource and submission counts
+          const stats: OverviewStats = statsData.stats;
 
-          if (videosResult.error) {
-            console.error("VIDEOS COUNT ERROR:", videosResult.error);
-          } else {
-            setVideosCount(videosResult.count ?? 0);
-          }
+          setTotalResourcesCount(stats.totalResources);
+          setNotesCount(stats.resourcesByType.note ?? 0);
+          setPapersCount(stats.resourcesByType.question_paper ?? 0);
+          setAssignmentsCount(stats.resourcesByType.assignment ?? 0);
+          setVideosCount(stats.resourcesByType.video ?? 0);
+          setPendingCount(stats.submissionsByStatus.pending ?? 0);
+          setReviewCounts({
+            approved: stats.submissionsByStatus.approved ?? 0,
+            rejected: stats.submissionsByStatus.rejected ?? 0,
+          });
 
-          // Load users from the backend.
-          try {
-            const {
-              data: { session },
-            } = await supabase.auth.getSession();
+          // User counts
+          const users: {
+            full_name: string;
+            role: string;
+            programme_id: number | null;
+            is_active: boolean;
+          }[] = usersData.users || [];
 
-            const [usersResponse, pendingRowsResult, programmesResult] =
-              await Promise.all([
-                fetch(`${BACKEND_URL}/api/users`, {
-                  headers: {
-                    Authorization: `Bearer ${session?.access_token}`,
-                  },
-                }),
+          setUserCounts({
+            students: users.filter((u) => u.role === ROLES.student).length,
+            programmeAdmins: users.filter(
+              (u) => u.role === ROLES.programmeAdmin
+            ).length,
+            deactivated: users.filter((u) => !u.is_active).length,
+          });
 
-                supabase
-                  .from("resource_submissions")
-                  .select("programme_id")
-                  .eq("status", "pending"),
+          // Programme table: resources, pending submissions, admins
+          const pendingRows = pendingRowsResult.data || [];
 
-                supabase
-                  .from("programmes")
-                  .select("id, name")
-                  .order("name"),
-              ]);
+          setProgrammeOverview(
+            stats.resourcesByProgramme.map((programme) => ({
+              id: programme.programme_id,
+              name: programme.name,
+              resources: programme.resources,
 
-            const usersData = await usersResponse.json();
-
-            if (!usersResponse.ok) {
-              throw new Error(
-                usersData.message || "Failed to load users."
-              );
-            }
-
-            const users: {
-              full_name: string;
-              role: string;
-              programme_id: number | null;
-              is_active: boolean;
-            }[] = usersData.users || [];
-
-            setUserCounts({
-              students: users.filter(
-                (u) => u.role === ROLES.student
+              pending: pendingRows.filter(
+                (row) => row.programme_id === programme.programme_id
               ).length,
 
-              programmeAdmins: users.filter(
-                (u) => u.role === ROLES.programmeAdmin
-              ).length,
-
-              deactivated: users.filter(
-                (u) => !u.is_active
-              ).length,
-            });
-
-            if (pendingRowsResult.error) {
-              console.error(
-                "PROGRAMME PENDING ERROR:",
-                pendingRowsResult.error
-              );
-            }
-
-            if (programmesResult.error) {
-              console.error("PROGRAMMES ERROR:", programmesResult.error);
-            }
-
-            const pendingRows = pendingRowsResult.data || [];
-
-            setProgrammeOverview(
-              (programmesResult.data || []).map((programme) => ({
-                id: programme.id,
-                name: programme.name,
-
-                pending: pendingRows.filter(
-                  (row) => row.programme_id === programme.id
-                ).length,
-
-                admins: users
-                  .filter(
-                    (u) =>
-                      u.role === ROLES.programmeAdmin &&
-                      u.is_active &&
-                      u.programme_id === programme.id
-                  )
-                  .map((u) => u.full_name),
-              }))
-            );
-          } catch (overviewError) {
-            console.error("OVERVIEW ERROR:", overviewError);
-          }
+              admins: users
+                .filter(
+                  (u) =>
+                    u.role === ROLES.programmeAdmin &&
+                    u.is_active &&
+                    u.programme_id === programme.programme_id
+                )
+                .map((u) => u.full_name),
+            }))
+          );
         }
       } catch (loadError) {
         console.error("ADMIN DASHBOARD ERROR:", loadError);
@@ -730,6 +681,69 @@ supabase
                 ))}
               </div>
 
+              {reviewCounts && (
+                <>
+                  <h2 className="mb-4 mt-10 text-lg font-semibold text-gray-900">
+                    Review history
+                  </h2>
+
+                  <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
+                    {[
+                      {
+                        label: "Approved",
+                        value: String(reviewCounts.approved),
+                        note: "Published for students",
+                        icon: CheckCircle2,
+                      },
+                      {
+                        label: "Rejected",
+                        value: String(reviewCounts.rejected),
+                        note: "Sent back with a reason",
+                        icon: XCircle,
+                      },
+                      {
+                        label: "Approval rate",
+                        // Approved out of everything already reviewed.
+                        value:
+                          reviewCounts.approved + reviewCounts.rejected > 0
+                            ? `${Math.round(
+                                (reviewCounts.approved /
+                                  (reviewCounts.approved +
+                                    reviewCounts.rejected)) *
+                                  100
+                              )}%`
+                            : "—",
+                        note: "Of reviewed submissions",
+                        icon: Percent,
+                      },
+                    ].map(({ label, value, note, icon: Icon }) => (
+                      <div
+                        key={label}
+                        className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"
+                      >
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-gray-500">
+                              {label}
+                            </p>
+                            <p className="mt-4 text-4xl font-bold tracking-tight text-gray-900">
+                              {value}
+                            </p>
+                            <p className="mt-2 text-xs text-gray-400">
+                              {note}
+                            </p>
+                          </div>
+
+                          <div className="rounded-xl bg-gray-100 p-3 text-gray-700">
+                            <Icon className="h-5 w-5" />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+
               <h2 className="mb-4 mt-10 text-lg font-semibold text-gray-900">
                 Programmes
               </h2>
@@ -739,6 +753,7 @@ supabase
                   <thead className="border-b border-gray-200 text-xs uppercase tracking-wide text-gray-400">
                     <tr>
                       <th className="px-5 py-3 font-medium">Programme</th>
+                      <th className="px-5 py-3 font-medium">Resources</th>
                       <th className="px-5 py-3 font-medium">
                         Pending submissions
                       </th>
@@ -753,6 +768,16 @@ supabase
                       <tr key={programme.id}>
                         <td className="px-5 py-3 font-medium text-gray-900">
                           {programme.name}
+                        </td>
+
+                        <td className="px-5 py-3">
+                          {programme.resources > 0 ? (
+                            <span className="font-medium text-gray-900">
+                              {programme.resources}
+                            </span>
+                          ) : (
+                            <span className="text-gray-400">0</span>
+                          )}
                         </td>
 
                         <td className="px-5 py-3">

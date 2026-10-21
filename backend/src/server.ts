@@ -12,6 +12,7 @@ import modulesRoutes from "./routes/modules.routes";
 import resourcesRoutes from "./routes/resources.routes";
 import submissionsRoutes from "./routes/submissions.routes";
 import usersRoutes from "./routes/users.routes";
+import statsRoutes from "./routes/stats.routes";
 
 const app = express();
 
@@ -29,6 +30,9 @@ app.use("/api/submissions", submissionsRoutes);
 
 // Users API (super admin: roles, deactivate/activate)
 app.use("/api/users", usersRoutes);
+
+// Stats API (super admin dashboard numbers)
+app.use("/api/stats", statsRoutes);
 
 const PORT = 5000;
 
