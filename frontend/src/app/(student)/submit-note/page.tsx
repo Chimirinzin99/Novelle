@@ -1,10 +1,10 @@
-
 "use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { BACKEND_URL } from "@/lib/config";
+import { callBackend, readJson } from "@/lib/backend";
 import { addNotification } from "@/lib/notifications";
 import {
   STUDENT_SUBMIT_TYPES,
@@ -155,12 +155,12 @@ export default function SubmitNotePage() {
       formData.append("type", type);
       formData.append("file", file);
 
-      const response = await fetch(`${BACKEND_URL}/api/submissions/upload`, {
+      const response = await callBackend(`${BACKEND_URL}/api/submissions/upload`, {
         method: "POST",
         headers: { Authorization: `Bearer ${session.access_token}` },
         body: formData,
       });
-      const result = await response.json();
+      const result = await readJson(response);
       if (!response.ok) {
         throw new Error(result.message || "Failed to submit the resource.");
       }

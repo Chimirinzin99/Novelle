@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { BACKEND_URL } from "@/lib/config";
+import { callBackend, readJson } from "@/lib/backend";
 import {
   isAdminRole,
   isProgrammeAdminRole,
@@ -158,7 +159,7 @@ export default function ModulesPage() {
       return;
     }
 
-    const response = await fetch(
+    const response = await callBackend(
       `${BACKEND_URL}/api/modules`,
       {
         method: "GET",
@@ -168,7 +169,7 @@ export default function ModulesPage() {
       }
     );
 
-    const data = await response.json();
+    const data = await readJson(response);
 
     if (!response.ok) {
       throw new Error(
@@ -287,7 +288,7 @@ export default function ModulesPage() {
       // ------------------------------------
 
       if (editingId !== null) {
-        const response = await fetch(
+        const response = await callBackend(
           `${BACKEND_URL}/api/modules/${editingId}`,
           {
             method: "PUT",
@@ -299,7 +300,7 @@ export default function ModulesPage() {
           }
         );
 
-        const data = await response.json();
+        const data = await readJson(response);
 
         if (!response.ok) {
           throw new Error(
@@ -317,7 +318,7 @@ export default function ModulesPage() {
       // ------------------------------------
 
       else {
-        const response = await fetch(
+        const response = await callBackend(
           `${BACKEND_URL}/api/modules`,
           {
             method: "POST",
@@ -332,7 +333,7 @@ export default function ModulesPage() {
           }
         );
 
-        const data = await response.json();
+        const data = await readJson(response);
 
         if (!response.ok) {
           throw new Error(
@@ -410,7 +411,7 @@ export default function ModulesPage() {
         return;
       }
 
-      const response = await fetch(
+      const response = await callBackend(
         `${BACKEND_URL}/api/modules/${module.id}/deactivate`,
         {
           method: "PATCH",
@@ -420,7 +421,7 @@ export default function ModulesPage() {
         }
       );
 
-      const data = await response.json();
+      const data = await readJson(response);
 
       if (!response.ok) {
         throw new Error(
@@ -462,7 +463,7 @@ export default function ModulesPage() {
         return;
       }
 
-      const response = await fetch(
+      const response = await callBackend(
         `${BACKEND_URL}/api/modules/${module.id}/activate`,
         {
           method: "PATCH",
@@ -472,7 +473,7 @@ export default function ModulesPage() {
         }
       );
 
-      const data = await response.json();
+      const data = await readJson(response);
 
       if (!response.ok) {
         throw new Error(

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { BACKEND_URL } from "@/lib/config";
+import { callBackend, readJson } from "@/lib/backend";
 import { REJECTION_REASONS } from "@/lib/rejectionReasons";
 import { resourceTypeLabel } from "@/lib/resourceTypes";
 import {
@@ -75,7 +76,7 @@ export default function AdminSubmissionsPage() {
       throw new Error("Not logged in.");
     }
 
-    const response = await fetch(`${BACKEND_URL}${path}`, {
+    const response = await callBackend(`${BACKEND_URL}${path}`, {
       ...init,
       headers: {
         "Content-Type": "application/json",
@@ -84,7 +85,7 @@ export default function AdminSubmissionsPage() {
       },
     });
 
-    const data = await response.json().catch(() => ({}));
+    const data = await readJson(response);
 
     if (!response.ok) {
       throw new Error(data.message || `Request failed (${response.status}).`);

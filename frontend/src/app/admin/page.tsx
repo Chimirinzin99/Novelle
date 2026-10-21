@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { BACKEND_URL } from "@/lib/config";
+import { callBackend, readJson } from "@/lib/backend";
 import { ROLES, isAdminRole, isSuperAdminRole } from "@/lib/roles";
 
 type ProgrammeOverview = {
@@ -255,11 +256,11 @@ export default function AdminPage() {
 
           const [statsResponse, usersResponse, pendingRowsResult] =
             await Promise.all([
-              fetch(`${BACKEND_URL}/api/stats/overview`, {
+              callBackend(`${BACKEND_URL}/api/stats/overview`, {
                 headers: authHeaders,
               }),
 
-              fetch(`${BACKEND_URL}/api/users`, {
+              callBackend(`${BACKEND_URL}/api/users`, {
                 headers: authHeaders,
               }),
 
@@ -270,14 +271,14 @@ export default function AdminPage() {
                 .eq("status", "pending"),
             ]);
 
-          const statsData = await statsResponse.json();
+          const statsData = await readJson(statsResponse);
           if (!statsResponse.ok) {
             throw new Error(
               statsData.message || "Failed to load statistics."
             );
           }
 
-          const usersData = await usersResponse.json();
+          const usersData = await readJson(usersResponse);
           if (!usersResponse.ok) {
             throw new Error(usersData.message || "Failed to load users.");
           }

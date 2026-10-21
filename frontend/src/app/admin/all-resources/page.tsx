@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { BACKEND_URL } from "@/lib/config";
+import { callBackend, readJson } from "@/lib/backend";
 import { isAdminRole, isSuperAdminRole } from "@/lib/roles";
 import { resourceTypeLabel } from "@/lib/resourceTypes";
 import { youTubeThumbnail, youTubeWatchUrl } from "@/lib/youtube";
@@ -191,11 +192,11 @@ export default function AllResourcesPage() {
         setError("Your login session has expired. Please sign in again.");
         return;
       }
-      const response = await fetch(`${BACKEND_URL}/api/resources/${resource.id}`, {
+      const response = await callBackend(`${BACKEND_URL}/api/resources/${resource.id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
-      const result = await response.json();
+      const result = await readJson(response);
       if (!response.ok) {
         setError(result.message || "Unable to delete this resource.");
         return;
@@ -210,7 +211,11 @@ export default function AllResourcesPage() {
       setSuccess("Resource deleted.");
     } catch (deleteError) {
       console.error("Delete resource error:", deleteError);
-      setError("Unable to connect while deleting the resource.");
+      setError(
+        deleteError instanceof Error
+          ? deleteError.message
+          : "Unable to connect while deleting the resource."
+      );
     } finally {
       setDeletingId(null);
     }

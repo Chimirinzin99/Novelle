@@ -25,6 +25,7 @@ import {
 import { supabase } from "@/lib/supabase";
 import { isAdminRole, isSuperAdminRole } from "@/lib/roles";
 import { BACKEND_URL } from "@/lib/config";
+import { callBackend, readJson } from "@/lib/backend";
 import { RESOURCE_TYPES, resourceTypeLabel } from "@/lib/resourceTypes";
 import {
   parseYouTubeId,
@@ -210,13 +211,13 @@ export default function ManageResourcesPage() {
         return;
       }
 
-      const response = await fetch(`${BACKEND_URL}/api/modules`, {
+      const response = await callBackend(`${BACKEND_URL}/api/modules`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
 
-      const data = await response.json();
+      const data = await readJson(response);
 
       if (!response.ok) {
         setError(data.message || "Unable to load modules.");
@@ -226,7 +227,9 @@ export default function ManageResourcesPage() {
       setModules(data.modules || []);
     } catch (err) {
       console.error(err);
-      setError("Unable to connect to the backend.");
+      setError(
+        err instanceof Error ? err.message : "Unable to connect to the backend."
+      );
     }
   }
 
@@ -241,7 +244,7 @@ export default function ManageResourcesPage() {
         return;
       }
 
-      const response = await fetch(
+      const response = await callBackend(
         `${BACKEND_URL}/api/resources`,
         {
           method: "GET",
@@ -251,7 +254,7 @@ export default function ManageResourcesPage() {
         }
       );
 
-      const data = await response.json();
+      const data = await readJson(response);
 
       if (!response.ok) {
         setError(data.message || "Unable to load notes.");
@@ -261,7 +264,9 @@ export default function ManageResourcesPage() {
       setResources(data.resources || []);
     } catch (err) {
       console.error(err);
-      setError("Unable to connect to the backend.");
+      setError(
+        err instanceof Error ? err.message : "Unable to connect to the backend."
+      );
     }
   }
 
@@ -345,7 +350,7 @@ export default function ManageResourcesPage() {
         formData.append("file", file);
       }
 
-      const response = await fetch(
+      const response = await callBackend(
         `${BACKEND_URL}/api/resources/upload`,
         {
           method: "POST",
@@ -356,7 +361,7 @@ export default function ManageResourcesPage() {
         }
       );
 
-      const data = await response.json();
+      const data = await readJson(response);
 
       if (!response.ok) {
         setError(data.message || "Failed to upload.");
@@ -386,7 +391,9 @@ export default function ManageResourcesPage() {
 
     } catch (err) {
       console.error(err);
-      setError("Unable to connect to the backend.");
+      setError(
+        err instanceof Error ? err.message : "Unable to connect to the backend."
+      );
     }
 
     setUploading(false);
@@ -416,7 +423,7 @@ export default function ManageResourcesPage() {
         return;
       }
 
-      const response = await fetch(
+      const response = await callBackend(
         `${BACKEND_URL}/api/resources/${resource.id}`,
         {
           method: "DELETE",
@@ -426,7 +433,7 @@ export default function ManageResourcesPage() {
         }
       );
 
-      const data = await response.json();
+      const data = await readJson(response);
 
       if (!response.ok) {
         setError(data.message || "Failed to delete.");
@@ -438,7 +445,9 @@ export default function ManageResourcesPage() {
       await loadResources();
     } catch (err) {
       console.error(err);
-      setError("Unable to connect to the backend.");
+      setError(
+        err instanceof Error ? err.message : "Unable to connect to the backend."
+      );
     }
   }
 
@@ -523,7 +532,7 @@ export default function ManageResourcesPage() {
         return;
       }
 
-      const response = await fetch(
+      const response = await callBackend(
         `${BACKEND_URL}/api/resources/${editing.id}`,
         {
           method: "PUT",
@@ -535,7 +544,7 @@ export default function ManageResourcesPage() {
         }
       );
 
-      const data = await response.json();
+      const data = await readJson(response);
 
       if (!response.ok) {
         setError(data.message || "Failed to save changes.");
@@ -549,7 +558,9 @@ export default function ManageResourcesPage() {
       await loadResources();
     } catch (err) {
       console.error(err);
-      setError("Unable to connect to the backend.");
+      setError(
+        err instanceof Error ? err.message : "Unable to connect to the backend."
+      );
     }
 
     setSaving(false);

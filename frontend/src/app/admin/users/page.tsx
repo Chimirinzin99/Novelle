@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { BACKEND_URL } from "@/lib/config";
+import { callBackend, readJson } from "@/lib/backend";
 import {
   ROLES,
   ROLE_OPTIONS,
@@ -87,11 +88,11 @@ export default function UsersPage() {
       return;
     }
 
-    const response = await fetch(`${BACKEND_URL}/api/users`, {
+    const response = await callBackend(`${BACKEND_URL}/api/users`, {
       headers: { Authorization: `Bearer ${session.access_token}` },
     });
 
-    const data = await response.json();
+    const data = await readJson(response);
 
     if (!response.ok) {
       throw new Error(data.message || "Failed to load users.");
@@ -205,7 +206,7 @@ export default function UsersPage() {
         return;
       }
 
-      const response = await fetch(
+      const response = await callBackend(
         `${BACKEND_URL}/api/users/${editingUser.id}/role`,
         {
           method: "PATCH",
@@ -220,7 +221,7 @@ export default function UsersPage() {
         }
       );
 
-      const data = await response.json();
+      const data = await readJson(response);
 
       if (!response.ok) {
         throw new Error(data.message || "Failed to update role.");
@@ -264,7 +265,7 @@ export default function UsersPage() {
         return;
       }
 
-      const response = await fetch(
+      const response = await callBackend(
         `${BACKEND_URL}/api/users/${user.id}/${active ? "activate" : "deactivate"}`,
         {
           method: "PATCH",
@@ -272,7 +273,7 @@ export default function UsersPage() {
         }
       );
 
-      const data = await response.json();
+      const data = await readJson(response);
 
       if (!response.ok) {
         throw new Error(data.message || "Failed to update account.");
