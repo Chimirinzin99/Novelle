@@ -1,3 +1,4 @@
+
 // The welcome heading + search box at the top of /home and /search.
 // One component, so the two pages always look exactly the same.
 

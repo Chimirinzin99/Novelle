@@ -1,6 +1,7 @@
+
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
@@ -162,12 +163,61 @@ function navClass(active: boolean) {
 export default function Sidebar() {
   const router = useRouter();
   const pathname = usePathname();
+
   const [loggedIn, setLoggedIn] = useState(false);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
-  // The bell + its panel, so a click outside them can close the panel.
+
+  // Notification panel reference
   const notificationsRef = useRef<HTMLDivElement>(null);
 
+  // Programme scroll-zoom references and state
+  const programmeListRef = useRef<HTMLElement>(null);
+  const [zoomedProgramme, setZoomedProgramme] = useState(-1);
+
+  // Find the programme closest to the centre of the scrollable list
+  const updateProgrammeZoom = useCallback(() => {
+    const list = programmeListRef.current;
+    if (!list) return;
+
+    const items = list.querySelectorAll<HTMLElement>(
+      "[data-programme-item]"
+    );
+
+    const listRect = list.getBoundingClientRect();
+    const center = listRect.top + listRect.height / 2;
+
+    let closestIndex = -1;
+    let closestDistance = Infinity;
+
+    items.forEach((item, index) => {
+      const rect = item.getBoundingClientRect();
+      const itemCenter = rect.top + rect.height / 2;
+      const distance = Math.abs(itemCenter - center);
+
+      if (distance < closestDistance) {
+        closestDistance = distance;
+        closestIndex = index;
+      }
+    });
+
+    setZoomedProgramme((previous) =>
+      previous === closestIndex ? previous : closestIndex
+    );
+  }, []);
+
+  // Update the zoom when the sidebar size changes
+  useEffect(() => {
+    updateProgrammeZoom();
+
+    window.addEventListener("resize", updateProgrammeZoom);
+
+    return () => {
+      window.removeEventListener("resize", updateProgrammeZoom);
+    };
+  }, [updateProgrammeZoom]);
+
+  // Sync authentication and notifications
   useEffect(() => {
     let mounted = true;
 
@@ -202,12 +252,15 @@ export default function Sidebar() {
     return () => {
       mounted = false;
       subscription.unsubscribe();
-      window.removeEventListener(notificationsUpdatedEvent, syncNotifications);
+      window.removeEventListener(
+        notificationsUpdatedEvent,
+        syncNotifications
+      );
       window.removeEventListener("storage", syncNotifications);
     };
   }, []);
 
-  // Close the notification panel on a click outside it, or on Escape.
+  // Close notifications when clicking outside or pressing Escape
   useEffect(() => {
     if (!notificationsOpen) return;
 
@@ -216,19 +269,25 @@ export default function Sidebar() {
         setNotificationsOpen(false);
       }
     };
+
     const handleKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setNotificationsOpen(false);
+      if (event.key === "Escape") {
+        setNotificationsOpen(false);
+      }
     };
 
     document.addEventListener("mousedown", handleClick);
     document.addEventListener("keydown", handleKey);
+
     return () => {
       document.removeEventListener("mousedown", handleClick);
       document.removeEventListener("keydown", handleKey);
     };
   }, [notificationsOpen]);
 
-  const unreadCount = notifications.filter((notification) => !notification.read).length;
+  const unreadCount = notifications.filter(
+    (notification) => !notification.read
+  ).length;
 
   function openNotification(notification: AppNotification) {
     markNotificationRead(notification.id);
@@ -243,9 +302,6 @@ export default function Sidebar() {
   };
 
   return (
-    // z-40: `sticky` puts the sidebar on its own layer. Without a z-index
-    // that layer sits at 0, so the page on the right (drawn later) covered
-    // the notification panel. z-40 keeps the sidebar and its panel on top.
     <aside className="sticky top-0 z-40 flex h-screen w-64 shrink-0 flex-col border-r border-[#E7E5DF] bg-[#FCFBF8] px-4 py-5">
       {/* Brand */}
       <Link
@@ -280,7 +336,6 @@ export default function Sidebar() {
           <span>Home</span>
         </Link>
 
-        {/* Original blue plus sign */}
         <Link
           href="/submit-note"
           className={
@@ -305,11 +360,14 @@ export default function Sidebar() {
             <button
               type="button"
               onClick={() => setNotificationsOpen((open) => !open)}
-              aria-label={`Notifications${unreadCount ? `, ${unreadCount} unread` : ""}`}
+              aria-label={`Notifications${
+                unreadCount ? `, ${unreadCount} unread` : ""
+              }`}
               aria-expanded={notificationsOpen}
               className="relative rounded-lg p-1.5 text-slate-500 transition hover:bg-[#F0F2F5] hover:text-[#294C78] focus:outline-none focus:ring-2 focus:ring-[#294C78]/30"
             >
               <Icon name="bell" className="h-5 w-5" />
+
               {unreadCount > 0 && (
                 <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold leading-none text-white">
                   {unreadCount > 9 ? "9+" : unreadCount}
@@ -327,6 +385,7 @@ export default function Sidebar() {
                   <h2 className="text-sm font-semibold text-[#24344D]">
                     Notifications
                   </h2>
+
                   {unreadCount > 0 && (
                     <button
                       type="button"
@@ -358,19 +417,25 @@ export default function Sidebar() {
                         >
                           <span
                             className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${
-                              notification.read ? "bg-transparent" : "bg-[#456FAD]"
+                              notification.read
+                                ? "bg-transparent"
+                                : "bg-[#456FAD]"
                             }`}
                             aria-hidden="true"
                           />
+
                           <span className="min-w-0">
                             <span className="block text-sm leading-5 text-[#24344D]">
                               {notification.message}
                             </span>
+
                             <time
                               dateTime={notification.createdAt}
                               className="mt-1 block text-xs text-slate-400"
                             >
-                              {new Date(notification.createdAt).toLocaleString()}
+                              {new Date(
+                                notification.createdAt
+                              ).toLocaleString()}
                             </time>
                           </span>
                         </button>
@@ -394,32 +459,46 @@ export default function Sidebar() {
         </nav>
       </section>
 
-      {/* Scrollable programme list */}
+      {/* Scrollable programmes with zoom-on-scroll */}
       <section className="mt-8 flex min-h-0 flex-1 flex-col">
         <div className="mb-3 flex shrink-0 items-center justify-between px-3">
           <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-600">
             Programmes
           </p>
+
           <Icon
             name="graduation"
             className="h-4 w-4 text-slate-600"
           />
         </div>
 
-        <nav className="min-h-0 flex-1 space-y-0 overflow-y-auto pr-1 [scrollbar-color:#D5D9E0_transparent] [scrollbar-width:thin]">
-          {PROGRAMMES.map((programme) => {
+        <nav
+          ref={programmeListRef}
+          onScroll={updateProgrammeZoom}
+          className="min-h-0 flex-1 space-y-0 overflow-y-auto overflow-x-hidden pr-1 [scrollbar-color:#D5D9E0_transparent] [scrollbar-width:thin]"
+          aria-label="Programmes"
+        >
+          {PROGRAMMES.map((programme, index) => {
             const href = programmeHref(programme.name);
             const active =
               pathname === href || pathname.startsWith(`${href}/`);
+
+            const isZoomed = zoomedProgramme === index;
 
             return (
               <Link
                 key={programme.name}
                 href={href}
                 title={programme.name}
+                data-programme-item
+                aria-current={active ? "page" : undefined}
                 className={[
                   "group relative flex w-full items-center gap-3",
-                  "rounded-lg px-3 py-3 text-sm transition-colors",
+                  "rounded-lg px-3 py-3 text-sm",
+                  "origin-center transition-all duration-200 ease-out",
+                  isZoomed
+                    ? "scale-[1.04] opacity-100"
+                    : "scale-[0.96] opacity-75",
                   active
                     ? "bg-[#E7EEF8] font-semibold text-[#294C78]"
                     : "text-slate-600 hover:bg-[#F0F2F5] hover:text-slate-900",
@@ -427,7 +506,7 @@ export default function Sidebar() {
               >
                 <span
                   className={[
-                    "h-1.5 w-1.5 shrink-0 rounded-full",
+                    "h-1.5 w-1.5 shrink-0 rounded-full transition-colors",
                     active
                       ? "bg-[#456FAD]"
                       : "bg-slate-300 group-hover:bg-slate-500",
@@ -445,7 +524,6 @@ export default function Sidebar() {
                   />
                 )}
 
-                {/* Underline for every programme */}
                 <span className="pointer-events-none absolute bottom-0 left-3 right-3 border-b border-[#E7E5DF]" />
               </Link>
             );
