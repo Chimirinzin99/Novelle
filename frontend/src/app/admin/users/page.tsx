@@ -1,5 +1,9 @@
 "use client";
 
+// Part 12: hard-coded colours (gray/blue/black and old hexes) switched to the
+// theme colours from app/globals.css (navy, ink, line, sky-…, gold-…).
+// Nothing else on this page changed.
+
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
@@ -32,9 +36,9 @@ type Programme = {
 
 // Badge colour per role (lib/roles.ts has the codes).
 const ROLE_BADGE: Record<string, string> = {
-  [ROLES.student]: "bg-gray-100 text-gray-700",
-  [ROLES.programmeAdmin]: "bg-blue-100 text-blue-700",
-  [ROLES.superAdmin]: "bg-purple-100 text-purple-700",
+  [ROLES.student]: "bg-sky-wash text-ink-nav",
+  [ROLES.programmeAdmin]: "bg-sky-tint text-navy-soft",
+  [ROLES.superAdmin]: "bg-gold-tint text-gold-ink",
 };
 
 export default function UsersPage() {
@@ -295,8 +299,8 @@ export default function UsersPage() {
 
   if (loading) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-gray-50 text-gray-900">
-        <p className="text-gray-500">Loading users...</p>
+      <main className="flex min-h-screen items-center justify-center bg-cream text-ink">
+        <p className="text-ink-soft">Loading users...</p>
       </main>
     );
   }
@@ -338,27 +342,27 @@ export default function UsersPage() {
   };
 
   const selectClass =
-    "rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500";
+    "rounded-lg border border-sky-line bg-white px-3 py-2 text-sm outline-none focus:border-navy-soft";
 
   return (
     // text-gray-900: otherwise text takes the near-white dark-mode colour
     // from globals.css (same fix as the Modules page).
-    <main className="min-h-screen bg-gray-50 px-8 py-8 text-gray-900">
+    <main className="min-h-screen bg-cream px-8 py-8 text-ink">
       <div className="mx-auto max-w-6xl">
         {/* Header */}
         <div className="mb-8">
           <button
             onClick={() => router.push("/admin")}
-            className="mb-3 text-sm text-blue-600 hover:underline"
+            className="mb-3 text-sm text-navy-soft hover:underline"
           >
             ← Back to Admin Dashboard
           </button>
 
-          <p className="text-sm font-medium text-blue-600">User Management</p>
+          <p className="text-sm font-medium text-navy-soft">User Management</p>
 
-          <h1 className="mt-1 text-3xl font-bold text-gray-900">Users</h1>
+          <h1 className="mt-1 text-3xl font-bold text-ink">Users</h1>
 
-          <p className="mt-2 text-gray-500">
+          <p className="mt-2 text-ink-soft">
             Assign programme admins, change user roles and deactivate
             accounts. Everyone signs up as a student.
           </p>
@@ -379,11 +383,11 @@ export default function UsersPage() {
         )}
 
         {/* User list */}
-        <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
-          <div className="border-b border-gray-200 px-6 py-5">
-            <h2 className="text-lg font-semibold text-gray-900">User List</h2>
+        <div className="rounded-xl border border-line bg-white shadow-sm">
+          <div className="border-b border-line px-6 py-5">
+            <h2 className="text-lg font-semibold text-ink">User List</h2>
 
-            <p className="mt-1 text-sm text-gray-500">
+            <p className="mt-1 text-sm text-ink-soft">
               {visibleUsers.length} of {users.length} user
               {users.length !== 1 ? "s" : ""}
             </p>
@@ -395,7 +399,7 @@ export default function UsersPage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search name or email"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500 sm:w-64"
+                className="w-full rounded-lg border border-sky-line px-3 py-2 text-sm outline-none focus:border-navy-soft sm:w-64"
               />
 
               <select
@@ -437,7 +441,7 @@ export default function UsersPage() {
               {hasFilters && (
                 <button
                   onClick={clearFilters}
-                  className="text-sm text-blue-600 hover:underline"
+                  className="text-sm text-navy-soft hover:underline"
                 >
                   Clear filters
                 </button>
@@ -447,10 +451,10 @@ export default function UsersPage() {
 
           {visibleUsers.length === 0 ? (
             <div className="px-6 py-12 text-center">
-              <p className="text-gray-500">No users match these filters.</p>
+              <p className="text-ink-soft">No users match these filters.</p>
             </div>
           ) : (
-            <div className="divide-y divide-gray-100">
+            <div className="divide-y divide-line">
               {visibleUsers.map((user) => {
                 const isMe = user.id === myId;
 
@@ -462,10 +466,10 @@ export default function UsersPage() {
                     {/* User information */}
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="font-semibold text-gray-900">
+                        <h3 className="font-semibold text-ink">
                           {user.full_name}
                           {isMe && (
-                            <span className="ml-1 font-normal text-gray-400">
+                            <span className="ml-1 font-normal text-ink-soft">
                               (you)
                             </span>
                           )}
@@ -473,7 +477,7 @@ export default function UsersPage() {
 
                         <span
                           className={`rounded-full px-2.5 py-1 text-xs font-medium ${
-                            ROLE_BADGE[user.role] ?? "bg-gray-100 text-gray-700"
+                            ROLE_BADGE[user.role] ?? "bg-sky-wash text-ink-nav"
                           }`}
                         >
                           {roleLabel(user.role)}
@@ -486,11 +490,11 @@ export default function UsersPage() {
                         )}
                       </div>
 
-                      <p className="mt-1 truncate text-sm text-gray-600">
+                      <p className="mt-1 truncate text-sm text-ink-soft">
                         {user.email}
                       </p>
 
-                      <p className="mt-1 text-xs text-gray-400">
+                      <p className="mt-1 text-xs text-ink-soft">
                         {user.programme?.name ??
                           (isSuperAdminRole(user.role)
                             ? "All programmes"
@@ -503,7 +507,7 @@ export default function UsersPage() {
                       <div className="flex gap-2">
                         <button
                           onClick={() => openChangeRole(user)}
-                          className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                          className="rounded-lg border border-sky-line px-4 py-2 text-sm font-medium text-ink-nav hover:bg-cream"
                         >
                           Change role
                         </button>
@@ -535,16 +539,16 @@ export default function UsersPage() {
 
       {/* Change role window */}
       {editingUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy/40 px-4">
           <form
             onSubmit={handleSaveRole}
             className="w-full max-w-md rounded-xl bg-white p-6 shadow-lg"
           >
-            <h2 className="text-lg font-semibold text-gray-900">
+            <h2 className="text-lg font-semibold text-ink">
               Change role
             </h2>
 
-            <p className="mt-1 text-sm text-gray-500">
+            <p className="mt-1 text-sm text-ink-soft">
               {editingUser.full_name} · {editingUser.email}
             </p>
 
@@ -554,14 +558,14 @@ export default function UsersPage() {
               </div>
             )}
 
-            <label className="mb-2 mt-5 block text-sm font-medium text-gray-700">
+            <label className="mb-2 mt-5 block text-sm font-medium text-ink-nav">
               Role
             </label>
 
             <select
               value={formRole}
               onChange={(e) => setFormRole(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              className="w-full rounded-lg border border-sky-line bg-white px-4 py-2.5 outline-none focus:border-navy-soft focus:ring-2 focus:ring-sky-tint"
             >
               {ROLE_OPTIONS.map((r) => (
                 <option key={r.code} value={r.code}>
@@ -572,14 +576,14 @@ export default function UsersPage() {
 
             {needsProgramme ? (
               <>
-                <label className="mb-2 mt-4 block text-sm font-medium text-gray-700">
+                <label className="mb-2 mt-4 block text-sm font-medium text-ink-nav">
                   Programme
                 </label>
 
                 <select
                   value={formProgrammeId}
                   onChange={(e) => setFormProgrammeId(e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                  className="w-full rounded-lg border border-sky-line bg-white px-4 py-2.5 outline-none focus:border-navy-soft focus:ring-2 focus:ring-sky-tint"
                 >
                   <option value="">Select programme</option>
                   {programmes.map((p) => (
@@ -590,14 +594,14 @@ export default function UsersPage() {
                 </select>
 
                 {formRole === ROLES.programmeAdmin && (
-                  <p className="mt-2 text-xs text-gray-500">
+                  <p className="mt-2 text-xs text-ink-soft">
                     They will review submissions and manage resources for this
                     programme.
                   </p>
                 )}
               </>
             ) : (
-              <p className="mt-4 rounded-lg bg-purple-50 px-4 py-3 text-sm text-purple-700">
+              <p className="mt-4 rounded-lg bg-gold-tint px-4 py-3 text-sm text-gold-ink">
                 A super admin manages every programme, users and modules.
               </p>
             )}
@@ -607,7 +611,7 @@ export default function UsersPage() {
                 type="button"
                 onClick={closeChangeRole}
                 disabled={saving}
-                className="rounded-lg border border-gray-300 bg-white px-5 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                className="rounded-lg border border-sky-line bg-white px-5 py-2.5 text-sm font-medium text-ink-nav hover:bg-cream disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -615,7 +619,7 @@ export default function UsersPage() {
               <button
                 type="submit"
                 disabled={saving}
-                className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-lg bg-navy px-5 py-2.5 text-sm font-medium text-white transition hover:bg-navy-soft disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {saving ? "Saving..." : "Save"}
               </button>

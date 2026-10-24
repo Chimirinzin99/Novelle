@@ -1,12 +1,18 @@
-
 "use client";
+
+// The student sidebar, shown on every page in app/(student)/ (see layout.tsx).
+// Part 12: restyled with the theme colours from globals.css (navy, sky,
+// gold, …) and the shared <Logo />. My Submissions and Liked live on
+// /profile (Chimi's layout), not in the sidebar.
+// The behaviour is unchanged: notifications bell, programme zoom-on-scroll,
+// login/logout.
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { programmeHref } from "@/lib/programmes";
+import Logo from "@/components/Logo";
 import {
   getNotifications,
   markAllNotificationsRead,
@@ -15,6 +21,8 @@ import {
   type AppNotification,
 } from "@/lib/notifications";
 
+// name = exact programme name in the database (used for the URL);
+// label = what the sidebar shows (with the short form).
 const PROGRAMMES = [
   { name: "Civil Engineering", label: "Civil Engineering" },
   { name: "Electrical Engineering", label: "Electrical Engineering" },
@@ -38,10 +46,8 @@ const PROGRAMMES = [
 ];
 
 type IconName =
-  | "book"
   | "home"
-  | "library"
-  | "heart"
+  | "plus"
   | "user"
   | "bell"
   | "graduation"
@@ -50,6 +56,8 @@ type IconName =
   | "login"
   | "chevron";
 
+// Small line icons drawn with SVG. stroke="currentColor" means the icon
+// takes the text colour of whatever it sits in.
 function Icon({
   name,
   className = "h-5 w-5",
@@ -60,26 +68,13 @@ function Icon({
   const common = {
     fill: "none",
     stroke: "currentColor",
-    strokeWidth: 1.7,
+    strokeWidth: 1.8,
     strokeLinecap: "round" as const,
     strokeLinejoin: "round" as const,
   };
 
   return (
-    <svg
-      viewBox="0 0 24 24"
-      className={className}
-      aria-hidden="true"
-      {...common}
-    >
-      {name === "book" && (
-        <>
-          <path d="M12 7v14" />
-          <path d="M3 5.5A2.5 2.5 0 0 1 5.5 3H12v18H5.5A2.5 2.5 0 0 0 3 23z" />
-          <path d="M21 5.5A2.5 2.5 0 0 0 18.5 3H12v18h6.5a2.5 2.5 0 0 1 2.5 2z" />
-        </>
-      )}
-
+    <svg viewBox="0 0 24 24" className={className} aria-hidden="true" {...common}>
       {name === "home" && (
         <>
           <path d="m3 10 9-7 9 7" />
@@ -88,17 +83,7 @@ function Icon({
         </>
       )}
 
-      {name === "library" && (
-        <>
-          <path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v18H6.5A2.5 2.5 0 0 1 4 17.5z" />
-          <path d="M4 17.5A2.5 2.5 0 0 1 6.5 15H20" />
-          <path d="M8 6h8M8 10h6" />
-        </>
-      )}
-
-      {name === "heart" && (
-        <path d="M20.8 4.8a5.5 5.5 0 0 0-7.8 0L12 5.9l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21l7.8-7.3 1.1-1.1a5.5 5.5 0 0 0-.1-7.8Z" />
-      )}
+      {name === "plus" && <path d="M12 5v14M5 12h14" />}
 
       {name === "user" && (
         <>
@@ -150,15 +135,23 @@ function Icon({
   );
 }
 
+// Classes for a main sidebar link. The current page gets a solid navy
+// background (as in the design); others get a pale hover.
+// focus-visible: a ring only for keyboard users (Tab), not on mouse clicks.
 function navClass(active: boolean) {
   return [
-    "group flex w-full items-center gap-3 rounded-xl px-3 py-2.5",
-    "text-sm transition-colors duration-150",
+    "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-[15px]",
+    "transition-colors duration-150 outline-none",
+    "focus-visible:ring-2 focus-visible:ring-navy/40",
     active
-      ? "bg-[#E7EEF8] font-semibold text-[#294C78]"
-      : "text-slate-600 hover:bg-[#F0F2F5] hover:text-slate-900",
+      ? "bg-navy font-semibold text-white"
+      : "font-medium text-ink-nav hover:bg-sky-wash hover:text-navy",
   ].join(" ");
 }
+
+// Small uppercase section headings ("MY ACCOUNT", "PROGRAMMES").
+const sectionLabel =
+  "font-display text-[11px] font-bold uppercase tracking-[0.14em] text-muted-blue";
 
 export default function Sidebar() {
   const router = useRouter();
@@ -168,10 +161,10 @@ export default function Sidebar() {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
 
-  // Notification panel reference
+  // Notification panel reference (to detect clicks outside it)
   const notificationsRef = useRef<HTMLDivElement>(null);
 
-  // Programme scroll-zoom references and state
+  // Programme scroll-zoom references and state (Ngawang's effect)
   const programmeListRef = useRef<HTMLElement>(null);
   const [zoomedProgramme, setZoomedProgramme] = useState(-1);
 
@@ -180,9 +173,7 @@ export default function Sidebar() {
     const list = programmeListRef.current;
     if (!list) return;
 
-    const items = list.querySelectorAll<HTMLElement>(
-      "[data-programme-item]"
-    );
+    const items = list.querySelectorAll<HTMLElement>("[data-programme-item]");
 
     const listRect = list.getBoundingClientRect();
     const center = listRect.top + listRect.height / 2;
@@ -209,12 +200,8 @@ export default function Sidebar() {
   // Update the zoom when the sidebar size changes
   useEffect(() => {
     updateProgrammeZoom();
-
     window.addEventListener("resize", updateProgrammeZoom);
-
-    return () => {
-      window.removeEventListener("resize", updateProgrammeZoom);
-    };
+    return () => window.removeEventListener("resize", updateProgrammeZoom);
   }, [updateProgrammeZoom]);
 
   // Sync authentication and notifications
@@ -233,10 +220,7 @@ export default function Sidebar() {
       const {
         data: { session },
       } = await supabase.auth.getSession();
-
-      if (mounted) {
-        setLoggedIn(!!session);
-      }
+      if (mounted) setLoggedIn(!!session);
     };
 
     checkUser();
@@ -244,18 +228,13 @@ export default function Sidebar() {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (mounted) {
-        setLoggedIn(!!session);
-      }
+      if (mounted) setLoggedIn(!!session);
     });
 
     return () => {
       mounted = false;
       subscription.unsubscribe();
-      window.removeEventListener(
-        notificationsUpdatedEvent,
-        syncNotifications
-      );
+      window.removeEventListener(notificationsUpdatedEvent, syncNotifications);
       window.removeEventListener("storage", syncNotifications);
     };
   }, []);
@@ -271,9 +250,7 @@ export default function Sidebar() {
     };
 
     const handleKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setNotificationsOpen(false);
-      }
+      if (event.key === "Escape") setNotificationsOpen(false);
     };
 
     document.addEventListener("mousedown", handleClick);
@@ -285,9 +262,7 @@ export default function Sidebar() {
     };
   }, [notificationsOpen]);
 
-  const unreadCount = notifications.filter(
-    (notification) => !notification.read
-  ).length;
+  const unreadCount = notifications.filter((n) => !n.read).length;
 
   function openNotification(notification: AppNotification) {
     markNotificationRead(notification.id);
@@ -302,59 +277,47 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="sticky top-0 z-40 flex h-screen w-64 shrink-0 flex-col border-r border-[#E7E5DF] bg-[#FCFBF8] px-4 py-5">
+    // z-40: sticky creates its own stacking context; this keeps the
+    // notification panel above the page (fixed 21 Oct).
+    <aside className="sticky top-0 z-40 flex h-screen w-64 shrink-0 flex-col border-r border-line bg-white px-4 py-6">
       {/* Brand */}
-      <Link
-        href="/home"
-        className="mb-8 flex shrink-0 items-center gap-3 rounded-xl px-2 py-1"
-      >
-        <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[#E7E5DF] bg-[#FFFCF6] shadow-sm">
-          <Image
-            src="/novelle-logo.jpeg"
-            alt="Novelle logo"
-            width={825}
-            height={509}
-            priority
-            className="h-7 w-11 object-contain"
-          />
-        </span>
-
-        <span>
-          <span className="block text-xl font-bold tracking-tight text-[#24344D]">
-            Novelle
-          </span>
-          <span className="mt-0.5 block text-[11px] text-slate-500">
-            CST Learning Hub
-          </span>
-        </span>
-      </Link>
+      <div className="mb-7 shrink-0 px-2">
+        <Logo href="/home" />
+      </div>
 
       {/* Main navigation */}
-      <nav className="shrink-0 space-y-1">
+      <nav aria-label="Main" className="shrink-0 space-y-1">
         <Link href="/home" className={navClass(pathname === "/home")}>
           <Icon name="home" />
           <span>Home</span>
         </Link>
 
+        {/* Upload: the main action for students, so it is coloured gold
+            from the logo's star (user's idea, Part 12). The "+" icon uses the
+            bright star gold; the word uses the darker gold-ink, because the
+            bright gold is too faint to read as text on white. On the upload
+            page itself it gets a pale gold background. */}
         <Link
           href="/submit-note"
-          className={
-            pathname === "/submit-note"
-              ? navClass(true)
-              : "group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-blue-600 transition-colors hover:bg-blue-50"
-          }
+          aria-current={pathname === "/submit-note" ? "page" : undefined}
+          className={[
+            "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-[15px] font-bold text-gold-ink",
+            "outline-none transition-colors duration-150 hover:bg-gold-tint",
+            "focus-visible:ring-2 focus-visible:ring-navy/40",
+            pathname === "/submit-note" ? "bg-gold-tint" : "",
+          ].join(" ")}
         >
-          <span className="text-xl font-semibold leading-none">+</span>
+          <span className="text-gold">
+            <Icon name="plus" className="h-5 w-5" />
+          </span>
           <span>Upload</span>
         </Link>
       </nav>
 
       {/* My Account */}
-      <section className="mt-8 shrink-0">
-        <div className="mb-3 flex items-center justify-between px-3">
-          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-600">
-            My Account
-          </p>
+      <section className="mt-7 shrink-0">
+        <div className="mb-2 flex items-center justify-between px-3">
+          <p className={sectionLabel}>My Account</p>
 
           <div ref={notificationsRef} className="relative">
             <button
@@ -364,12 +327,13 @@ export default function Sidebar() {
                 unreadCount ? `, ${unreadCount} unread` : ""
               }`}
               aria-expanded={notificationsOpen}
-              className="relative rounded-lg p-1.5 text-slate-500 transition hover:bg-[#F0F2F5] hover:text-[#294C78] focus:outline-none focus:ring-2 focus:ring-[#294C78]/30"
+              className="relative rounded-lg p-1.5 text-ink-soft outline-none transition hover:bg-sky-wash hover:text-navy focus-visible:ring-2 focus-visible:ring-navy/40"
             >
               <Icon name="bell" className="h-5 w-5" />
 
+              {/* Unread count in star gold (the design's colour for counts) */}
               {unreadCount > 0 && (
-                <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold leading-none text-white">
+                <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-gold px-1 text-[9px] font-extrabold leading-none text-ink">
                   {unreadCount > 9 ? "9+" : unreadCount}
                 </span>
               )}
@@ -379,12 +343,10 @@ export default function Sidebar() {
               <div
                 role="dialog"
                 aria-label="Notifications"
-                className="absolute left-[calc(100%+0.75rem)] top-0 z-[60] w-80 max-w-[calc(100vw-18rem)] overflow-hidden rounded-2xl border border-[#E7E5DF] bg-white shadow-xl"
+                className="absolute left-[calc(100%+0.75rem)] top-0 z-[60] w-80 max-w-[calc(100vw-18rem)] overflow-hidden rounded-2xl border border-line bg-white shadow-xl"
               >
-                <div className="flex items-center justify-between border-b border-[#F0EEE8] px-4 py-3">
-                  <h2 className="text-sm font-semibold text-[#24344D]">
-                    Notifications
-                  </h2>
+                <div className="flex items-center justify-between border-b border-line px-4 py-3">
+                  <h2 className="text-sm font-bold text-navy">Notifications</h2>
 
                   {unreadCount > 0 && (
                     <button
@@ -393,7 +355,7 @@ export default function Sidebar() {
                         markAllNotificationsRead();
                         setNotifications(getNotifications());
                       }}
-                      className="text-xs font-medium text-[#456FAD] hover:text-[#294C78]"
+                      className="text-xs font-semibold text-navy-soft hover:text-navy"
                     >
                       Mark all read
                     </button>
@@ -401,41 +363,37 @@ export default function Sidebar() {
                 </div>
 
                 {notifications.length === 0 ? (
-                  <p className="px-4 py-8 text-center text-sm text-slate-500">
+                  <p className="px-4 py-8 text-center text-sm text-ink-soft">
                     You’re all caught up.
                   </p>
                 ) : (
-                  <ul className="max-h-72 divide-y divide-[#F0EEE8] overflow-y-auto">
+                  <ul className="max-h-72 divide-y divide-line overflow-y-auto">
                     {notifications.map((notification) => (
                       <li key={notification.id}>
                         <button
                           type="button"
                           onClick={() => openNotification(notification)}
-                          className={`flex w-full items-start gap-3 px-4 py-3 text-left transition hover:bg-[#F5F8FD] ${
-                            notification.read ? "bg-white" : "bg-[#F5F8FD]"
+                          className={`flex w-full items-start gap-3 px-4 py-3 text-left transition hover:bg-sky-wash ${
+                            notification.read ? "bg-white" : "bg-cream"
                           }`}
                         >
+                          {/* Unread dot (sky blue is fine here: decoration) */}
                           <span
                             className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${
-                              notification.read
-                                ? "bg-transparent"
-                                : "bg-[#456FAD]"
+                              notification.read ? "bg-transparent" : "bg-brand-sky"
                             }`}
                             aria-hidden="true"
                           />
 
                           <span className="min-w-0">
-                            <span className="block text-sm leading-5 text-[#24344D]">
+                            <span className="block text-sm leading-5 text-ink">
                               {notification.message}
                             </span>
-
                             <time
                               dateTime={notification.createdAt}
-                              className="mt-1 block text-xs text-slate-400"
+                              className="mt-1 block text-xs text-ink-soft"
                             >
-                              {new Date(
-                                notification.createdAt
-                              ).toLocaleString()}
+                              {new Date(notification.createdAt).toLocaleString()}
                             </time>
                           </span>
                         </button>
@@ -448,11 +406,8 @@ export default function Sidebar() {
           </div>
         </div>
 
-        <nav className="space-y-1">
-          <Link
-            href="/profile"
-            className={navClass(pathname === "/profile")}
-          >
+        <nav aria-label="My account" className="space-y-1">
+          <Link href="/profile" className={navClass(pathname === "/profile")}>
             <Icon name="user" />
             <span>Profile</span>
           </Link>
@@ -460,29 +415,21 @@ export default function Sidebar() {
       </section>
 
       {/* Scrollable programmes with zoom-on-scroll */}
-      <section className="mt-8 flex min-h-0 flex-1 flex-col">
-        <div className="mb-3 flex shrink-0 items-center justify-between px-3">
-          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-600">
-            Programmes
-          </p>
-
-          <Icon
-            name="graduation"
-            className="h-4 w-4 text-slate-600"
-          />
+      <section className="mt-7 flex min-h-0 flex-1 flex-col">
+        <div className="mb-2 flex shrink-0 items-center justify-between px-3">
+          <p className={sectionLabel}>Programmes</p>
+          <Icon name="graduation" className="h-4 w-4 text-muted-blue" />
         </div>
 
         <nav
           ref={programmeListRef}
           onScroll={updateProgrammeZoom}
-          className="min-h-0 flex-1 space-y-0 overflow-y-auto overflow-x-hidden pr-1 [scrollbar-color:#D5D9E0_transparent] [scrollbar-width:thin]"
+          className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden pr-1 [scrollbar-color:#CFDDF1_transparent] [scrollbar-width:thin]"
           aria-label="Programmes"
         >
           {PROGRAMMES.map((programme, index) => {
             const href = programmeHref(programme.name);
-            const active =
-              pathname === href || pathname.startsWith(`${href}/`);
-
+            const active = pathname === href || pathname.startsWith(`${href}/`);
             const isZoomed = zoomedProgramme === index;
 
             return (
@@ -493,38 +440,26 @@ export default function Sidebar() {
                 data-programme-item
                 aria-current={active ? "page" : undefined}
                 className={[
-                  "group relative flex w-full items-center gap-3",
-                  "rounded-lg px-3 py-3 text-sm",
-                  "origin-center transition-all duration-200 ease-out",
-                  isZoomed
-                    ? "scale-[1.04] opacity-100"
-                    : "scale-[0.96] opacity-75",
+                  "group relative flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm",
+                  "origin-center outline-none transition-all duration-200 ease-out",
+                  "focus-visible:ring-2 focus-visible:ring-navy/40",
+                  isZoomed ? "scale-[1.04] opacity-100" : "scale-[0.96] opacity-80",
                   active
-                    ? "bg-[#E7EEF8] font-semibold text-[#294C78]"
-                    : "text-slate-600 hover:bg-[#F0F2F5] hover:text-slate-900",
+                    ? "bg-sky-wash font-bold text-navy"
+                    : "text-ink-nav hover:bg-sky-wash hover:text-navy",
                 ].join(" ")}
               >
+                {/* Dot: sky blue for the current programme, grey otherwise */}
                 <span
                   className={[
                     "h-1.5 w-1.5 shrink-0 rounded-full transition-colors",
-                    active
-                      ? "bg-[#456FAD]"
-                      : "bg-slate-300 group-hover:bg-slate-500",
+                    active ? "bg-brand-sky" : "bg-sky-line group-hover:bg-brand-sky",
                   ].join(" ")}
                 />
 
-                <span className="min-w-0 flex-1 leading-5">
-                  {programme.label}
-                </span>
+                <span className="min-w-0 flex-1 leading-5">{programme.label}</span>
 
-                {active && (
-                  <Icon
-                    name="chevron"
-                    className="h-4 w-4 shrink-0 text-[#456FAD]"
-                  />
-                )}
-
-                <span className="pointer-events-none absolute bottom-0 left-3 right-3 border-b border-[#E7E5DF]" />
+                {active && <Icon name="chevron" className="h-4 w-4 shrink-0 text-navy" />}
               </Link>
             );
           })}
@@ -532,11 +467,8 @@ export default function Sidebar() {
       </section>
 
       {/* Bottom actions */}
-      <div className="mt-4 shrink-0 border-t border-[#E7E5DF] pt-4">
-        <Link
-          href="/settings"
-          className={navClass(pathname === "/settings")}
-        >
+      <div className="mt-4 shrink-0 border-t border-line pt-4">
+        <Link href="/settings" className={navClass(pathname === "/settings")}>
           <Icon name="settings" />
           <span>Settings</span>
         </Link>
@@ -545,16 +477,13 @@ export default function Sidebar() {
           <button
             type="button"
             onClick={handleLogout}
-            className="mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-slate-600 transition-colors hover:bg-red-50 hover:text-red-600"
+            className="mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[15px] font-medium text-ink-nav outline-none transition-colors hover:bg-red-50 hover:text-red-700 focus-visible:ring-2 focus-visible:ring-navy/40"
           >
             <Icon name="logout" />
             <span>Logout</span>
           </button>
         ) : (
-          <Link
-            href="/login"
-            className={`mt-1 ${navClass(pathname === "/login")}`}
-          >
+          <Link href="/login" className={`mt-1 ${navClass(pathname === "/login")}`}>
             <Icon name="login" />
             <span>Login</span>
           </Link>

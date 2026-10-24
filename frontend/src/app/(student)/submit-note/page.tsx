@@ -1,5 +1,12 @@
 "use client";
 
+// /submit-note — a student submits a PDF (note, question paper or assignment)
+// for their own programme; a programme admin reviews it.
+// Part 12: new layout — one column in the order a student fills it in
+// (what type -> title -> PDF -> submit). The old two-column layout hid the
+// Submit button below the screen on laptops (the page could not scroll).
+// The submit code is unchanged.
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
@@ -8,8 +15,27 @@ import { callBackend, readJson } from "@/lib/backend";
 import { addNotification } from "@/lib/notifications";
 import {
   STUDENT_SUBMIT_TYPES,
+  resourceTypeBadge,
   type ResourceTypeCode,
 } from "@/lib/resourceTypes";
+import PageHeader from "@/components/PageHeader";
+
+// Longest title the backend accepts.
+const TITLE_MAX = 120;
+
+// One line under each type choice, so students pick the right one.
+const TYPE_HINTS: Record<string, string> = {
+  note: "Lecture or study notes",
+  question_paper: "A past exam or test paper",
+  assignment: "An assignment or coursework sheet",
+};
+
+// "1.4 MB" / "830 KB"
+function fileSize(bytes: number) {
+  return bytes >= 1024 * 1024
+    ? `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+    : `${Math.max(1, Math.round(bytes / 1024))} KB`;
+}
 
 export default function SubmitNotePage() {
   const router = useRouter();
@@ -214,159 +240,134 @@ export default function SubmitNotePage() {
     }
   };
 
+  const inputClass =
+    "h-12 w-full rounded-xl border-2 border-sky-line bg-white px-4 text-base text-ink outline-none transition placeholder:text-ink-soft focus:border-navy-soft focus:ring-4 focus:ring-sky-tint disabled:cursor-not-allowed disabled:bg-sky-wash";
+  const stepLabel = "mb-2 block font-display text-base font-bold text-navy";
+
   return (
-    <main className="min-h-full bg-[#FCFBF8] px-4 py-4 sm:px-6 sm:py-5 xl:h-full xl:min-h-0 xl:overflow-hidden">
-      <div className="mx-auto flex min-h-full max-w-none flex-col xl:h-full xl:min-h-0">
-        {/* Page introduction */}
-        <div className="mb-4 flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
+    <main className="min-h-full bg-cream px-4 py-8 sm:px-8 sm:py-10 lg:px-12">
+      <div className="mx-auto max-w-2xl">
+        <PageHeader
+          eyebrow="Upload"
+          title="Submit a resource"
+          description="Share study material with your programme. An admin reviews it before it appears on Novelle."
+        />
+
+        <form onSubmit={handleSubmit} className="flex flex-col gap-7 rounded-2xl border border-line bg-white p-5 sm:p-7">
+          {/* 1. Type — three big choices instead of a dropdown, so all
+                 options are visible at once. They are real radio buttons
+                 (keyboard: Tab to the group, arrow keys to choose). */}
+          <fieldset disabled={loading}>
+            <legend className={stepLabel}>1. What are you sharing?</legend>
+            <div className="grid gap-3 sm:grid-cols-3">
+              {STUDENT_SUBMIT_TYPES.map((t) => {
+                const selected = type === t.code;
+                return (
+                  <label
+                    key={t.code}
+                    className={`flex cursor-pointer flex-col gap-1.5 rounded-xl border-2 p-4 transition has-[:focus-visible]:ring-4 has-[:focus-visible]:ring-sky-tint ${
+                      selected ? "border-navy bg-sky-wash" : "border-sky-line bg-white hover:border-navy-soft"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="resource-type"
+                      value={t.code}
+                      checked={selected}
+                      onChange={() => setType(t.code)}
+                      className="sr-only"
+                    />
+                    <span className="flex items-center justify-between gap-2">
+                      <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${resourceTypeBadge(t.code)}`}>{t.label}</span>
+                      {/* tick for the chosen one */}
+                      <span
+                        aria-hidden="true"
+                        className={`flex h-5 w-5 items-center justify-center rounded-full border-2 ${
+                          selected ? "border-navy bg-navy text-white" : "border-sky-line"
+                        }`}
+                      >
+                        {selected && (
+                          <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth={3}>
+                            <path d="m5 12 5 5 9-10" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        )}
+                      </span>
+                    </span>
+                    <span className="text-sm text-ink-soft">{TYPE_HINTS[t.code]}</span>
+                  </label>
+                );
+              })}
+            </div>
+          </fieldset>
+
+          {/* 2. Title */}
           <div>
-            <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-[#D9E3F1] bg-[#E7EEF8] px-3 py-1.5 text-xs font-semibold text-[#294C78]">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={1.8}
-              className="h-4 w-4"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M12 16V4m0 0L7 9m5-5 5 5M5 14v4a2 2 0 002 2h10a2 2 0 002-2v-4"
-              />
-            </svg>
-            Contribute to your programme
-            </div>
-
-            <h1 className="text-2xl font-bold tracking-tight text-[#24344D] sm:text-3xl">
-              Submit a Resource
-            </h1>
-
-            <p className="mt-1 max-w-xl text-sm leading-5 text-slate-500">
-              Share study materials with your programme. An admin will review
-              your submission before it appears on Novelle.
-            </p>
-          </div>
-        </div>
-
-        {/* Upload form card */}
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-[#E7E5DF] bg-white shadow-sm">
-          <div className="shrink-0 border-b border-[#E7E5DF] bg-[#FAFAF7] px-5 py-3 sm:px-7">
-            <h2 className="text-base font-semibold text-[#24344D]">
-              Resource details
-            </h2>
-            <p className="mt-1 text-sm text-slate-500">
-              Add a title, choose the resource type, and attach your PDF.
+            <label htmlFor="note-title" className={stepLabel}>
+              2. Title
+            </label>
+            <input
+              id="note-title"
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g. Introduction to Programming — Unit 3 notes"
+              disabled={loading}
+              required
+              maxLength={TITLE_MAX}
+              aria-describedby="title-help"
+              className={inputClass}
+            />
+            <p id="title-help" className="mt-1.5 flex justify-between gap-3 text-sm text-ink-soft">
+              <span>A clear title helps other students find it.</span>
+              <span aria-live="polite">
+                {title.length}/{TITLE_MAX}
+              </span>
             </p>
           </div>
 
-          <form
-            onSubmit={handleSubmit}
-            className="grid gap-4 p-4 sm:p-5 xl:flex-1 xl:grid-cols-2 xl:content-between xl:overflow-y-auto xl:p-6"
-          >
-            {/* Title */}
-            <div className="xl:col-span-2">
-              <label
-                htmlFor="note-title"
-                className="mb-2 block text-sm font-semibold text-[#24344D]"
-              >
-                Resource title
-                <span className="ml-1 text-red-500">*</span>
-              </label>
+          {/* 3. PDF — drop zone until a file is chosen, then a file row */}
+          <div>
+            <p id="pdf-label" className={stepLabel}>
+              3. PDF file
+            </p>
 
-              <input
-                id="note-title"
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g. Introduction to Programming"
-                disabled={loading}
-                required
-                maxLength={120}
-                aria-describedby="title-help title-count"
-                className="w-full rounded-xl border border-[#DCDDD8] bg-white px-4 py-3 text-sm text-[#24344D] outline-none transition placeholder:text-slate-400 hover:border-[#C8D5E7] focus:border-[#456FAD] focus:ring-4 focus:ring-[#E7EEF8] disabled:cursor-not-allowed disabled:bg-gray-100"
-              />
+            {/* The real file input, hidden; the drop zone below is its label. */}
+            <input
+              id="pdf-file"
+              type="file"
+              accept="application/pdf,.pdf"
+              onChange={(e) => selectFile(e.target.files?.[0] || null)}
+              disabled={loading}
+              aria-labelledby="pdf-label"
+              className="sr-only"
+            />
 
-              <div className="mt-2 flex items-start justify-between gap-3">
-                <p id="title-help" className="text-xs text-slate-500">
-                  Use a clear title so students can find your resource easily.
-                </p>
-                <span
-                  id="title-count"
-                  className="shrink-0 text-xs tabular-nums text-slate-400"
-                >
-                  {title.length}/120
+            {file ? (
+              <div className="flex items-center gap-3 rounded-xl border-2 border-sky-line bg-sky-wash p-4">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-white text-navy">
+                  <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth={1.7} aria-hidden="true">
+                    <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
+                    <path d="M14 3v6h6" />
+                  </svg>
                 </span>
-              </div>
-            </div>
-
-            {/* Resource type */}
-            <div>
-              <label
-                htmlFor="resource-type"
-                className="mb-2 block text-sm font-semibold text-[#24344D]"
-              >
-                Resource type
-                <span className="ml-1 text-red-500">*</span>
-              </label>
-
-              <div className="relative">
-                <select
-                  id="resource-type"
-                  value={type}
-                  onChange={(e) =>
-                    setType(e.target.value as ResourceTypeCode)
-                  }
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-semibold text-ink">{file.name}</p>
+                  <p className="text-sm text-ink-soft">{fileSize(file.size)} · PDF</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={removeFile}
                   disabled={loading}
-                  className="w-full appearance-none rounded-xl border border-[#DCDDD8] bg-white px-4 py-3 pr-11 text-sm text-[#24344D] outline-none transition hover:border-[#C8D5E7] focus:border-[#456FAD] focus:ring-4 focus:ring-[#E7EEF8] disabled:cursor-not-allowed disabled:bg-gray-100"
+                  className="rounded-lg px-3 py-2 text-sm font-semibold text-navy-soft outline-none hover:bg-white hover:text-navy focus-visible:ring-2 focus-visible:ring-navy/40"
                 >
-                  {STUDENT_SUBMIT_TYPES.map((t) => (
-                    <option key={t.code} value={t.code}>
-                      {t.label}
-                    </option>
-                  ))}
-                </select>
-
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                  className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="m6 9 6 6 6-6"
-                  />
-                </svg>
+                  Remove
+                </button>
               </div>
-
-              <p className="mt-2 text-xs text-slate-400">
-                Choose whether you are submitting notes, a question paper,
-                or an assignment.
-              </p>
-            </div>
-
-            {/* PDF upload */}
-            <div className="xl:row-span-2">
+            ) : (
               <label
                 htmlFor="pdf-file"
-                className="mb-2 block text-sm font-semibold text-[#24344D]"
-              >
-                PDF document
-                <span className="ml-1 text-red-500">*</span>
-              </label>
-
-              <label
-                htmlFor="pdf-file"
-                className={`flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed px-5 py-8 text-center transition ${
-                  file
-                    ? "border-[#A9C2E2] bg-[#F5F8FD]"
-                    : isDragging
-                      ? "border-[#456FAD] bg-[#E7EEF8]"
-                      : "border-[#D9DEE7] bg-[#FAFBFD] hover:border-[#A9C2E2] hover:bg-[#F5F8FD]"
+                className={`flex cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed px-5 py-9 text-center transition ${
+                  isDragging ? "border-navy-soft bg-sky-tint" : "border-sky-line bg-cream hover:border-navy-soft hover:bg-sky-wash"
                 } ${loading ? "pointer-events-none opacity-60" : ""}`}
                 onDragOver={(e) => {
                   e.preventDefault();
@@ -382,228 +383,56 @@ export default function SubmitNotePage() {
                   if (!loading) selectFile(e.dataTransfer.files?.[0] || null);
                 }}
               >
-                <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-[#E7EEF8] text-[#294C78]">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth={1.7}
-                    className="h-6 w-6"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M12 16V4m0 0L7 9m5-5 5 5M5 14v4a2 2 0 002 2h10a2 2 0 002-2v-4"
-                    />
-                  </svg>
-                </div>
-
-                {file ? (
-                  <>
-                    <span className="max-w-full break-all text-sm font-semibold text-[#294C78]">
-                      {file.name}
-                    </span>
-                    <span className="mt-1 text-xs text-slate-500">
-                      {(file.size / (1024 * 1024)).toFixed(2)} MB ·
-                      Selected successfully
-                    </span>
-                    <span className="mt-3 text-xs font-semibold text-[#456FAD]">
-                      Choose a different file
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    <span className="text-sm font-semibold text-[#24344D]">
-                      Drop your PDF here or click to browse
-                    </span>
-                    <span className="mt-1 text-xs text-slate-500">
-                      Choose a file from your computer
-                    </span>
-                    <span className="mt-3 rounded-lg border border-[#D9DEE7] bg-white px-3 py-1.5 text-xs font-medium text-[#294C78]">
-                      Browse files
-                    </span>
-                  </>
-                )}
-
-                <input
-                  id="pdf-file"
-                  type="file"
-                  accept=".pdf,application/pdf"
-                  onChange={(e) => {
-                    selectFile(e.target.files?.[0] || null);
-                  }}
-                  disabled={loading}
-                  required={!file}
-                  className="sr-only"
-                />
-              </label>
-
-              <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
-                <span>PDF format</span>
-                <span>5 MB maximum</span>
-              </div>
-
-              {file && (
-                <button
-                  type="button"
-                  onClick={removeFile}
-                  disabled={loading}
-                  className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 transition hover:text-red-600 focus:outline-none focus:ring-2 focus:ring-red-300 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth={1.8}
-                    className="h-4 w-4"
-                    aria-hidden="true"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M6 7h12m-10 0 .7 13h6.6L16 7M9 7V4h6v3m-4 4v5m2-5v5"
-                    />
-                  </svg>
-                  Remove selected file
-                </button>
-              )}
-            </div>
-
-            {/* Review notice */}
-            <div className="flex gap-3 rounded-xl border border-[#D9E3F1] bg-[#F5F8FD] p-4">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={1.8}
-                className="mt-0.5 h-5 w-5 shrink-0 text-[#456FAD]"
-              >
-                <circle cx="12" cy="12" r="9" />
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M12 11v5m0-8h.01"
-                />
-              </svg>
-
-              <div>
-                <p className="text-sm font-semibold text-[#294C78]">
-                  Admin review required
-                </p>
-                <p className="mt-1 text-xs leading-5 text-slate-600">
-                  Your resource will remain pending until an admin reviews
-                  it. Once approved, it can become available to students
-                  in your programme.
-                </p>
-              </div>
-            </div>
-
-            {/* Error */}
-            {error && (
-              <div
-                role="alert"
-                className="flex gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 xl:col-span-2"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                  className="h-5 w-5 shrink-0"
-                >
-                  <circle cx="12" cy="12" r="9" />
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M12 8v5m0 3h.01"
-                  />
+                <svg viewBox="0 0 24 24" className="mb-1 h-8 w-8 text-navy" fill="none" stroke="currentColor" strokeWidth={1.7} aria-hidden="true">
+                  <path d="M12 16V4m0 0-4 4m4-4 4 4" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" strokeLinecap="round" />
                 </svg>
-                <p>{error}</p>
-              </div>
+                <span className="font-bold text-ink">Drop your PDF here, or click to choose</span>
+                <span className="text-sm text-ink-soft">PDF only · 5 MB maximum</span>
+              </label>
             )}
+          </div>
 
-            {/* Success */}
-            {message && (
-              <div
-                role="status"
-                className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700 xl:col-span-2"
-              >
-                {message}
-              </div>
-            )}
+          {error && (
+            <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+              {error}
+            </p>
+          )}
+          {message && (
+            <p role="status" className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-medium text-green-800">
+              {message}
+            </p>
+          )}
 
-            {/* Submit */}
-            <div className="flex flex-col gap-3 sm:flex-row xl:col-span-2">
-              <button
-                type="submit"
-                disabled={loading}
-                className="flex w-full flex-1 items-center justify-center gap-2 rounded-xl bg-[#294C78] px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#203B60] focus:outline-none focus:ring-4 focus:ring-[#E7EEF8] disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {loading ? (
-                  <>
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      className="h-5 w-5 animate-spin"
-                    >
-                      <circle
-                        cx="12"
-                        cy="12"
-                        r="9"
-                        stroke="currentColor"
-                        strokeWidth="3"
-                        className="opacity-25"
-                      />
-                      <path
-                        fill="currentColor"
-                        className="opacity-75"
-                        d="M12 3a9 9 0 00-9 9h3a6 6 0 016-6V3z"
-                      />
-                    </svg>
-                    Submitting...
-                  </>
-                ) : (
-                  <>
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth={1.8}
-                      className="h-5 w-5"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M12 16V4m0 0L7 9m5-5 5 5M5 14v4a2 2 0 002 2h10a2 2 0 002-2v-4"
-                      />
-                    </svg>
-                    Submit for Review
-                  </>
-                )}
-              </button>
+          {/* What happens next + the buttons */}
+          <div className="flex flex-col gap-4 border-t border-line pt-6">
+            <p className="flex items-start gap-2 text-sm text-ink-soft">
+              <svg viewBox="0 0 24 24" className="mt-0.5 h-4 w-4 shrink-0 text-navy-soft" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                <circle cx="12" cy="12" r="9" />
+                <path d="M12 8h.01M11 12h1v4h1" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              It stays pending until an admin of your programme reviews it. You can follow it on My Submissions.
+            </p>
 
+            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
               <button
                 type="button"
                 onClick={clearForm}
                 disabled={loading}
-                className="rounded-xl border border-[#D9DEE7] bg-white px-5 py-3 text-sm font-semibold text-[#294C78] transition hover:bg-[#F0F4FA] focus:outline-none focus:ring-2 focus:ring-[#294C78]/30 disabled:cursor-not-allowed disabled:opacity-60"
+                className="h-12 rounded-xl border-[1.5px] border-sky-line bg-white px-5 text-[15px] font-semibold text-navy outline-none transition hover:bg-sky-wash focus-visible:ring-2 focus-visible:ring-navy/40 disabled:opacity-60"
               >
-                Clear form
+                Clear
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="h-12 rounded-xl bg-navy px-6 font-display text-[15px] font-bold tracking-wide text-white outline-none transition hover:bg-navy-soft focus-visible:ring-4 focus-visible:ring-sky-tint disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {loading ? "Submitting…" : "Submit for review"}
               </button>
             </div>
-
-            <p className="text-center text-xs text-slate-400 xl:col-span-2">
-              By submitting, you confirm that this resource is suitable
-              for sharing with students.
-            </p>
-          </form>
-        </div>
+          </div>
+        </form>
       </div>
     </main>
   );

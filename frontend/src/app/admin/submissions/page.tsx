@@ -1,5 +1,9 @@
 "use client";
 
+// Part 12: hard-coded colours (gray/blue/black and old hexes) switched to the
+// theme colours from app/globals.css (navy, ink, line, sky-…, gold-…).
+// Nothing else on this page changed.
+
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
@@ -43,7 +47,7 @@ type Module = {
 };
 
 const selectClass =
-  "w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm font-medium text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-gray-100 disabled:text-gray-500";
+  "w-full rounded-lg border border-sky-line bg-white px-3 py-2.5 text-sm font-medium text-ink outline-none focus:border-navy-soft focus:ring-2 focus:ring-sky-tint disabled:bg-sky-wash disabled:text-ink-soft";
 
 export default function AdminSubmissionsPage() {
   const router = useRouter();
@@ -257,43 +261,43 @@ export default function AdminSubmissionsPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-gray-50 px-5 py-8 text-gray-900 md:px-8">
+      <main className="min-h-screen bg-cream px-5 py-8 text-ink md:px-8">
         <div className="mx-auto max-w-6xl">
           <button
             type="button"
             onClick={() => router.push("/admin")}
-            className="mb-8 inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-100"
+            className="mb-8 inline-flex items-center gap-2 rounded-xl border border-line bg-white px-4 py-2.5 text-sm font-medium text-ink-nav shadow-sm transition hover:bg-sky-wash"
           >
             <ArrowLeft className="h-4 w-4" /> Back to Dashboard
           </button>
-          <p className="text-base font-medium text-gray-700">Loading submissions...</p>
+          <p className="text-base font-medium text-ink-nav">Loading submissions...</p>
         </div>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-gray-50 px-8 py-8 text-gray-900">
+    <main className="min-h-screen bg-cream px-8 py-8 text-ink">
       <div className="mx-auto max-w-6xl">
         {/* Header */}
         <div className="mb-8">
           <button
             type="button"
             onClick={() => router.push("/admin")}
-            className="mb-5 inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-100"
+            className="mb-5 inline-flex items-center gap-2 rounded-xl border border-line bg-white px-4 py-2.5 text-sm font-medium text-ink-nav shadow-sm transition hover:bg-sky-wash"
           >
             <ArrowLeft className="h-4 w-4" /> Back to Dashboard
           </button>
 
-          <p className="text-sm font-semibold text-blue-600">
+          <p className="text-sm font-semibold text-navy-soft">
             Student Submissions
           </p>
 
-          <h1 className="mt-1 text-3xl font-bold text-gray-900">
+          <h1 className="mt-1 text-3xl font-bold text-ink">
             Pending Submissions
           </h1>
 
-          <p className="mt-2 text-sm text-gray-600">
+          <p className="mt-2 text-sm text-ink-soft">
             {/* Programme admins see their programme name; super admins see all of CST (lib/roles.ts) */}
             {isProgrammeAdminRole(profile?.role)
               ? `Review submissions for ${programmeName}.`
@@ -314,12 +318,12 @@ export default function AdminSubmissionsPage() {
         )}
 
         {submissions.length === 0 ? (
-          <div className="rounded-xl border border-gray-200 bg-white p-10 text-center shadow-sm">
-            <h2 className="text-lg font-semibold text-gray-900">
+          <div className="rounded-xl border border-line bg-white p-10 text-center shadow-sm">
+            <h2 className="text-lg font-semibold text-ink">
               No pending submissions
             </h2>
 
-            <p className="mt-2 text-sm text-gray-600">
+            <p className="mt-2 text-sm text-ink-soft">
               There are currently no student submissions waiting for review.
             </p>
           </div>
@@ -335,22 +339,22 @@ export default function AdminSubmissionsPage() {
               return (
                 <div
                   key={submission.id}
-                  className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm"
+                  className="rounded-xl border border-line bg-white p-6 shadow-sm"
                 >
                   {/* Submission information */}
                   <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
                     <div>
                       <div className="flex items-center gap-3">
-                        <h2 className="text-xl font-semibold text-gray-900">
+                        <h2 className="text-xl font-semibold text-ink">
                           {submission.title}
                         </h2>
 
-                        <span className="rounded-full bg-yellow-100 px-3 py-1 text-xs font-semibold text-yellow-700">
+                        <span className="rounded-full bg-gold-tint px-3 py-1 text-xs font-semibold text-gold-ink">
                           Pending
                         </span>
                       </div>
 
-                      <p className="mt-2 text-sm text-gray-600">
+                      <p className="mt-2 text-sm text-ink-soft">
                         Type: {resourceTypeLabel(submission.type)}
                         {/* Only super admins need the programme name (lib/roles.ts) */}
                         {isSuperAdminRole(profile?.role) &&
@@ -358,7 +362,7 @@ export default function AdminSubmissionsPage() {
                           ` · ${submission.programme.name}`}
                       </p>
 
-                      <p className="mt-1 text-xs text-gray-500">
+                      <p className="mt-1 text-xs text-ink-soft">
                         Submitted
                         {submission.submitter?.full_name
                           ? ` by ${submission.submitter.full_name}`
@@ -369,19 +373,19 @@ export default function AdminSubmissionsPage() {
 
                     <button
                       onClick={() => handleViewFile(submission.file_path)}
-                      className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                      className="rounded-lg border border-sky-line bg-white px-4 py-2 text-sm font-semibold text-ink-nav hover:bg-cream"
                     >
                       View PDF
                     </button>
                   </div>
 
                   {/* Classification */}
-                  <div className="mt-6 rounded-lg bg-gray-50 p-4">
-                    <p className="text-sm font-semibold text-gray-800">
+                  <div className="mt-6 rounded-lg bg-cream p-4">
+                    <p className="text-sm font-semibold text-ink">
                       Submission classification
                     </p>
 
-                    <p className="mt-1 text-xs text-gray-600">
+                    <p className="mt-1 text-xs text-ink-soft">
                       Choose the year and semester, then the module, before
                       approving.
                     </p>
@@ -389,7 +393,7 @@ export default function AdminSubmissionsPage() {
                     <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
                       {/* Year */}
                       <div>
-                        <label className="mb-2 block text-sm font-semibold text-gray-800">
+                        <label className="mb-2 block text-sm font-semibold text-ink">
                           Year
                         </label>
 
@@ -418,7 +422,7 @@ export default function AdminSubmissionsPage() {
 
                       {/* Semester */}
                       <div>
-                        <label className="mb-2 block text-sm font-semibold text-gray-800">
+                        <label className="mb-2 block text-sm font-semibold text-ink">
                           Semester
                         </label>
 
@@ -444,7 +448,7 @@ export default function AdminSubmissionsPage() {
 
                       {/* Module */}
                       <div>
-                        <label className="mb-2 block text-sm font-semibold text-gray-800">
+                        <label className="mb-2 block text-sm font-semibold text-ink">
                           Module
                         </label>
 
@@ -517,7 +521,7 @@ export default function AdminSubmissionsPage() {
                         <button
                           onClick={() => setShowRejectFor(null)}
                           disabled={busy}
-                          className="rounded-lg border border-gray-300 bg-white px-5 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                          className="rounded-lg border border-sky-line bg-white px-5 py-2.5 text-sm font-semibold text-ink-nav hover:bg-cream disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           Cancel
                         </button>
@@ -546,7 +550,7 @@ export default function AdminSubmissionsPage() {
                         <button
                           onClick={() => handleApprove(submission)}
                           disabled={busy || !selectedModule[submission.id]}
-                          className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                          className="rounded-lg bg-navy px-5 py-2.5 text-sm font-semibold text-white hover:bg-navy-soft disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           {busy ? "Approving..." : "Approve"}
                         </button>

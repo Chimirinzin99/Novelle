@@ -1,10 +1,19 @@
 "use client";
 
+// /liked — everything the student has liked, from every programme.
+// Part 12: drawn with the shared PageHeader, PdfCard, VideoCard and
+// EmptyState; each card shows its programme as a link. The data code is
+// unchanged. (Clicking the gold heart unlikes and removes the card.)
+
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { youTubeThumbnail, youTubeWatchUrl } from "@/lib/youtube";
+import { programmeHref } from "@/lib/programmes";
+import PageHeader from "@/components/PageHeader";
+import PdfCard from "@/components/PdfCard";
+import VideoCard from "@/components/VideoCard";
+import EmptyState from "@/components/EmptyState";
 
 // One row from favourites, with the liked resource (and its programme)
 // joined in through the foreign keys.
@@ -105,149 +114,81 @@ export default function LikedPage() {
   }
 
   return (
-    
-<main className="min-h-full bg-[#FCFBF8] px-5 py-7 text-[#24344D] md:px-10 md:py-9 lg:px-12">
+    <main className="min-h-full bg-cream px-4 py-8 sm:px-8 sm:py-10 lg:px-12">
+      <div className="mx-auto max-w-7xl">
+        <PageHeader
+          backHref="/profile"
+          backLabel="Back to profile"
+          title="Liked"
+          description="Notes, papers and videos you have liked, from every programme, in one place."
+        />
 
-      <Link
-        href="/profile"
-        className="mb-7 inline-flex items-center gap-2 rounded-xl border border-[#E7E5DF] bg-white px-4 py-2.5 text-sm font-medium text-[#294C78] shadow-sm transition hover:border-[#C8D5E7] hover:bg-[#E7EEF8] focus:outline-none focus:ring-2 focus:ring-[#294C78]/30"
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={1.8}
-          className="h-4 w-4"
-          aria-hidden="true"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M15.75 19.5 8.25 12l7.5-7.5"
+        {error && (
+          <div
+            role="alert"
+            className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700"
+          >
+            {error}
+          </div>
+        )}
+
+        {loading ? (
+          <EmptyState title="Loading your liked resources…" />
+        ) : items.length === 0 ? (
+          <EmptyState
+            title="Nothing liked yet"
+            text="Tap the heart on any note or video and it will show up here."
           />
-        </svg>
-        Back to profile
-      </Link>
+        ) : (
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+            {items.map((item) => {
+              // Safe: null resources were filtered out in loadLiked.
+              const resource = item.resources!;
+              // Admin uploads fill "topic"; approved submissions fill "title".
+              const title = resource.title || resource.topic;
 
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight text-[#24344D] md:text-4xl">
-          Liked
-        </h1>
-        <p className="mt-2 text-sm leading-6 text-slate-500">
-          Notes, papers and videos you have liked, from every programme, in one place.
-        </p>
+              // The programme it belongs to, as a link (likes can come
+              // from any programme).
+              const programmeLink = resource.programmes && (
+                <Link
+                  href={programmeHref(resource.programmes.name)}
+                  className="w-fit rounded text-sm font-semibold text-navy-soft outline-none hover:text-navy hover:underline focus-visible:ring-2 focus-visible:ring-navy/40"
+                >
+                  {resource.programmes.name}
+                </Link>
+              );
+
+              return resource.video_id ? (
+                <VideoCard
+                  key={item.id}
+                  title={title}
+                  videoId={resource.video_id}
+                  moduleName={resource.module_name}
+                  year={resource.year}
+                  semester={resource.semester}
+                  extra={programmeLink}
+                  liked
+                  onLike={() => unlike(item.id)}
+                />
+              ) : (
+                <PdfCard
+                  key={item.id}
+                  title={title}
+                  type={resource.type}
+                  moduleName={resource.module_name}
+                  year={resource.year}
+                  semester={resource.semester}
+                  extra={programmeLink}
+                  onView={() => resource.file_path && openFile(resource.file_path, false)}
+                  onDownload={() => resource.file_path && openFile(resource.file_path, true)}
+                  liked
+                  onLike={() => unlike(item.id)}
+                />
+              );
+            })}
+          </div>
+        )}
       </div>
-
-      {error && (
-        <div role="alert" className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
-          {error}
-        </div>
-      )}
-
-      {loading ? (
-        <div className="rounded-2xl border border-[#E7E5DF] bg-white p-10 text-center text-sm text-slate-500 shadow-sm">
-          Loading your liked resources...
-        </div>
-      ) : items.length === 0 ? (
-        <div className="rounded-2xl border border-[#E7E5DF] bg-white p-12 text-center shadow-sm">
-          <h3 className="text-lg font-semibold text-[#24344D]">Nothing liked yet</h3>
-          <p className="mt-2 text-sm text-slate-500">
-            Tap the heart on any note or video and it will show up here.
-          </p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {items.map((item) => {
-            // Safe: null resources were filtered out in loadLiked.
-            const resource = item.resources!;
-
-            return (
-              <div
-                key={item.id}
-                className="flex flex-col rounded-2xl border border-[#E7E5DF] bg-white p-5 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-[#C8D5E7] hover:shadow-md"
-              >
-                {/* Videos show their YouTube thumbnail */}
-                {resource.video_id && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={youTubeThumbnail(resource.video_id)}
-                    alt=""
-                    loading="lazy"
-                    className="mb-4 aspect-video w-full rounded-xl bg-[#F0F2F5] object-cover"
-                  />
-                )}
-
-                <p className="text-xs font-semibold text-[#456FAD]">
-                  {resource.programmes?.name ?? "Unknown programme"}
-                </p>
-
-                {/* Admin uploads fill "topic"; approved submissions fill "title". */}
-                <h3 className="mt-1 line-clamp-2 font-semibold text-[#24344D]">
-                  {resource.title || resource.topic}
-                </h3>
-
-                <p className="mt-2 text-sm text-slate-500">
-                  {resource.module_name ?? "Unknown module"}
-                </p>
-
-                <p className="mt-1 text-xs text-slate-500">
-                  {resource.year ? `Year ${resource.year}` : ""}
-                  {resource.year && resource.semester ? " · " : ""}
-                  {resource.semester ? `Semester ${resource.semester}` : ""}
-                </p>
-
-                <div className="mt-auto flex gap-2 border-t border-[#F0EEE8] pt-4">
-                  {resource.video_id ? (
-                    // Video: open it on YouTube (nothing to download).
-                    <a
-                      href={youTubeWatchUrl(resource.video_id)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex-1 rounded-lg bg-[#294C78] px-3 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-[#203B60] focus:outline-none focus:ring-2 focus:ring-[#294C78]/30 focus:ring-offset-2"
-                    >
-                      Watch
-                    </a>
-                  ) : resource.file_path ? (
-                    // PDF: view or download through a short-lived signed link.
-                    <>
-                      <button
-                        onClick={() => openFile(resource.file_path!, false)}
-                        className="flex-1 rounded-lg bg-[#294C78] px-3 py-2.5 text-sm font-semibold text-white transition hover:bg-[#203B60] focus:outline-none focus:ring-2 focus:ring-[#294C78]/30 focus:ring-offset-2"
-                      >
-                        View
-                      </button>
-                      <button
-                        onClick={() => openFile(resource.file_path!, true)}
-                        className="rounded-lg border border-[#D9DEE7] px-3 py-2.5 text-sm font-semibold text-[#294C78] transition hover:bg-[#F0F4FA] focus:outline-none focus:ring-2 focus:ring-[#294C78]/30"
-                      >
-                        Download
-                      </button>
-                    </>
-                  ) : null}
-
-                  {/* Same filled heart as the note cards on /home */}
-                  <button
-                    onClick={() => unlike(item.id)}
-                    title="Unlike"
-                    aria-label={`Unlike ${resource.title || resource.topic}`}
-                    className="flex w-12 items-center justify-center rounded-lg border border-red-200 bg-red-50 text-red-500 transition hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-300"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 24 24"
-                      fill="currentColor"
-                      className="h-4 w-4"
-                    >
-                      <path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
     </main>
   );
 }

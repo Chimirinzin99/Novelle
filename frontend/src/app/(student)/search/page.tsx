@@ -2,6 +2,8 @@
 
 // /search?q=... — searches resources in ALL programmes.
 // A resource matches if q appears (any case) in its title, topic or module name.
+// Part 12: results use the shared PdfCard / VideoCard (no Like button here)
+// with the programme as a link; the search code is unchanged.
 
 import Link from "next/link";
 import { Suspense, useEffect, useState } from "react";
@@ -9,8 +11,9 @@ import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import WelcomeHeader from "@/components/WelcomeHeader";
 import { programmeHref } from "@/lib/programmes";
-import { resourceTypeLabel } from "@/lib/resourceTypes";
-import { youTubeThumbnail, youTubeWatchUrl } from "@/lib/youtube";
+import PdfCard from "@/components/PdfCard";
+import VideoCard from "@/components/VideoCard";
+import EmptyState from "@/components/EmptyState";
 
 // Most results shown at once, so a one-letter search can't load everything.
 const SEARCH_LIMIT = 50;
@@ -35,7 +38,7 @@ type Result = {
 export default function SearchPage() {
   return (
     <Suspense
-      fallback={<p className="p-10 text-sm text-gray-500">Loading search...</p>}
+      fallback={<p className="p-10 text-sm text-ink-soft">Loading search…</p>}
     >
       <SearchResults />
     </Suspense>
@@ -134,129 +137,88 @@ function SearchResults() {
   }
 
   return (
-    // Same outer layout as /home: centred column, max width 7xl.
-    <main className="min-h-full bg-gray-200 px-8 py-10">
+    // Same outer layout as /home.
+    <main className="min-h-full bg-cream px-4 py-8 sm:px-8 sm:py-10 lg:px-12">
       <div className="mx-auto max-w-7xl">
         {/* Welcome + search box, shared with /home so both look the same */}
         <WelcomeHeader name={fullName} initialQuery={query} />
 
         {error && (
-          <div className="mx-auto mt-6 max-w-2xl rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
+          <div
+            role="alert"
+            className="mt-6 max-w-2xl rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700"
+          >
             {error}
           </div>
         )}
 
-        <div className="mt-12">
+        <section className="mt-10">
           {!query ? (
-            <p className="text-center text-sm text-gray-500">
-              Type a word above — a topic, title or module name.
-            </p>
+            <EmptyState
+              title="Search every programme"
+              text="Type a word above — a topic, title or module name."
+            />
           ) : loading ? (
-            <p className="text-center text-sm text-gray-500">Searching...</p>
+            <EmptyState title="Searching…" />
           ) : results.length === 0 ? (
-            <div className="rounded-xl border border-gray-200 bg-white py-12 text-center">
-              <p className="text-sm font-medium text-gray-700">
-                No results for &ldquo;{query}&rdquo;
-              </p>
-              <p className="mt-1 text-xs text-gray-500">
-                Try a shorter word or a module name.
-              </p>
-            </div>
+            <EmptyState
+              title={`No results for “${query}”`}
+              text="Try a shorter word or a module name."
+            />
           ) : (
             <>
               {/* Section heading, same style as "Available Notes" on /home */}
-              <div className="mb-5">
-                <h2 className="text-xl font-semibold text-gray-900">
-                  Results for &ldquo;{query}&rdquo;
-                </h2>
-                <p className="mt-1 text-sm text-gray-500">
+              <div className="mb-4">
+                <h2 className="text-[19px] font-bold text-navy">Results for &ldquo;{query}&rdquo;</h2>
+                <p className="mt-1 text-sm text-ink-soft">
                   {results.length === SEARCH_LIMIT
                     ? `Showing the first ${SEARCH_LIMIT} results.`
                     : `${results.length} ${results.length === 1 ? "result" : "results"} found.`}
                 </p>
               </div>
 
-              {/* Same grid and card style as the /home notes */}
-              <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-                {results.map((r) => (
-                  <div
-                    key={r.id}
-                    className="flex flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
-                  >
-                    {/* Videos get their YouTube thumbnail */}
-                    {r.type === "video" && r.video_id && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={youTubeThumbnail(r.video_id)}
-                        alt={r.title || r.topic}
-                        loading="lazy"
-                        className="aspect-video w-full bg-gray-100 object-cover"
-                      />
-                    )}
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                {results.map((r) => {
+                  const title = r.title || r.topic;
 
-                    <div className="flex min-h-[210px] flex-1 flex-col p-4">
-                      <span className="w-fit rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700">
-                        {resourceTypeLabel(r.type)}
-                      </span>
+                  // Search covers ALL programmes, so each card says which one.
+                  const programmeLink = r.programmes && (
+                    <Link
+                      href={programmeHref(r.programmes.name)}
+                      className="w-fit rounded text-sm font-semibold text-navy-soft outline-none hover:text-navy hover:underline focus-visible:ring-2 focus-visible:ring-navy/40"
+                    >
+                      {r.programmes.name}
+                    </Link>
+                  );
 
-                      <h3 className="mt-2 text-sm font-semibold text-gray-900">
-                        {r.title || r.topic}
-                      </h3>
-
-                      <p className="mt-2 text-xs leading-5 text-gray-500">
-                        {r.module_name || "Unknown Module"}
-                      </p>
-
-                      {/* Programme name links to that programme's page */}
-                      {r.programmes && (
-                        <Link
-                          href={programmeHref(r.programmes.name)}
-                          className="text-xs text-blue-600 hover:underline"
-                        >
-                          {r.programmes.name}
-                        </Link>
-                      )}
-
-                      {/* Year / Semester, spread like the /home cards */}
-                      <div className="mt-3 flex items-center justify-between text-[10px] text-gray-400">
-                        <span>Year {r.year}</span>
-                        <span>Semester {r.semester}</span>
-                      </div>
-
-                      <div className="mt-auto flex items-center gap-2 border-t pt-3">
-                        {r.type === "video" && r.video_id ? (
-                          <a
-                            href={youTubeWatchUrl(r.video_id)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex-1 rounded-md bg-black px-2 py-2 text-center text-xs font-medium text-white hover:bg-gray-700"
-                          >
-                            Watch on YouTube
-                          </a>
-                        ) : r.file_path ? (
-                          <>
-                            <button
-                              onClick={() => openFile(r.file_path!, false)}
-                              className="flex-1 rounded-md bg-black px-2 py-2 text-xs font-medium text-white hover:bg-gray-700"
-                            >
-                              View
-                            </button>
-                            <button
-                              onClick={() => openFile(r.file_path!, true)}
-                              className="flex-1 rounded-md border border-gray-200 px-2 py-2 text-xs font-medium text-gray-600 hover:bg-gray-50"
-                            >
-                              Download
-                            </button>
-                          </>
-                        ) : null}
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                  return r.type === "video" && r.video_id ? (
+                    <VideoCard
+                      key={r.id}
+                      title={title}
+                      videoId={r.video_id}
+                      moduleName={r.module_name}
+                      year={r.year}
+                      semester={r.semester}
+                      extra={programmeLink}
+                    />
+                  ) : (
+                    <PdfCard
+                      key={r.id}
+                      title={title}
+                      type={r.type}
+                      moduleName={r.module_name}
+                      year={r.year}
+                      semester={r.semester}
+                      extra={programmeLink}
+                      onView={() => r.file_path && openFile(r.file_path, false)}
+                      onDownload={() => r.file_path && openFile(r.file_path, true)}
+                    />
+                  );
+                })}
               </div>
             </>
           )}
-        </div>
+        </section>
       </div>
     </main>
   );

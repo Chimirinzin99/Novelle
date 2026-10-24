@@ -29,17 +29,24 @@ export default function SearchBox({ initialQuery = "" }: SearchBoxProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex gap-2">
+    // role="search" tells screen readers this form is the site search.
+    <form role="search" onSubmit={handleSubmit} className="flex gap-2.5">
       <input
         type="search"
         value={query}
         onChange={(event) => setQuery(event.target.value)}
-        placeholder="Search notes, papers, videos, modules..."
+        placeholder="Search notes, papers, videos, modules…"
         aria-label="Search resources"
-        className="w-full rounded-2xl border border-black bg-white px-5 py-4 text-sm !text-black placeholder:!text-gray-500 shadow-md outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+        className="h-12 min-w-0 flex-1 rounded-xl border-2 border-sky-line bg-white px-4 text-base text-ink outline-none transition placeholder:text-ink-soft focus:border-navy-soft focus:ring-4 focus:ring-sky-tint"
       />
 
-
+      {/* A visible button too: not everyone knows Enter searches. */}
+      <button
+        type="submit"
+        className="h-12 shrink-0 rounded-xl bg-navy px-6 font-display text-sm font-bold tracking-wide text-white outline-none transition hover:bg-navy-soft focus-visible:ring-4 focus-visible:ring-sky-tint"
+      >
+        Search
+      </button>
     </form>
   );
 }

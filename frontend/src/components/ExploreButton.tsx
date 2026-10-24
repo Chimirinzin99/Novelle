@@ -15,7 +15,7 @@ export default function ExploreButton() {
   useEffect(() => {
     // Runs once, after the button first appears in the browser.
     // getSession() reads the saved session; it doesn't need the network.
-        supabase.auth.getSession().then(async ({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!session) return; // logged out: keep /login
 
       // Same role check as the login page: admins go to /admin.
@@ -30,10 +30,11 @@ export default function ExploreButton() {
     });
   }, []);
 
+  // Part 12: navy button from the theme (was black).
   return (
     <Link
       href={href}
-      className="mt-10 rounded-xl bg-black px-10 py-3 text-base font-semibold text-white shadow-md transition hover:bg-gray-700"
+      className="mt-10 rounded-xl bg-navy px-10 py-3.5 font-display text-base font-bold tracking-wide text-white shadow-md outline-none transition hover:bg-navy-soft focus-visible:ring-4 focus-visible:ring-sky-tint"
     >
       Explore
     </Link>

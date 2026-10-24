@@ -1,29 +1,80 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/*
+  Novelle theme (Part 12 — "From the Novelle logo" scheme, chosen 24 Oct 2026).
+
+  Every colour and font the app uses is defined ONCE here.
+  Tailwind 4 turns each `--color-<name>` below into classes automatically:
+    --color-navy  →  bg-navy, text-navy, border-navy, ring-navy …
+  So pages write `bg-navy` instead of a raw hex like `bg-[#103167]`.
+  To change the look later, change the value here — every page follows.
+*/
+@theme {
+  /* Navy from the logo: main buttons, headings, admin sidebar. */
+  --color-navy: #103167;
+  /* Lighter navy: links, badge text, hover states. */
+  --color-navy-soft: #1f4a8e;
+  /* Muted blue: small uppercase labels ("PROGRAMMES") and taglines. */
+  --color-muted-blue: #3c5c85;
+
+  /* Sky blue from the logo. DECORATION ONLY (dots, bars, avatars):
+     it is too light for text on white (fails the 4.5:1 contrast rule). */
+  --color-brand-sky: #508cd5;
+  /* Pale blues: note badges, active sidebar item, input borders. */
+  --color-sky-tint: #e4eefa;
+  --color-sky-wash: #eaf1fb;
+  --color-sky-line: #cfddf1;
+
+  /* Star gold from the logo: likes, "pending" counts, highlights. */
+  --color-gold: #f5ae3c;
+  --color-gold-tint: #fef2dc;
+  /* Dark gold: the only gold that is readable as text. */
+  --color-gold-ink: #7a4b05;
+
+  /* Page background (cream) and card borders. Cards are plain white. */
+  --color-cream: #fefbf4;
+  --color-line: #ece6d8;
+
+  /* Text colours: ink = body text, ink-soft = secondary text,
+     ink-nav = sidebar links. */
+  --color-ink: #14213d;
+  --color-ink-soft: #4a5672;
+  --color-ink-nav: #2b3a55;
+
+  /* Fonts: the variables are created by next/font in layout.tsx.
+     font-sans = body text (Source Sans 3), font-display = headings (Montserrat). */
+  --font-sans: var(--font-body), system-ui, sans-serif;
+  --font-display: var(--font-heading), system-ui, sans-serif;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+/*
+  Base styles. They sit in the "base" layer, so any Tailwind class on an
+  element (e.g. text-white on a heading) still wins over them.
+*/
+@layer base {
+  html {
+    /* Light design only: keeps form controls and scrollbars light even when
+       the computer is in dark mode (the old dark-mode block made form text
+       near-white — see Part 7). */
+    color-scheme: light;
+  }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  body {
+    background: var(--color-cream);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+  }
+
+  /* Headings use the display font everywhere unless a page says otherwise. */
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
-}
+/* ---- Settings page options (Chimi's /settings page sets these on <html>) ---- */
 
 html[data-font-size="small"] {
   font-size: 14px;

@@ -1,8 +1,13 @@
+// Part 12: theme colours (navy button, pale-blue inputs, cream page) and
+// the Novelle logo on top of the card. The sign-up code is unchanged, except
+// the email label/placeholder now say RUB ("yourname@rub.edu.bt"): the old
+// text said "@cst.edu.bt", but only @rub.edu.bt addresses are accepted.
 
 "use client";
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import Logo from "@/components/Logo";
 
 type Programme = {
   id: number;
@@ -117,15 +122,19 @@ if (!cleanEmail.endsWith("@rub.edu.bt")) {
   };
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-gray-50 px-6 py-10">
-      <div className="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
+    <main className="flex min-h-screen items-center justify-center bg-cream px-6 py-10">
+      <div className="w-full max-w-md rounded-2xl border border-line bg-white p-8 shadow-sm">
+        {/* Logo at the top of the card (links back to the landing page) */}
+        <div className="mb-6 flex justify-center">
+          <Logo href="/" />
+        </div>
         {/* Header */}
         <div className="mb-8 text-center">
-          <h1 className="text-3xl font-bold text-gray-900">
+          <h1 className="text-3xl font-extrabold text-navy">
             Create your Novelle account
           </h1>
 
-          <p className="mt-2 text-sm text-gray-500">
+          <p className="mt-2 text-sm text-ink-soft">
             Register using your CST email
           </p>
         </div>
@@ -133,70 +142,74 @@ if (!cleanEmail.endsWith("@rub.edu.bt")) {
         <form onSubmit={handleRegister} className="space-y-5">
           {/* Full Name */}
           <div>
-            <label className="mb-2 block text-sm font-medium text-gray-700">
+            <label htmlFor="full-name" className="mb-2 block text-sm font-medium text-ink-nav">
               Full Name
             </label>
 
             <input
+              id="full-name"
               type="text"
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               placeholder="Enter your full name"
               required
-              className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder:text-gray-400 outline-none focus:border-black focus:ring-1 focus:ring-black"
+              className="h-12 w-full rounded-xl border-2 border-sky-line bg-white px-4 text-base text-ink placeholder:text-ink-soft outline-none transition focus:border-navy-soft focus:ring-4 focus:ring-sky-tint"
             />
           </div>
 
           {/* Email */}
           <div>
-            <label className="mb-2 block text-sm font-medium text-gray-700">
-              CST Email
+            <label htmlFor="email" className="mb-2 block text-sm font-medium text-ink-nav">
+              RUB Email
             </label>
 
             <input
+              id="email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="yourname@cst.edu.bt"
+              placeholder="yourname@rub.edu.bt"
               required
-              className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder:text-gray-400 outline-none focus:border-black focus:ring-1 focus:ring-black"
+              className="h-12 w-full rounded-xl border-2 border-sky-line bg-white px-4 text-base text-ink placeholder:text-ink-soft outline-none transition focus:border-navy-soft focus:ring-4 focus:ring-sky-tint"
             />
           </div>
 
           {/* Password */}
           <div>
-            <label className="mb-2 block text-sm font-medium text-gray-700">
+            <label htmlFor="password" className="mb-2 block text-sm font-medium text-ink-nav">
               Password
             </label>
 
             <input
+              id="password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Create a password"
               required
-              className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder:text-gray-400 outline-none focus:border-black focus:ring-1 focus:ring-black"
+              className="h-12 w-full rounded-xl border-2 border-sky-line bg-white px-4 text-base text-ink placeholder:text-ink-soft outline-none transition focus:border-navy-soft focus:ring-4 focus:ring-sky-tint"
             />
 
-            <p className="mt-1 text-xs text-gray-400">
+            <p className="mt-1 text-xs text-ink-soft">
               Minimum 6 characters
             </p>
           </div>
 
           {/* Programme */}
           <div>
-            <label className="mb-2 block text-sm font-medium text-gray-700">
+            <label htmlFor="programme" className="mb-2 block text-sm font-medium text-ink-nav">
               Programme
             </label>
 
             <select
+              id="programme"
               value={programmeId}
               onChange={(e) => setProgrammeId(e.target.value)}
               required
               disabled={loadingProgrammes}
-              className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none focus:border-black focus:ring-1 focus:ring-black disabled:cursor-not-allowed disabled:bg-gray-100"
+              className="w-full h-12 rounded-xl border-2 border-sky-line bg-white px-4 text-base text-ink outline-none transition focus:border-navy-soft focus:ring-4 focus:ring-sky-tint disabled:cursor-not-allowed disabled:bg-sky-wash"
             >
-              <option value="" className="text-gray-500">
+              <option value="" className="text-ink-soft">
                 {loadingProgrammes
                   ? "Loading programmes..."
                   : "Select your programme"}
@@ -206,7 +219,7 @@ if (!cleanEmail.endsWith("@rub.edu.bt")) {
                 <option
                   key={programme.id}
                   value={programme.id}
-                  className="text-gray-900"
+                  className="text-ink"
                 >
                   {programme.name}
                 </option>
@@ -217,7 +230,7 @@ if (!cleanEmail.endsWith("@rub.edu.bt")) {
             {!loadingProgrammes &&
               programmes.length === 0 &&
               !error && (
-                <p className="mt-2 text-xs text-red-500">
+                <p className="mt-2 text-xs text-red-600">
                   No programmes found in the database.
                 </p>
               )}
@@ -225,14 +238,14 @@ if (!cleanEmail.endsWith("@rub.edu.bt")) {
 
           {/* Error */}
           {error && (
-            <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">
+            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
               {error}
             </div>
           )}
 
           {/* Success */}
           {success && (
-            <div className="rounded-lg bg-green-50 px-4 py-3 text-sm text-green-700">
+            <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
               {success}
             </div>
           )}
@@ -241,18 +254,18 @@ if (!cleanEmail.endsWith("@rub.edu.bt")) {
           <button
             type="submit"
             disabled={loading || loadingProgrammes}
-            className="w-full rounded-lg bg-black py-3 font-medium text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
+            className="h-12 w-full rounded-xl bg-navy font-display text-[15px] font-bold tracking-wide text-white outline-none transition hover:bg-navy-soft focus-visible:ring-4 focus-visible:ring-sky-tint disabled:cursor-not-allowed disabled:opacity-60"
           >
             {loading ? "Creating account..." : "Create Account"}
           </button>
         </form>
 
         {/* Login Link */}
-        <p className="mt-6 text-center text-sm text-gray-500">
+        <p className="mt-6 text-center text-sm text-ink-soft">
           Already have an account?{" "}
           <a
             href="/login"
-            className="font-medium text-black hover:underline"
+            className="font-bold text-navy-soft hover:text-navy hover:underline"
           >
             Login
           </a>
@@ -261,4 +274,3 @@ if (!cleanEmail.endsWith("@rub.edu.bt")) {
     </main>
   );
 }
-

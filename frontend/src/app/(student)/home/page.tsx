@@ -1,12 +1,19 @@
-
 "use client";
+
+// Student home page (/home): own programme's newest notes, question papers,
+// assignments and videos, each with "View all →".
+// Part 12: cards are the shared <PdfCard /> and <VideoCard /> (theme colours,
+// fixed type badges, gold Like button). Data loading is unchanged, except the
+// video query now also reads module_name (shown on the card).
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { youTubeThumbnail, youTubeWatchUrl } from "@/lib/youtube";
+import { setLiked } from "@/lib/likes";
 import WelcomeHeader from "@/components/WelcomeHeader";
+import PdfCard from "@/components/PdfCard";
+import VideoCard from "@/components/VideoCard";
 import { programmeHref } from "@/lib/programmes";
 
 type PdfResource = {
@@ -24,6 +31,7 @@ type Video = {
   id: number;
   title: string | null;
   topic: string;
+  module_name: string | null;
   year: number;
   semester: number;
   video_id: string;
@@ -117,7 +125,7 @@ export default function Home() {
 
     const { data: videoData, error: videosError } = await supabase
       .from("resources")
-      .select("id, title, topic, year, semester, video_id")
+      .select("id, title, topic, module_name, year, semester, video_id")
       .eq("programme_id", profile.programme_id)
       .eq("type", "video")
       .order("created_at", { ascending: false })
@@ -207,196 +215,103 @@ export default function Home() {
     document.body.removeChild(link);
   }
 
+  // Like / unlike. The heart and count change straight away ("optimistic"),
+  // then lib/likes.ts saves it; if saving fails, both are put back.
   async function handleFavourite(resourceId: number) {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const like = !favourites.includes(resourceId);
+    const step = like ? 1 : -1;
 
-    if (!user) {
-      alert("Please log in to like a resource.");
-      return;
-    }
-
-    const isFavourite = favourites.includes(resourceId);
-
-    if (isFavourite) {
-      const { error } = await supabase
-        .from("favourites")
-        .delete()
-        .eq("user_id", user.id)
-        .eq("resource_id", resourceId);
-
-      if (error) {
-        console.error("Error removing like:", error);
-        alert("Unable to remove like.");
-        return;
-      }
-
+    const apply = (direction: number) => {
       setFavourites((current) =>
-        current.filter((id) => id !== resourceId)
+        direction * step > 0 ? [...current, resourceId] : current.filter((id) => id !== resourceId)
       );
-
       setLikeCounts((current) => ({
         ...current,
-        [resourceId]: Math.max((current[resourceId] || 0) - 1, 0),
+        [resourceId]: Math.max((current[resourceId] || 0) + direction * step, 0),
       }));
-    } else {
-      const { error } = await supabase.from("favourites").insert({
-        user_id: user.id,
-        resource_id: resourceId,
-      });
+    };
 
-      if (error) {
-        console.error("Error adding like:", error);
-        alert("Unable to like this resource.");
-        return;
-      }
-
-      setFavourites((current) => [...current, resourceId]);
-
-      setLikeCounts((current) => ({
-        ...current,
-        [resourceId]: (current[resourceId] || 0) + 1,
-      }));
+    apply(1); // show it now
+    const problem = await setLiked(resourceId, like);
+    if (problem) {
+      apply(-1); // undo
+      alert(problem);
     }
   }
+
+  // Section heading + "View all →" link (same for every section).
+  function sectionHeader(title: string, description: string, viewAllPath: string, viewAllLabel: string) {
+    return (
+      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h2 className="text-[19px] font-bold text-navy">{title}</h2>
+          <p className="mt-1 text-sm text-ink-soft">{description}</p>
+        </div>
+
+        {/* Hidden until the student's programme name has loaded */}
+        {programmeName && (
+          <Link
+            href={`${programmeHref(programmeName)}/${viewAllPath}`}
+            className="w-fit rounded text-[15px] font-bold text-navy-soft outline-none hover:text-navy hover:underline focus-visible:ring-2 focus-visible:ring-navy/40"
+          >
+            View all {viewAllLabel} →
+          </Link>
+        )}
+      </div>
+    );
+  }
+
+  // Cards: 1 column on phones, 2 on tablets, 3 on laptops, 4 on big screens.
+  const grid = "grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4";
 
   function renderPdfSection(section: {
     title: string;
     description: string;
     items: PdfResource[];
     viewAllPath: string;
+    viewAllLabel: string;
     emptyTitle: string;
     emptyText: string;
   }) {
     const { items } = section;
 
     return (
-      <section className="mt-10 sm:mt-12">
-        <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-xl font-semibold tracking-tight text-[#24344D]">
-              {section.title}
-            </h2>
+      <section className="mt-10">
+        {sectionHeader(section.title, section.description, section.viewAllPath, section.viewAllLabel)}
 
-            <p className="mt-1 text-sm text-slate-500">
-              {section.description}
-            </p>
+        {loading ? (
+          <p className="py-10 text-center text-sm text-ink-soft">Loading…</p>
+        ) : items.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-sky-line bg-white px-6 py-10 text-center">
+            <p className="font-semibold text-ink">{section.emptyTitle}</p>
+            <p className="mt-1 text-sm text-ink-soft">{section.emptyText}</p>
           </div>
-
-          {programmeName && (
-            <Link
-              href={`${programmeHref(programmeName)}/${section.viewAllPath}`}
-              className="inline-flex w-fit items-center gap-2 rounded-lg border border-[#D9DEE7] bg-white px-4 py-2 text-sm font-semibold text-[#294C78] shadow-sm transition hover:border-[#B8C9DF] hover:bg-[#F0F4FA] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#456FAD] focus-visible:ring-offset-2"
-            >
-              View all {section.title.replace("Available ", "").toLowerCase()}
-            </Link>
-          )}
-        </div>
-
-        <div>
-          {loading ? (
-            <div className="py-10 text-center text-sm text-slate-500">
-              Loading...
-            </div>
-          ) : items.length === 0 ? (
-            <div className="rounded-xl border border-[#E7E5DF] bg-white py-12 text-center">
-              <p className="text-sm font-medium text-[#24344D]">
-                {section.emptyTitle}
-              </p>
-
-              <p className="mt-1 text-xs text-slate-500">
-                {section.emptyText}
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              {items.map((note) => {
-                const isFavourite = favourites.includes(note.id);
-                const likes = likeCounts[note.id] || 0;
-
-                return (
-                  <div
-                    key={note.id}
-                    className="flex min-h-[205px] flex-col rounded-2xl border border-[#E7E5DF] bg-white p-5 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-[#C8D5E7] hover:shadow-md"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <h3 className="line-clamp-2 min-h-10 text-sm font-semibold leading-5 text-[#24344D]">
-                        {note.title || note.topic}
-                      </h3>
-
-                      <span className="shrink-0 rounded-full bg-[#E7EEF8] px-2 py-1 text-[10px] font-medium text-[#294C78]">
-                        Note
-                      </span>
-                    </div>
-
-                    <p className="mt-2 line-clamp-2 min-h-5 text-xs leading-5 text-slate-500">
-                      {note.module_name || "Unknown Module"}
-                    </p>
-
-                    <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
-                      <span>Year {note.year}</span>
-                      <span>Semester {note.semester}</span>
-                    </div>
-
-                    <div className="mt-auto flex items-center gap-2 border-t border-[#F0EEE8] pt-4">
-                      <button
-                        onClick={() => handleView(note.file_path)}
-                        className="flex-1 rounded-lg bg-[#294C78] px-2 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-[#203B60] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#294C78]/40 focus-visible:ring-offset-2"
-                      >
-                        View
-                      </button>
-
-                      <button
-                        onClick={() => handleDownload(note.file_path)}
-                        className="flex-1 rounded-lg border border-[#D9DEE7] bg-white px-2 py-2.5 text-xs font-semibold text-[#294C78] transition-colors hover:bg-[#F0F4FA] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#294C78]/30 focus-visible:ring-offset-2"
-                      >
-                        Download
-                      </button>
-
-                      <button
-                        onClick={() => handleFavourite(note.id)}
-                        title={isFavourite ? "Unlike" : "Like"}
-                        aria-label={`${isFavourite ? "Unlike" : "Like"} ${note.title || note.topic}; ${likes} likes`}
-                        aria-pressed={isFavourite}
-                        className={`flex h-9 w-14 items-center justify-center gap-1 rounded-md border transition ${
-                          isFavourite
-                            ? "border-red-200 bg-red-50 text-red-500"
-                            : "border-[#D9DEE7] text-slate-500 hover:bg-red-50 hover:text-red-500"
-                        }`}
-                      >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          viewBox="0 0 24 24"
-                          fill={isFavourite ? "currentColor" : "none"}
-                          stroke="currentColor"
-                          strokeWidth={isFavourite ? 0 : 2}
-                          className="h-4 w-4"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"
-                          />
-                        </svg>
-
-                        <span className="text-xs leading-none">{likes}</span>
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+        ) : (
+          <div className={grid}>
+            {items.map((resource) => (
+              <PdfCard
+                key={resource.id}
+                title={resource.title || resource.topic}
+                type={resource.type}
+                moduleName={resource.module_name}
+                year={resource.year}
+                semester={resource.semester}
+                onView={() => handleView(resource.file_path)}
+                onDownload={() => handleDownload(resource.file_path)}
+                liked={favourites.includes(resource.id)}
+                likes={likeCounts[resource.id] || 0}
+                onLike={() => handleFavourite(resource.id)}
+              />
+            ))}
+          </div>
+        )}
       </section>
     );
   }
 
   return (
-    <main className="min-h-full bg-[#FCFBF8] px-4 py-7 sm:px-6 sm:py-9 lg:px-8">
+    <main className="min-h-full bg-cream px-4 py-8 sm:px-8 sm:py-10 lg:px-12">
       <div className="mx-auto max-w-7xl">
-        {/* Existing welcome and search header */}
         <WelcomeHeader name={fullName} />
 
         {renderPdfSection({
@@ -404,6 +319,7 @@ export default function Home() {
           description: "Browse recently available study materials.",
           items: notes,
           viewAllPath: "notes",
+          viewAllLabel: "notes",
           emptyTitle: "No notes available yet.",
           emptyText: "Approved notes for your programme will appear here.",
         })}
@@ -413,9 +329,9 @@ export default function Home() {
           description: "Past examination papers for your programme.",
           items: questionPapers,
           viewAllPath: "question-papers",
+          viewAllLabel: "question papers",
           emptyTitle: "No question papers available yet.",
-          emptyText:
-            "Approved question papers for your programme will appear here.",
+          emptyText: "Approved question papers for your programme will appear here.",
         })}
 
         {renderPdfSection({
@@ -423,126 +339,30 @@ export default function Home() {
           description: "Assignments and coursework for your programme.",
           items: assignments,
           viewAllPath: "assignments",
+          viewAllLabel: "assignments",
           emptyTitle: "No assignments available yet.",
-          emptyText:
-            "Approved assignments for your programme will appear here.",
+          emptyText: "Approved assignments for your programme will appear here.",
         })}
 
+        {/* Videos: the whole section is hidden when there are none */}
         {!loading && videos.length > 0 && (
-          <section className="mt-10 sm:mt-12">
-            <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h2 className="text-xl font-semibold tracking-tight text-[#24344D]">
-                  Latest Videos
-                </h2>
+          <section className="mt-10">
+            {sectionHeader("Latest Videos", "Video lessons added by your programme admins.", "videos", "videos")}
 
-                <p className="mt-1 text-sm text-slate-500">
-                  Video lessons added by your programme admins.
-                </p>
-              </div>
-
-              {programmeName && (
-                <Link
-                  href={`${programmeHref(programmeName)}/videos`}
-                  className="inline-flex w-fit items-center gap-2 rounded-lg border border-[#D9DEE7] bg-white px-4 py-2 text-sm font-semibold text-[#294C78] shadow-sm transition hover:border-[#B8C9DF] hover:bg-[#F0F4FA] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#456FAD] focus-visible:ring-offset-2"
-                >
-                  View all videos 
-                </Link>
-              )}
-            </div>
-
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              {videos.map((video) => {
-                const isFavourite = favourites.includes(video.id);
-                const likes = likeCounts[video.id] || 0;
-
-                return (
-                  <div
-                    key={video.id}
-                    className="flex flex-col overflow-hidden rounded-xl border border-[#E7E5DF] bg-white shadow-sm transition duration-200 hover:-translate-y-1 hover:border-[#C8D5E7] hover:shadow-md"
-                  >
-                    <a
-                      href={youTubeWatchUrl(video.video_id)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="group relative block"
-                    >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={youTubeThumbnail(video.video_id)}
-                        alt={video.title || video.topic}
-                        loading="lazy"
-                        className="aspect-video w-full bg-[#F0F2F5] object-cover"
-                      />
-
-                      <span className="absolute inset-0 flex items-center justify-center bg-black/0 transition group-hover:bg-black/20">
-                        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-black/70 text-white">
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 24 24"
-                            fill="currentColor"
-                            className="ml-0.5 h-5 w-5"
-                          >
-                            <path d="M8 5.14v13.72a1 1 0 001.5.86l11-6.86a1 1 0 000-1.72l-11-6.86A1 1 0 008 5.14z" />
-                          </svg>
-                        </span>
-                      </span>
-                    </a>
-
-                    <div className="flex flex-1 flex-col p-4">
-                      <h3 className="line-clamp-2 min-h-10 text-sm font-semibold leading-5 text-[#24344D]">
-                        {video.title || video.topic}
-                      </h3>
-
-                      <p className="mt-2 text-xs text-slate-500">
-                        Year {video.year} · Semester {video.semester}
-                      </p>
-
-                      <div className="mt-auto flex items-center gap-2 border-t border-[#E7E5DF] pt-3">
-                        <a
-                          href={youTubeWatchUrl(video.video_id)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex-1 rounded-md bg-[#294C78] px-2 py-2 text-center text-xs font-medium text-white transition-colors hover:bg-[#203B60]"
-                        >
-                          Watch
-                        </a>
-
-                        <button
-                          onClick={() => handleFavourite(video.id)}
-                          title={isFavourite ? "Unlike" : "Like"}
-                          aria-label={`${isFavourite ? "Unlike" : "Like"} ${video.title || video.topic}; ${likes} likes`}
-                          aria-pressed={isFavourite}
-                          className={`flex h-9 w-14 items-center justify-center gap-1 rounded-md border transition ${
-                            isFavourite
-                              ? "border-red-200 bg-red-50 text-red-500"
-                              : "border-[#D9DEE7] text-slate-500 hover:bg-red-50 hover:text-red-500"
-                          }`}
-                        >
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 24 24"
-                            fill={isFavourite ? "currentColor" : "none"}
-                            stroke="currentColor"
-                            strokeWidth={isFavourite ? 0 : 2}
-                            className="h-4 w-4"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"
-                            />
-                          </svg>
-
-                          <span className="text-xs leading-none">
-                            {likes}
-                          </span>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+            <div className={grid}>
+              {videos.map((video) => (
+                <VideoCard
+                  key={video.id}
+                  title={video.title || video.topic}
+                  videoId={video.video_id}
+                  moduleName={video.module_name}
+                  year={video.year}
+                  semester={video.semester}
+                  liked={favourites.includes(video.id)}
+                  likes={likeCounts[video.id] || 0}
+                  onLike={() => handleFavourite(video.id)}
+                />
+              ))}
             </div>
           </section>
         )}

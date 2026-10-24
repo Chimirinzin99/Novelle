@@ -1,5 +1,9 @@
 "use client";
 
+// Part 12: hard-coded colours (e.g. bg-[#294C78], text-slate-500) switched to
+// the theme colours from app/globals.css (bg-navy, text-ink-soft …).
+// Nothing else on this page changed.
+
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -74,14 +78,14 @@ export default function ProfilePage() {
   const fullName = profile?.full_name?.trim() || "Student";
 
   return (
-    <main className="min-h-full bg-[#FCFBF8] px-5 py-7 text-[#24344D] md:px-10 md:py-9 lg:px-12">
+    <main className="min-h-full bg-cream px-5 py-7 text-ink md:px-10 md:py-9 lg:px-12">
       <div className="mx-auto max-w-5xl">
         <header className="mb-8">
-          <p className="text-sm font-semibold text-[#456FAD]">My Account</p>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight text-[#24344D] md:text-4xl">
+          <p className="text-sm font-semibold text-navy-soft">My Account</p>
+          <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy md:text-4xl">
             Profile
           </h1>
-          <p className="mt-2 text-sm leading-6 text-slate-500">
+          <p className="mt-2 text-sm leading-6 text-ink-soft">
             View your account details and find your personal learning library.
           </p>
         </header>
@@ -95,23 +99,23 @@ export default function ProfilePage() {
           </div>
         )}
 
-        <section className="rounded-2xl border border-[#E7E5DF] bg-white p-6 shadow-sm sm:p-8">
+        <section className="rounded-2xl border border-line bg-white p-6 shadow-sm sm:p-8">
           {loading ? (
-            <p className="text-sm text-slate-500">Loading your profile...</p>
+            <p className="text-sm text-ink-soft">Loading your profile...</p>
           ) : (
             <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
-              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-[#294C78] text-xl font-semibold text-white">
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-navy text-xl font-semibold text-white">
                 {initials(fullName)}
               </div>
 
               <div className="min-w-0">
-                <h2 className="text-xl font-semibold text-[#24344D]">
+                <h2 className="text-xl font-semibold text-navy">
                   {fullName}
                 </h2>
-                <p className="mt-1 break-all text-sm text-slate-500">
+                <p className="mt-1 break-all text-sm text-ink-soft">
                   {email || "No email available"}
                 </p>
-                <p className="mt-2 inline-flex rounded-full bg-[#E7EEF8] px-3 py-1 text-xs font-medium text-[#294C78]">
+                <p className="mt-2 inline-flex rounded-full bg-sky-tint px-3 py-1 text-xs font-medium text-navy">
                   {profile?.programmes?.name || "Programme not assigned"}
                 </p>
               </div>
@@ -121,10 +125,10 @@ export default function ProfilePage() {
 
         <section className="mt-10">
           <div className="mb-5">
-            <h2 className="text-xl font-semibold tracking-tight text-[#24344D]">
+            <h2 className="text-xl font-semibold tracking-tight text-navy">
               Your library
             </h2>
-            <p className="mt-1 text-sm text-slate-500">
+            <p className="mt-1 text-sm text-ink-soft">
               Review uploads and return to resources you have liked.
             </p>
           </div>
@@ -132,9 +136,9 @@ export default function ProfilePage() {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Link
               href="/my-submissions"
-              className="group flex min-h-44 items-start gap-4 rounded-2xl border border-[#E7E5DF] bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:border-[#C8D5E7] hover:shadow-md focus:outline-none focus:ring-2 focus:ring-[#294C78]/30"
+              className="group flex min-h-44 items-start gap-4 rounded-2xl border border-line bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:border-sky-line hover:shadow-md focus:outline-none focus:ring-2 focus:ring-navy/30"
             >
-              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#E7EEF8] text-[#294C78]">
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-sky-tint text-navy">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   viewBox="0 0 24 24"
@@ -159,17 +163,17 @@ export default function ProfilePage() {
 
               <span className="min-w-0 flex-1">
                 <span className="flex items-center justify-between gap-3">
-                  <span className="font-semibold text-[#24344D]">
+                  <span className="font-semibold text-ink">
                     My Submissions
                   </span>
                   <span
                     aria-hidden="true"
-                    className="text-lg text-[#456FAD] transition-transform group-hover:translate-x-1"
+                    className="text-lg text-navy-soft transition-transform group-hover:translate-x-1"
                   >
                     →
                   </span>
                 </span>
-                <span className="mt-2 block text-sm leading-6 text-slate-500">
+                <span className="mt-2 block text-sm leading-6 text-ink-soft">
                   Check the review status of notes and other resources you have
                   uploaded.
                 </span>
@@ -178,9 +182,9 @@ export default function ProfilePage() {
 
             <Link
               href="/liked"
-              className="group flex min-h-44 items-start gap-4 rounded-2xl border border-[#E7E5DF] bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:border-[#C8D5E7] hover:shadow-md focus:outline-none focus:ring-2 focus:ring-[#294C78]/30"
+              className="group flex min-h-44 items-start gap-4 rounded-2xl border border-line bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:border-sky-line hover:shadow-md focus:outline-none focus:ring-2 focus:ring-navy/30"
             >
-              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#E7EEF8] text-[#294C78]">
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-sky-tint text-navy">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   viewBox="0 0 24 24"
@@ -200,17 +204,17 @@ export default function ProfilePage() {
 
               <span className="min-w-0 flex-1">
                 <span className="flex items-center justify-between gap-3">
-                  <span className="font-semibold text-[#24344D]">
+                  <span className="font-semibold text-ink">
                     Liked Resources
                   </span>
                   <span
                     aria-hidden="true"
-                    className="text-lg text-[#456FAD] transition-transform group-hover:translate-x-1"
+                    className="text-lg text-navy-soft transition-transform group-hover:translate-x-1"
                   >
                     →
                   </span>
                 </span>
-                <span className="mt-2 block text-sm leading-6 text-slate-500">
+                <span className="mt-2 block text-sm leading-6 text-ink-soft">
                   Find your saved notes, question papers, assignments, and
                   videos.
                 </span>

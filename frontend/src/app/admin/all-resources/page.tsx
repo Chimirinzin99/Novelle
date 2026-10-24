@@ -1,26 +1,34 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+// /admin/all-resources — every published resource in the admin's scope
+// (own programme, or all for the super admin), with type tabs and search.
+// Part 12:
+//   - cards are the shared PdfCard / VideoCard (theme colours, type badges)
+//   - likes are shown as a read-only count: admins manage resources, they
+//     don't like them (user's decision, 24 Oct). Admins can still like
+//     things when browsing the student pages.
+//   - the Edit (pencil) button is back, opening <EditResourceDialog />
+//     (it had no button since the 21 Oct redesign)
+
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  ArrowLeft,
-  BookOpen,
-  Heart,
-  Search,
-  Trash2,
-} from "lucide-react";
+import { Heart, Pencil, Search, Trash2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { BACKEND_URL } from "@/lib/config";
 import { callBackend, readJson } from "@/lib/backend";
 import { isAdminRole, isSuperAdminRole } from "@/lib/roles";
-import { resourceTypeLabel } from "@/lib/resourceTypes";
-import { youTubeThumbnail, youTubeWatchUrl } from "@/lib/youtube";
+import PageHeader, { CountPill } from "@/components/PageHeader";
+import PdfCard from "@/components/PdfCard";
+import VideoCard from "@/components/VideoCard";
+import EmptyState from "@/components/EmptyState";
+import EditResourceDialog from "@/components/EditResourceDialog";
 
 type Resource = {
   id: number;
   title: string | null;
   topic: string | null;
   type: string;
+  module_id: number | null;
   module_name: string | null;
   year: number;
   semester: number;
@@ -30,6 +38,10 @@ type Resource = {
   created_at: string;
   programmes: { name: string } | null;
 };
+
+// The columns this page reads (also used to reload one resource after an edit).
+const RESOURCE_COLUMNS =
+  "id, title, topic, type, module_id, module_name, year, semester, programme_id, file_path, video_id, created_at, programmes(name)";
 
 const filters = [
   { value: "all", label: "All resources" },
@@ -42,7 +54,6 @@ const filters = [
 export default function AllResourcesPage() {
   const router = useRouter();
   const [resources, setResources] = useState<Resource[]>([]);
-  const [favourites, setFavourites] = useState<number[]>([]);
   const [likeCounts, setLikeCounts] = useState<Record<number, number>>({});
   const [filter, setFilter] = useState("all");
   const [query, setQuery] = useState("");
@@ -51,6 +62,9 @@ export default function AllResourcesPage() {
   const [openingId, setOpeningId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [success, setSuccess] = useState("");
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  // The resource in the Edit window (null = closed).
+  const [editing, setEditing] = useState<Resource | null>(null);
 
   useEffect(() => {
     const requestedType = new URLSearchParams(window.location.search).get("type");
@@ -75,10 +89,11 @@ export default function AllResourcesPage() {
         router.replace("/home");
         return;
       }
+      setIsSuperAdmin(isSuperAdminRole(profile.role));
 
       let resourceQuery = supabase
         .from("resources")
-        .select("id, title, topic, type, module_name, year, semester, programme_id, file_path, video_id, created_at, programmes(name)")
+        .select(RESOURCE_COLUMNS)
         .order("created_at", { ascending: false });
       if (!isSuperAdminRole(profile.role)) {
         resourceQuery = resourceQuery.eq("programme_id", profile.programme_id ?? -1);
@@ -90,17 +105,16 @@ export default function AllResourcesPage() {
       } else {
         const loaded = (data || []) as unknown as Resource[];
         setResources(loaded);
-        const [{ data: favouriteRows }, countRows] = await Promise.all([
-          supabase.from("favourites").select("resource_id").eq("user_id", user.id),
-          Promise.all(loaded.map(async (resource) => {
+        // Like counts only (admins don't like resources here).
+        const countRows = await Promise.all(
+          loaded.map(async (resource) => {
             const { data: count, error: countError } = await supabase.rpc(
               "get_like_count",
               { p_resource_id: resource.id }
             );
             return [resource.id, countError ? 0 : Number(count) || 0] as const;
-          })),
-        ]);
-        setFavourites((favouriteRows || []).map((row) => row.resource_id));
+          })
+        );
         setLikeCounts(Object.fromEntries(countRows));
       }
       setLoading(false);
@@ -147,38 +161,6 @@ export default function AllResourcesPage() {
     }
   }
 
-  async function toggleFavourite(resourceId: number) {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      setError("Please sign in to like a resource.");
-      return;
-    }
-    const isFavourite = favourites.includes(resourceId);
-    if (isFavourite) {
-      const { error: removeError } = await supabase
-        .from("favourites")
-        .delete()
-        .eq("user_id", user.id)
-        .eq("resource_id", resourceId);
-      if (removeError) {
-        setError("Unable to remove this resource from your liked resources.");
-        return;
-      }
-      setFavourites((current) => current.filter((id) => id !== resourceId));
-      setLikeCounts((current) => ({ ...current, [resourceId]: Math.max((current[resourceId] || 0) - 1, 0) }));
-      return;
-    }
-    const { error: addError } = await supabase
-      .from("favourites")
-      .insert({ user_id: user.id, resource_id: resourceId });
-    if (addError) {
-      setError("Unable to like this resource.");
-      return;
-    }
-    setFavourites((current) => [...current, resourceId]);
-    setLikeCounts((current) => ({ ...current, [resourceId]: (current[resourceId] || 0) + 1 }));
-  }
-
   async function deleteResource(resource: Resource) {
     const title = resource.title || resource.topic || "this resource";
     if (!window.confirm(`Delete “${title}”? This cannot be undone.`)) return;
@@ -202,7 +184,6 @@ export default function AllResourcesPage() {
         return;
       }
       setResources((current) => current.filter((item) => item.id !== resource.id));
-      setFavourites((current) => current.filter((id) => id !== resource.id));
       setLikeCounts((current) => {
         const next = { ...current };
         delete next[resource.id];
@@ -221,95 +202,179 @@ export default function AllResourcesPage() {
     }
   }
 
+  // After a successful edit: reload just that one resource, so its card
+  // shows the new title/module/type, and close the window.
+  // useCallback keeps the same function between renders (the Edit window
+  // uses it inside a useEffect).
+  const closeEdit = useCallback(() => setEditing(null), []);
+
+  async function handleSaved() {
+    if (!editing) return;
+    const id = editing.id;
+    setEditing(null);
+    setError("");
+    const { data, error: reloadError } = await supabase
+      .from("resources")
+      .select(RESOURCE_COLUMNS)
+      .eq("id", id)
+      .maybeSingle();
+    if (reloadError || !data) {
+      setError("Saved, but the list could not be refreshed. Reload the page.");
+      return;
+    }
+    const updated = data as unknown as Resource;
+    setResources((current) => current.map((item) => (item.id === id ? updated : item)));
+    setSuccess("Changes saved.");
+  }
+
+  // Small square icon buttons for Edit / Delete.
+  const iconButton =
+    "flex h-10 w-10 items-center justify-center rounded-[10px] border-[1.5px] border-sky-line bg-white text-navy outline-none transition hover:bg-sky-wash focus-visible:ring-2 focus-visible:ring-navy/40 disabled:cursor-wait disabled:opacity-50";
+
   return (
-    <main className="min-h-full bg-slate-50 px-5 py-7 text-[#24344D] md:px-10 md:py-9 lg:px-12">
+    <main className="min-h-full bg-cream px-4 py-8 sm:px-8 sm:py-10 lg:px-12">
       <div className="mx-auto max-w-7xl">
-        <button onClick={() => router.push("/admin")} className="mb-6 inline-flex items-center gap-2 rounded-xl border border-[#E7E5DF] bg-white px-4 py-2.5 text-sm font-medium text-[#294C78] shadow-sm transition hover:bg-[#E7EEF8]">
-          <ArrowLeft className="h-4 w-4" /> Back to Dashboard
-        </button>
+        <PageHeader
+          backHref="/admin"
+          backLabel="Back to Dashboard"
+          eyebrow="Resource library"
+          title="All resources"
+          description={`Browse, edit and delete notes, papers, assignments and videos${isSuperAdmin ? " in every programme" : " in your programme"}.`}
+          aside={
+            !loading && (
+              <CountPill>
+                {visibleResources.length} {visibleResources.length === 1 ? "resource" : "resources"}
+              </CountPill>
+            )
+          }
+        />
 
-        <header className="mb-7 flex flex-col justify-between gap-5 md:flex-row md:items-end">
-          <div>
-            <p className="text-sm font-semibold text-[#456FAD]">Resource library</p>
-            <h1 className="mt-1 text-3xl font-bold tracking-tight md:text-4xl">All resources</h1>
-            <p className="mt-2 text-sm text-slate-500">Browse notes, papers, assignments, and videos in your admin scope.</p>
-          </div>
-          {!loading && <span className="w-fit rounded-full border border-[#E7E5DF] bg-white px-3 py-1.5 text-sm font-medium text-[#294C78]">{visibleResources.length} {visibleResources.length === 1 ? "resource" : "resources"}</span>}
-        </header>
-
-        <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        {/* Type tabs + search */}
+        <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Filter resources by type">
             {filters.map((item) => (
-              <button key={item.value} role="tab" aria-selected={filter === item.value} onClick={() => setFilter(item.value)} className={`shrink-0 rounded-full px-4 py-2 text-sm font-medium transition ${filter === item.value ? "bg-[#294C78] text-white" : "border border-[#E7E5DF] bg-white text-slate-600 hover:bg-[#F1F4F8]"}`}>
+              <button
+                key={item.value}
+                type="button"
+                role="tab"
+                aria-selected={filter === item.value}
+                onClick={() => setFilter(item.value)}
+                className={`h-11 shrink-0 rounded-full px-4 text-[15px] font-semibold outline-none transition focus-visible:ring-2 focus-visible:ring-navy/40 ${
+                  filter === item.value
+                    ? "bg-navy text-white"
+                    : "border-[1.5px] border-sky-line bg-white text-ink-nav hover:bg-sky-wash"
+                }`}
+              >
                 {item.label}
               </button>
             ))}
           </div>
           <label className="relative block w-full lg:max-w-sm">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search title, module, programme…" className="w-full rounded-xl border border-[#E7E5DF] bg-white py-2.5 pl-10 pr-4 text-sm outline-none focus:border-[#456FAD] focus:ring-2 focus:ring-[#456FAD]/20" />
+            <span className="sr-only">Search resources</span>
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-soft" />
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search title, module, programme…"
+              className="h-11 w-full rounded-[10px] border-[1.5px] border-sky-line bg-white pl-10 pr-4 text-[15px] text-ink outline-none transition placeholder:text-ink-soft focus:border-navy-soft focus:ring-4 focus:ring-sky-tint"
+            />
           </label>
         </div>
 
         {error && <div role="alert" className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
-        {success && <div role="status" className="mb-5 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">{success}</div>}
+        {success && <div role="status" className="mb-5 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">{success}</div>}
 
         {loading ? (
-          <div className="rounded-2xl border border-[#E7E5DF] bg-white p-10 text-center text-sm text-slate-500">Loading resources…</div>
+          <EmptyState title="Loading resources…" />
         ) : visibleResources.length === 0 ? (
-          <div className="rounded-2xl border border-[#E7E5DF] bg-white px-6 py-14 text-center shadow-sm">
-            <BookOpen className="mx-auto h-8 w-8 text-[#456FAD]" />
-            <h2 className="mt-4 text-lg font-semibold">No resources found</h2>
-            <p className="mt-2 text-sm text-slate-500">Try another search or resource type.</p>
-          </div>
+          <EmptyState title="No resources found" text="Try another search or resource type." />
         ) : (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
             {visibleResources.map((resource) => {
-              const isVideo = resource.type === "video";
-              const videoId = resource.video_id || "";
               const title = resource.title || resource.topic || "Untitled resource";
-              const isFavourite = favourites.includes(resource.id);
               const likes = likeCounts[resource.id] || 0;
-              return (
-                <article key={resource.id} className="flex min-h-[215px] flex-col overflow-hidden rounded-2xl border border-[#E7E5DF] bg-white shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-[#C8D5E7] hover:shadow-md">
-                  {isVideo && videoId ? (
-                    <a href={youTubeWatchUrl(videoId)} target="_blank" rel="noopener noreferrer" className="relative block aspect-video bg-slate-100">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={youTubeThumbnail(videoId)} alt={`${title} thumbnail`} className="h-full w-full object-cover" />
-                      <span className="absolute inset-0 flex items-center justify-center bg-black/10 text-white"><span className="rounded-full bg-black/65 px-4 py-2 text-sm font-semibold">Play video</span></span>
-                    </a>
-                  ) : null}
-                  <div className={`flex flex-1 flex-col ${isVideo && videoId ? "p-4" : "p-5"}`}>
-                    <div className="flex items-start justify-between gap-2">
-                      <h2 className="line-clamp-2 min-h-10 text-sm font-semibold leading-5 text-[#24344D]">{title}</h2>
-                      <span className="shrink-0 rounded-full bg-[#E7EEF8] px-2 py-1 text-[10px] font-medium text-[#294C78]">{resourceTypeLabel(resource.type)}</span>
-                    </div>
-                    <p className="mt-2 line-clamp-1 text-xs text-slate-500">{resource.module_name || "Unknown module"}{resource.programmes?.name ? ` · ${resource.programmes.name}` : ""}</p>
-                    <div className="mt-3 flex items-center justify-between text-xs text-slate-500"><span>Year {resource.year}</span><span>Semester {resource.semester}</span></div>
-                    <div className="mt-auto flex items-center gap-2 border-t border-[#E7E5DF] pt-3">
-                      {isVideo && videoId ? (
-                        <a href={youTubeWatchUrl(videoId)} target="_blank" rel="noopener noreferrer" className="flex-1 rounded-md bg-[#294C78] px-2 py-2.5 text-center text-xs font-medium text-white hover:bg-[#203B60]">Watch</a>
-                      ) : (
-                        <>
-                          <button onClick={() => openFile(resource, false)} disabled={!resource.file_path || openingId === resource.id} className="flex-1 rounded-md bg-[#294C78] px-2 py-2.5 text-xs font-medium text-white hover:bg-[#203B60] disabled:opacity-50">{openingId === resource.id ? "Opening…" : "View"}</button>
-                      <button onClick={() => openFile(resource, true)} disabled={!resource.file_path || openingId === resource.id} className="flex-1 rounded-md border border-[#D9DEE7] px-2 py-2.5 text-xs font-medium text-[#294C78] hover:bg-[#F0F4FA] disabled:opacity-50">Download</button>
-                        </>
-                      )}
-                      <button onClick={() => toggleFavourite(resource.id)} title={isFavourite ? "Unlike" : "Like"} aria-label={`${isFavourite ? "Unlike" : "Like"} ${title}; ${likes} likes`} aria-pressed={isFavourite} className={`flex h-9 w-14 shrink-0 items-center justify-center gap-1 rounded-md border transition ${isFavourite ? "border-red-200 bg-red-50 text-red-500" : "border-[#D9DEE7] text-slate-500 hover:bg-red-50 hover:text-red-500"}`}>
-                        <Heart className="h-4 w-4" fill={isFavourite ? "currentColor" : "none"} />
-                        <span className="text-xs leading-none">{likes}</span>
-                      </button>
-                      <button onClick={() => deleteResource(resource)} disabled={deletingId === resource.id} title="Delete resource" aria-label={`Delete ${title}`} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-[#E7E5DF] text-slate-500 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600 disabled:cursor-wait disabled:opacity-50">
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-                </article>
+
+              // Programme link (useful for the super admin, who sees all).
+              const programmeLink = resource.programmes?.name && (
+                <p className="text-sm font-semibold text-navy-soft">{resource.programmes.name}</p>
+              );
+
+              // Bottom row: read-only like count on the left, Edit + Delete on the right.
+              const footer = (
+                <>
+                  <span
+                    className="flex items-center gap-1.5 text-sm font-semibold text-ink-soft"
+                    title="Likes from students"
+                  >
+                    <Heart className="h-4 w-4 text-gold" aria-hidden="true" />
+                    {likes} {likes === 1 ? "like" : "likes"}
+                  </span>
+                  <span className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSuccess("");
+                        setEditing(resource);
+                      }}
+                      title="Edit resource"
+                      aria-label={`Edit ${title}`}
+                      className={iconButton}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => deleteResource(resource)}
+                      disabled={deletingId === resource.id}
+                      title="Delete resource"
+                      aria-label={`Delete ${title}`}
+                      className={`${iconButton} hover:border-red-200 hover:bg-red-50 hover:text-red-700`}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </span>
+                </>
+              );
+
+              return resource.type === "video" && resource.video_id ? (
+                <VideoCard
+                  key={resource.id}
+                  title={title}
+                  videoId={resource.video_id}
+                  moduleName={resource.module_name}
+                  year={resource.year}
+                  semester={resource.semester}
+                  extra={programmeLink}
+                  footer={footer}
+                />
+              ) : (
+                <PdfCard
+                  key={resource.id}
+                  title={title}
+                  type={resource.type}
+                  moduleName={resource.module_name}
+                  year={resource.year}
+                  semester={resource.semester}
+                  extra={programmeLink}
+                  onView={() => openFile(resource, false)}
+                  onDownload={() => openFile(resource, true)}
+                  footer={footer}
+                />
               );
             })}
           </div>
         )}
       </div>
+
+      {/* Edit window (opens over the page) */}
+      {editing && (
+        <EditResourceDialog
+          resource={editing}
+          isSuperAdmin={isSuperAdmin}
+          onClose={closeEdit}
+          onSaved={handleSaved}
+        />
+      )}
     </main>
   );
 }

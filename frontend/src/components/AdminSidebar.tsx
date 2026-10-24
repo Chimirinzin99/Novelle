@@ -1,10 +1,13 @@
 "use client";
 
+// Part 12: navy admin sidebar from the chosen design — the shared <Logo />
+// (dark version, role as its tagline), cream "current page" pill, light
+// text on navy. Links, profile cache and logout work exactly as before.
+
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  BookOpen,
   ClipboardCheck,
   FileText,
   GraduationCap,
@@ -14,6 +17,7 @@ import {
   Users,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import Logo from "@/components/Logo";
 import { isAdminRole, isSuperAdminRole, roleLabel } from "@/lib/roles";
 
 type SidebarProfile = {
@@ -126,19 +130,19 @@ export default function AdminSidebar() {
     const active = href === "/admin"
       ? pathname === href
       : pathname === href || pathname.startsWith(`${href}/`);
-    return `flex shrink-0 items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium transition md:mb-1 md:w-full md:gap-3 md:px-3 md:py-3 ${active ? "bg-blue-50 text-blue-700" : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"}`;
+    // Current page = cream pill with navy text; others = light text on navy.
+    // focus-visible: a ring only for keyboard (Tab) users.
+    return `flex shrink-0 items-center gap-2.5 rounded-xl px-3 py-2.5 text-[15px] outline-none transition focus-visible:ring-2 focus-visible:ring-gold md:mb-1 md:w-full md:gap-3 md:px-3 md:py-3 ${active ? "bg-cream font-bold text-navy" : "font-medium text-[#E3ECF8] hover:bg-white/10 hover:text-white"}`;
   };
 
   return (
     <>
-      <header className="sticky top-0 z-40 border-b border-gray-200 bg-white md:hidden">
+      <header className="sticky top-0 z-40 bg-navy md:hidden">
         <div className="flex items-center justify-between px-4 py-3">
-          <button onClick={() => router.push("/admin")} className="flex items-center gap-2 font-bold text-gray-900">
-            <BookOpen className="h-5 w-5 text-blue-800" /> Novelle
-          </button>
+          <Logo tone="dark" href="/admin" tagline={profile ? roleLabel(profile.role) : "Admin"} />
           <div className="flex items-center gap-3">
-            <span className="max-w-36 truncate text-right text-xs text-gray-500">{profile ? profile.full_name || roleLabel(profile.role) : ""}</span>
-            <button onClick={logout} aria-label="Log out" className="rounded-lg border border-gray-200 p-2 text-gray-600 hover:bg-gray-50"><LogOut className="h-4 w-4" /></button>
+            <span className="max-w-36 truncate text-right text-xs text-[#C9D8EE]">{profile ? profile.full_name || roleLabel(profile.role) : ""}</span>
+            <button onClick={logout} aria-label="Log out" className="rounded-lg border border-white/25 p-2 text-white hover:bg-white/10"><LogOut className="h-4 w-4" /></button>
           </div>
         </div>
         <nav aria-label="Admin navigation" className="flex gap-1 overflow-x-auto px-3 pb-3">
@@ -149,40 +153,38 @@ export default function AdminSidebar() {
         </nav>
       </header>
 
-      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-gray-200 bg-white md:flex">
-        <div className="border-b border-gray-200 px-6 py-5">
-          <button onClick={() => router.push("/admin")} className="flex items-center gap-2 text-2xl font-bold tracking-tight text-gray-900">
-            <BookOpen className="h-6 w-6 text-blue-800" /> Novelle
-          </button>
-          <p className="mt-1 pl-8 text-xs text-gray-500">{profile ? roleLabel(profile.role) : "\u00a0"}</p>
+      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col bg-navy text-white md:flex">
+        {/* Logo; the tagline shows the role ("Programme admin" / "Super admin") */}
+        <div className="px-5 pb-4 pt-6">
+          <Logo tone="dark" href="/admin" tagline={profile ? roleLabel(profile.role) : "\u00a0"} />
         </div>
 
         <nav aria-label="Admin navigation" className="flex-1 overflow-y-auto px-3 py-5">
-          <p className="mb-3 px-3 text-[11px] font-semibold uppercase tracking-wider text-gray-400">Workspace</p>
+          <p className="mb-3 px-3 font-display text-[11px] font-bold uppercase tracking-[0.14em] text-[#C9D8EE]">Workspace</p>
           {links.map(({ href, label, icon: Icon }) => (
             <Link key={href} href={href} aria-current={pathname === href ? "page" : undefined} className={linkClass(href)}><Icon className="h-5 w-5" /><span>{label}</span></Link>
           ))}
         </nav>
 
-        <div className="border-t border-gray-200 p-4">
-          <div className="mb-3 flex items-center gap-3 px-2">
+        <div className="border-t border-white/15 p-4">
+          <div className="mb-3 flex items-center gap-3 rounded-xl bg-navy-soft px-3 py-3">
             {profile ? (
               <>
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-50 text-sm font-semibold text-blue-800">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-sky text-sm font-bold text-white">
                   {(profile.full_name?.trim().charAt(0) || "A").toUpperCase()}
                 </span>
-                <div className="min-w-0"><p className="truncate text-sm font-medium text-gray-900">{profile.full_name || "Admin"}</p><p className="truncate text-xs text-gray-500">{profile.email || ""}</p></div>
+                <div className="min-w-0"><p className="truncate text-sm font-bold text-white">{profile.full_name || "Admin"}</p><p className="truncate text-xs text-[#C9D8EE]">{profile.email || ""}</p></div>
               </>
             ) : (
               // Grey placeholder while the profile loads (first visit or a browser refresh only).
               <>
-                <span className="h-9 w-9 shrink-0 animate-pulse rounded-full bg-gray-100" />
-                <div className="min-w-0 flex-1 space-y-2"><div className="h-3 w-24 animate-pulse rounded bg-gray-100" /><div className="h-3 w-36 animate-pulse rounded bg-gray-100" /></div>
+                <span className="h-9 w-9 shrink-0 animate-pulse rounded-full bg-white/20" />
+                <div className="min-w-0 flex-1 space-y-2"><div className="h-3 w-24 animate-pulse rounded bg-white/20" /><div className="h-3 w-32 animate-pulse rounded bg-white/20" /></div>
               </>
             )}
           </div>
           <Link href="/admin/profile" aria-current={pathname === "/admin/profile" ? "page" : undefined} className={linkClass("/admin/profile")}><UserRound className="h-5 w-5" /><span>Profile</span></Link>
-          <button onClick={logout} className="mt-1 flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-gray-900"><LogOut className="h-5 w-5" /><span>Logout</span></button>
+          <button onClick={logout} className="mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-[15px] font-medium text-[#E3ECF8] outline-none transition hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-gold"><LogOut className="h-5 w-5" /><span>Logout</span></button>
         </div>
       </aside>
     </>

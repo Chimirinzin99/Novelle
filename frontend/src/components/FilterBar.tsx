@@ -1,9 +1,10 @@
 "use client";
 
 // A horizontal row of dropdown filters, shared by the Notes,
-// Question Papers and Assignments pages.
+// Question Papers, Assignments and Videos pages.
 // The PAGE owns the selected values (its useState); this component
 // only displays them and reports changes back through the on...Change props.
+// Part 12: theme colours; 44 px tall controls (easy to tap on a phone).
 
 type FilterBarProps = {
   year: string;
@@ -23,7 +24,7 @@ const SEMESTERS = ["All Semesters", "Semester 1", "Semester 2"];
 
 // Same look for every dropdown, defined once.
 const selectClass =
-  "rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:border-blue-500 focus:outline-none";
+  "h-11 rounded-[10px] border-[1.5px] border-sky-line bg-white px-3 text-[15px] text-ink outline-none transition focus:border-navy-soft focus:ring-4 focus:ring-sky-tint";
 
 export default function FilterBar({
   year,
@@ -44,8 +45,8 @@ export default function FilterBar({
   return (
     // flex-wrap: on narrow screens the dropdowns drop to a second line
     // instead of squashing together.
-    <div className="mb-8 flex flex-wrap items-center gap-3 rounded-2xl bg-white p-4 shadow-sm">
-      <span className="text-sm font-semibold text-gray-900">Filter</span>
+    <div className="mb-7 flex flex-wrap items-center gap-3 rounded-2xl border border-line bg-white p-4">
+      <span className="font-display text-sm font-bold text-navy">Filter</span>
 
       <select
         value={year}
@@ -74,7 +75,7 @@ export default function FilterBar({
         <select
           value={module}
           onChange={(e) => onModuleChange(e.target.value)}
-          className={selectClass}
+          className={`${selectClass} max-w-full`}
           aria-label="Module"
         >
           <option>All Modules</option>
@@ -86,8 +87,9 @@ export default function FilterBar({
 
       {isFiltered && (
         <button
+          type="button"
           onClick={onClear}
-          className="ml-auto text-sm font-medium text-gray-500 hover:text-gray-900"
+          className="ml-auto rounded text-[15px] font-semibold text-navy-soft outline-none hover:text-navy hover:underline focus-visible:ring-2 focus-visible:ring-navy/40"
         >
           Clear filters
         </button>

@@ -1,9 +1,14 @@
 "use client";
 
+// Part 12: theme colours (navy button, pale-blue inputs, cream page) and
+// the Novelle logo on top of the card. The login/sign-up code is unchanged.
+
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { homePathForRole } from "@/lib/roles";
+import Logo from "@/components/Logo";
 
 // Shown when a super admin has deactivated this account (/admin/users).
 const DEACTIVATED_MESSAGE =
@@ -96,16 +101,20 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-gray-50 px-6">
-      <div className="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
+    <main className="flex min-h-screen items-center justify-center bg-cream px-6">
+      <div className="w-full max-w-md rounded-2xl border border-line bg-white p-8 shadow-sm">
+        {/* Logo at the top of the card (links back to the landing page) */}
+        <div className="mb-6 flex justify-center">
+          <Logo href="/" />
+        </div>
 
         {/* Header */}
         <div className="mb-8 text-center">
-          <h1 className="text-3xl font-bold text-gray-900">
+          <h1 className="text-3xl font-extrabold text-navy">
             Welcome to Novelle
           </h1>
 
-          <p className="mt-2 text-sm text-gray-500">
+          <p className="mt-2 text-sm text-ink-soft">
             Sign in to access your CST resources
           </p>
         </div>
@@ -115,49 +124,51 @@ export default function LoginPage() {
 
           {/* Email */}
           <div>
-            <label className="mb-2 block text-sm font-medium text-gray-700">
+            <label htmlFor="email" className="mb-2 block text-sm font-medium text-ink-nav">
               RUB Email
             </label>
 
             <input
+              id="email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="yourname@rub.edu.bt"
               required
-              className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder:text-gray-400 outline-none focus:border-black focus:ring-1 focus:ring-black"
+              className="h-12 w-full rounded-xl border-2 border-sky-line bg-white px-4 text-base text-ink placeholder:text-ink-soft outline-none transition focus:border-navy-soft focus:ring-4 focus:ring-sky-tint"
             />
           </div>
 
           {/* Password */}
           <div>
             <div className="mb-2 flex items-center justify-between">
-              <label className="block text-sm font-medium text-gray-700">
+              <label htmlFor="password" className="block text-sm font-medium text-ink-nav">
                 Password
               </label>
 
               {/* Opens the page that emails a reset link */}
-              <a
+              <Link
                 href="/reset-password"
-                className="text-sm font-medium text-gray-500 hover:text-black hover:underline"
+                className="text-sm font-semibold text-navy-soft hover:text-navy hover:underline"
               >
                 Forgot password?
-              </a>
+              </Link>
             </div>
 
             <input
+              id="password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Enter your password"
               required
-              className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder:text-gray-400 outline-none focus:border-black focus:ring-1 focus:ring-black"
+              className="h-12 w-full rounded-xl border-2 border-sky-line bg-white px-4 text-base text-ink placeholder:text-ink-soft outline-none transition focus:border-navy-soft focus:ring-4 focus:ring-sky-tint"
             />
           </div>
 
           {/* Error */}
           {error && (
-            <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">
+            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
               {error}
             </div>
           )}
@@ -166,7 +177,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-lg bg-black py-3 font-medium text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
+            className="h-12 w-full rounded-xl bg-navy font-display text-[15px] font-bold tracking-wide text-white outline-none transition hover:bg-navy-soft focus-visible:ring-4 focus-visible:ring-sky-tint disabled:cursor-not-allowed disabled:opacity-60"
           >
             {loading ? "Logging in..." : "Login"}
           </button>
@@ -174,15 +185,15 @@ export default function LoginPage() {
         </form>
 
         {/* Register */}
-        <p className="mt-6 text-center text-sm text-gray-500">
+        <p className="mt-6 text-center text-sm text-ink-soft">
           Don't have an account?{" "}
 
-          <a
+          <Link
             href="/register"
-            className="font-medium text-black hover:underline"
+            className="font-bold text-navy-soft hover:text-navy hover:underline"
           >
             Register
-          </a>
+          </Link>
         </p>
 
       </div>

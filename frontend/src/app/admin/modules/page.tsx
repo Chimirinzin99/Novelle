@@ -1,5 +1,9 @@
 "use client";
 
+// Part 12: hard-coded colours (gray/blue/black and old hexes) switched to the
+// theme colours from app/globals.css (navy, ink, line, sky-…, gold-…).
+// Nothing else on this page changed.
+
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
@@ -504,16 +508,16 @@ export default function ModulesPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-gray-50 px-5 py-8 text-gray-900 md:px-8">
+      <main className="min-h-screen bg-cream px-5 py-8 text-ink md:px-8">
         <div className="mx-auto max-w-6xl">
           <button
             type="button"
             onClick={() => router.push("/admin")}
-            className="mb-8 inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            className="mb-8 inline-flex items-center gap-2 rounded-xl border border-line bg-white px-4 py-2.5 text-sm font-medium text-ink-nav shadow-sm transition hover:bg-sky-wash focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy-soft"
           >
             <ArrowLeft className="h-4 w-4" /> Back to Dashboard
           </button>
-          <p className="text-gray-500">Loading modules...</p>
+          <p className="text-ink-soft">Loading modules...</p>
         </div>
       </main>
     );
@@ -535,7 +539,7 @@ export default function ModulesPage() {
   return (
     // text-gray-900: without it the text (and the form boxes, which inherit
     // it) takes the near-white dark-mode colour from globals.css.
-    <main className="min-h-screen bg-gray-50 px-8 py-8 text-gray-900">
+    <main className="min-h-screen bg-cream px-8 py-8 text-ink">
       <div className="mx-auto max-w-6xl">
 
         {/* Header */}
@@ -544,29 +548,29 @@ export default function ModulesPage() {
             <button
               type="button"
               onClick={() => router.push("/admin")}
-              className="mb-5 inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              className="mb-5 inline-flex items-center gap-2 rounded-xl border border-line bg-white px-4 py-2.5 text-sm font-medium text-ink-nav shadow-sm transition hover:bg-sky-wash focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy-soft"
             >
               <ArrowLeft className="h-4 w-4" /> Back to Dashboard
             </button>
 
-            <p className="text-sm font-medium text-blue-600">
+            <p className="text-sm font-medium text-navy-soft">
               Module Management
             </p>
 
-            <h1 className="mt-1 text-3xl font-bold text-gray-900">
+            <h1 className="mt-1 text-3xl font-bold text-ink">
               Modules
             </h1>
 
             {/* Heading depends on the role (helpers in lib/roles.ts) */}
             {isProgrammeAdminRole(profile?.role) && (
-              <p className="mt-2 text-gray-500">
+              <p className="mt-2 text-ink-soft">
                 Modules for {programmeName}. Only the super admin can add
                 or change modules.
               </p>
             )}
 
             {isSuperAdminRole(profile?.role) && (
-              <p className="mt-2 text-gray-500">
+              <p className="mt-2 text-ink-soft">
                 Managing modules across all
                 programmes
               </p>
@@ -590,15 +594,15 @@ export default function ModulesPage() {
 
         {/* Add / Edit Form (super admin only) */}
         {canManage && (
-        <div className="mb-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+        <div className="mb-8 rounded-xl border border-line bg-white p-6 shadow-sm">
           <div className="mb-5">
-            <h2 className="text-lg font-semibold text-gray-900">
+            <h2 className="text-lg font-semibold text-ink">
               {editingId !== null
                 ? "Edit Module"
                 : "Add Module"}
             </h2>
 
-            <p className="mt-1 text-sm text-gray-500">
+            <p className="mt-1 text-sm text-ink-soft">
               Enter the module information below.
             </p>
           </div>
@@ -609,7 +613,7 @@ export default function ModulesPage() {
           >
             {/* Programme: chosen when adding; locked when editing */}
             <div className="md:col-span-2">
-              <label className="mb-2 block text-sm font-medium text-gray-700">
+              <label className="mb-2 block text-sm font-medium text-ink-nav">
                 Programme
               </label>
 
@@ -617,7 +621,7 @@ export default function ModulesPage() {
                 value={formProgrammeId}
                 onChange={(e) => setFormProgrammeId(e.target.value)}
                 disabled={editingId !== null}
-                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-gray-50 disabled:text-gray-500"
+                className="w-full rounded-lg border border-sky-line bg-white px-4 py-2.5 outline-none focus:border-navy-soft focus:ring-2 focus:ring-sky-tint disabled:bg-cream disabled:text-ink-soft"
               >
                 <option value="">Select programme</option>
                 {programmes.map((p) => (
@@ -630,7 +634,7 @@ export default function ModulesPage() {
 
             {/* Module Code */}
             <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700">
+              <label className="mb-2 block text-sm font-medium text-ink-nav">
                 Module Code
               </label>
 
@@ -641,13 +645,13 @@ export default function ModulesPage() {
                   setModuleCode(e.target.value)
                 }
                 placeholder="e.g. CSF101"
-                className="w-full rounded-lg border border-gray-300 px-4 py-2.5 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                className="w-full rounded-lg border border-sky-line px-4 py-2.5 outline-none focus:border-navy-soft focus:ring-2 focus:ring-sky-tint"
               />
             </div>
 
             {/* Module Name */}
             <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700">
+              <label className="mb-2 block text-sm font-medium text-ink-nav">
                 Module Name
               </label>
 
@@ -658,13 +662,13 @@ export default function ModulesPage() {
                   setModuleName(e.target.value)
                 }
                 placeholder="e.g. Programming Fundamentals"
-                className="w-full rounded-lg border border-gray-300 px-4 py-2.5 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                className="w-full rounded-lg border border-sky-line px-4 py-2.5 outline-none focus:border-navy-soft focus:ring-2 focus:ring-sky-tint"
               />
             </div>
 
             {/* Year */}
             <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700">
+              <label className="mb-2 block text-sm font-medium text-ink-nav">
                 Year
               </label>
 
@@ -673,7 +677,7 @@ export default function ModulesPage() {
                 onChange={(e) =>
                   setYear(e.target.value)
                 }
-                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                className="w-full rounded-lg border border-sky-line bg-white px-4 py-2.5 outline-none focus:border-navy-soft focus:ring-2 focus:ring-sky-tint"
               >
                 <option value="">
                   Select year
@@ -695,7 +699,7 @@ export default function ModulesPage() {
 
             {/* Semester */}
             <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700">
+              <label className="mb-2 block text-sm font-medium text-ink-nav">
                 Semester
               </label>
 
@@ -704,7 +708,7 @@ export default function ModulesPage() {
                 onChange={(e) =>
                   setSemester(e.target.value)
                 }
-                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                className="w-full rounded-lg border border-sky-line bg-white px-4 py-2.5 outline-none focus:border-navy-soft focus:ring-2 focus:ring-sky-tint"
               >
                 <option value="">
                   Select semester
@@ -723,7 +727,7 @@ export default function ModulesPage() {
               <button
                 type="submit"
                 disabled={saving}
-                className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-lg bg-navy px-5 py-2.5 text-sm font-medium text-white transition hover:bg-navy-soft disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {saving
                   ? "Saving..."
@@ -737,7 +741,7 @@ export default function ModulesPage() {
                   type="button"
                   onClick={clearForm}
                   disabled={saving}
-                  className="rounded-lg border border-gray-300 bg-white px-5 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                  className="rounded-lg border border-sky-line bg-white px-5 py-2.5 text-sm font-medium text-ink-nav hover:bg-cream disabled:opacity-50"
                 >
                   Cancel
                 </button>
@@ -748,13 +752,13 @@ export default function ModulesPage() {
         )}
 
         {/* Module List */}
-        <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
-          <div className="border-b border-gray-200 px-6 py-5">
-            <h2 className="text-lg font-semibold text-gray-900">
+        <div className="rounded-xl border border-line bg-white shadow-sm">
+          <div className="border-b border-line px-6 py-5">
+            <h2 className="text-lg font-semibold text-ink">
               Module List
             </h2>
 
-            <p className="mt-1 text-sm text-gray-500">
+            <p className="mt-1 text-sm text-ink-soft">
               {visibleModules.length} module
               {visibleModules.length !== 1
                 ? "s"
@@ -766,7 +770,7 @@ export default function ModulesPage() {
               <select
                 value={listProgrammeId}
                 onChange={(e) => setListProgrammeId(e.target.value)}
-                className="mt-3 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500"
+                className="mt-3 rounded-lg border border-sky-line bg-white px-3 py-2 text-sm outline-none focus:border-navy-soft"
               >
                 <option value="">All programmes</option>
                 {programmes.map((p) => (
@@ -780,12 +784,12 @@ export default function ModulesPage() {
 
           {visibleModules.length === 0 ? (
             <div className="px-6 py-12 text-center">
-              <p className="text-gray-500">
+              <p className="text-ink-soft">
                 No modules have been added yet.
               </p>
             </div>
           ) : (
-            <div className="divide-y divide-gray-100">
+            <div className="divide-y divide-line">
               {visibleModules.map((module) => (
                 <div
                   key={module.id}
@@ -794,7 +798,7 @@ export default function ModulesPage() {
                   {/* Module Information */}
                   <div>
                     <div className="flex items-center gap-3">
-                      <h3 className="font-semibold text-gray-900">
+                      <h3 className="font-semibold text-ink">
                         {module.module_code}
                       </h3>
 
@@ -802,7 +806,7 @@ export default function ModulesPage() {
                         className={`rounded-full px-2.5 py-1 text-xs font-medium ${
                           module.active
                             ? "bg-green-100 text-green-700"
-                            : "bg-gray-100 text-gray-500"
+                            : "bg-sky-wash text-ink-soft"
                         }`}
                       >
                         {module.active
@@ -811,11 +815,11 @@ export default function ModulesPage() {
                       </span>
                     </div>
 
-                    <p className="mt-1 text-sm text-gray-600">
+                    <p className="mt-1 text-sm text-ink-soft">
                       {module.module_name}
                     </p>
 
-                    <p className="mt-1 text-xs text-gray-400">
+                    <p className="mt-1 text-xs text-ink-soft">
                       Year {module.year} ·
                       Semester{" "}
                       {module.semester}
@@ -832,7 +836,7 @@ export default function ModulesPage() {
                       onClick={() =>
                         handleEdit(module)
                       }
-                      className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                      className="rounded-lg border border-sky-line px-4 py-2 text-sm font-medium text-ink-nav hover:bg-cream"
                     >
                       Edit
                     </button>

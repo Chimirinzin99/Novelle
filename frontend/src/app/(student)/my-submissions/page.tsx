@@ -1,5 +1,9 @@
 "use client";
 
+// Part 12: hard-coded colours (e.g. bg-[#294C78], text-slate-500) switched to
+// the theme colours from app/globals.css (bg-navy, text-ink-soft …).
+// Nothing else on this page changed.
+
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -24,7 +28,7 @@ type StatusFilter = "all" | "pending" | "approved" | "rejected";
 
 // Colours and wording for each status, kept in one place.
 const STATUS_STYLES = {
-  pending: { label: "Pending review", className: "bg-yellow-100 text-yellow-800" },
+  pending: { label: "Pending review", className: "bg-gold-tint text-gold-ink" },
   approved: { label: "Approved", className: "bg-green-100 text-green-800" },
   rejected: { label: "Rejected", className: "bg-red-100 text-red-700" },
 };
@@ -131,7 +135,7 @@ export default function MySubmissionsPage() {
 
   return (
     
-<main className="min-h-full bg-[#FCFBF8] px-5 py-7 text-[#24344D] md:px-10 md:py-9 lg:px-12">
+<main className="min-h-full bg-cream px-5 py-7 text-ink md:px-10 md:py-9 lg:px-12">
 
       {notice && (
         <div
@@ -160,7 +164,7 @@ export default function MySubmissionsPage() {
             type="button"
             onClick={() => setNotice("")}
             aria-label="Dismiss notification"
-            className="rounded-md px-1 text-lg leading-5 text-slate-400 transition hover:bg-green-50 hover:text-slate-700 focus:outline-none focus:ring-2 focus:ring-green-300"
+            className="rounded-md px-1 text-lg leading-5 text-ink-soft transition hover:bg-green-50 hover:text-ink focus:outline-none focus:ring-2 focus:ring-green-300"
           >
             ×
           </button>
@@ -169,7 +173,7 @@ export default function MySubmissionsPage() {
 
       <Link
         href="/profile"
-        className="mb-7 inline-flex items-center gap-2 rounded-xl border border-[#E7E5DF] bg-white px-4 py-2.5 text-sm font-medium text-[#294C78] shadow-sm transition hover:border-[#C8D5E7] hover:bg-[#E7EEF8] focus:outline-none focus:ring-2 focus:ring-[#294C78]/30"
+        className="mb-7 inline-flex items-center gap-2 rounded-xl border border-line bg-white px-4 py-2.5 text-sm font-medium text-navy shadow-sm transition hover:border-sky-line hover:bg-sky-tint focus:outline-none focus:ring-2 focus:ring-navy/30"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -192,10 +196,10 @@ export default function MySubmissionsPage() {
       {/* Header */}
       <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-[#24344D] md:text-4xl">
+          <h1 className="text-3xl font-bold tracking-tight text-navy md:text-4xl">
             My Submissions
           </h1>
-          <p className="mt-2 text-sm leading-6 text-slate-500">
+          <p className="mt-2 text-sm leading-6 text-ink-soft">
             Everything you have uploaded and where it is in the review.
           </p>
         </div>
@@ -213,8 +217,8 @@ export default function MySubmissionsPage() {
               aria-pressed={filter === option}
               className={
                 filter === option
-                  ? "rounded-full bg-[#294C78] px-4 py-2 text-sm font-semibold text-white shadow-sm"
-                  : "rounded-full border border-[#E7E5DF] bg-white px-4 py-2 text-sm font-medium text-slate-600 transition hover:border-[#C8D5E7] hover:bg-[#F0F4FA]"
+                  ? "rounded-full bg-navy px-4 py-2 text-sm font-semibold text-white shadow-sm"
+                  : "rounded-full border border-line bg-white px-4 py-2 text-sm font-medium text-ink-soft transition hover:border-sky-line hover:bg-sky-wash"
               }
             >
               {option === "all"
@@ -233,24 +237,24 @@ export default function MySubmissionsPage() {
       )}
 
       {loading ? (
-        <div className="rounded-2xl border border-[#E7E5DF] bg-white p-10 text-center text-sm text-slate-500 shadow-sm">
+        <div className="rounded-2xl border border-line bg-white p-10 text-center text-sm text-ink-soft shadow-sm">
           Loading your submissions...
         </div>
       ) : visible.length === 0 ? (
         // Empty state
-        <div className="rounded-2xl border border-[#E7E5DF] bg-white p-12 text-center shadow-sm">
-          <h3 className="text-lg font-semibold text-[#24344D]">
+        <div className="rounded-2xl border border-line bg-white p-12 text-center shadow-sm">
+          <h3 className="text-lg font-semibold text-ink">
             {submissions.length === 0
               ? "You haven't uploaded anything yet"
               : "Nothing with this status"}
           </h3>
-          <p className="mt-2 text-sm text-slate-500">
+          <p className="mt-2 text-sm text-ink-soft">
             Uploaded notes appear here while they are reviewed.
           </p>
           {submissions.length === 0 && (
             <Link
               href="/submit-note"
-              className="mt-6 inline-block rounded-lg bg-[#294C78] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#203B60] focus:outline-none focus:ring-2 focus:ring-[#294C78]/30 focus:ring-offset-2"
+              className="mt-6 inline-block rounded-lg bg-navy px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-navy-soft focus:outline-none focus:ring-2 focus:ring-navy/30 focus:ring-offset-2"
             >
               Upload your first note
             </Link>
@@ -265,11 +269,11 @@ export default function MySubmissionsPage() {
             return (
               <div
                 key={submission.id}
-                className="flex flex-col gap-4 rounded-2xl border border-[#E7E5DF] bg-white p-5 shadow-sm transition hover:border-[#C8D5E7] sm:flex-row sm:items-center sm:justify-between"
+                className="flex flex-col gap-4 rounded-2xl border border-line bg-white p-5 shadow-sm transition hover:border-sky-line sm:flex-row sm:items-center sm:justify-between"
               >
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="font-semibold text-[#24344D]">{submission.title}</h3>
+                    <h3 className="font-semibold text-ink">{submission.title}</h3>
                     <span
                       className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${status.className}`}
                     >
@@ -277,7 +281,7 @@ export default function MySubmissionsPage() {
                     </span>
                   </div>
 
-                  <p className="mt-1 text-sm leading-6 text-slate-500">
+                  <p className="mt-1 text-sm leading-6 text-ink-soft">
                     {resourceTypeLabel(submission.type)}
                     {" · "}
                     {submission.programmes?.name ?? "Unknown programme"}
@@ -299,7 +303,7 @@ export default function MySubmissionsPage() {
 
                 <button
                   onClick={() => viewFile(submission.file_path)}
-                  className="shrink-0 rounded-lg border border-[#D9DEE7] px-4 py-2 text-sm font-semibold text-[#294C78] transition hover:bg-[#F0F4FA] focus:outline-none focus:ring-2 focus:ring-[#294C78]/30"
+                  className="shrink-0 rounded-lg border border-sky-line px-4 py-2 text-sm font-semibold text-navy transition hover:bg-sky-wash focus:outline-none focus:ring-2 focus:ring-navy/30"
                 >
                   View
                 </button>
