@@ -131,88 +131,44 @@ export const uploadResourceFile = async (
       });
     }
 
-    let moduleId: number | null = null;
-    let moduleName: string;
-    let yearNumber: number;
-    let semesterNumber: number;
-
-    if (module_id) {
-      // Module picked from a dropdown (/admin/resources):
-      // name, year, semester and programme all come from the module.
-      const { data: module, error: moduleError } = await supabase
-        .from("modules")
-        .select("id, programme_id, module_name, year, semester, active")
-        .eq("id", Number(module_id))
-        .maybeSingle();
-
-      if (moduleError || !module || !module.active) {
-        return res.status(400).json({
-          success: false,
-          message: "Module not found or not active.",
-        });
-      }
-
-      if (
-        req.user.role === "programme_admin" &&
-        module.programme_id !== programmeId
-      ) {
-        return res.status(403).json({
-          success: false,
-          message: "You cannot upload to another programme's module.",
-        });
-      }
-
-      moduleId = module.id;
-      moduleName = module.module_name;
-      yearNumber = module.year;
-      semesterNumber = module.semester;
-      programmeId = module.programme_id;
-    } else {
-      // Module name typed in. No page sends this since Part 7 (the merged
-      // /admin/resources page always sends module_id); kept for now.
-      const { module_name, year, semester } = req.body;
-
-      if (!module_name || !module_name.trim()) {
-        return res.status(400).json({
-          success: false,
-          message: "Module name is required.",
-        });
-      }
-
-      yearNumber = Number(year);
-      semesterNumber = Number(semester);
-
-      if (!Number.isInteger(yearNumber) || yearNumber < 1) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid year.",
-        });
-      }
-
-      if (
-        !Number.isInteger(semesterNumber) ||
-        semesterNumber < 1
-      ) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid semester.",
-        });
-      }
-
-      moduleName = module_name.trim();
-
-      // Super admin must provide a programme_id.
-      if (req.user.role === "super_admin") {
-        if (!req.body.programme_id) {
-          return res.status(400).json({
-            success: false,
-            message: "Programme ID is required for super admin uploads.",
-          });
-        }
-
-        programmeId = Number(req.body.programme_id);
-      }
+    // The module is picked from a dropdown on /admin/resources: name, year,
+    // semester and programme are all copied from it, so the client can't
+    // send a mismatched year or programme.
+    if (!module_id) {
+      return res.status(400).json({
+        success: false,
+        message: "Please choose a module.",
+      });
     }
+
+    const { data: module, error: moduleError } = await supabase
+      .from("modules")
+      .select("id, programme_id, module_name, year, semester, active")
+      .eq("id", Number(module_id))
+      .maybeSingle();
+
+    if (moduleError || !module || !module.active) {
+      return res.status(400).json({
+        success: false,
+        message: "Module not found or not active.",
+      });
+    }
+
+    if (
+      req.user.role === "programme_admin" &&
+      module.programme_id !== programmeId
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "You cannot upload to another programme's module.",
+      });
+    }
+
+    const moduleId: number = module.id;
+    const moduleName: string = module.module_name;
+    const yearNumber: number = module.year;
+    const semesterNumber: number = module.semester;
+    programmeId = module.programme_id;
 
     if (!programmeId) {
       return res.status(400).json({
@@ -292,104 +248,6 @@ export const uploadResourceFile = async (
     });
   } catch (error) {
     console.error("Upload resource error:", error);
-
-    return res.status(500).json({
-      success: false,
-      message: "Server error.",
-    });
-  }
-};
-
-export const createResource = async (
-  req: AuthenticatedRequest,
-  res: Response
-) => {
-  try {
-    if (!req.user) {
-      return res.status(401).json({
-        success: false,
-        message: "Authentication required.",
-      });
-    }
-
-    const {
-      topic,
-      type,
-      module_name,
-      year,
-      semester,
-    } = req.body;
-
-    if (!topic || !module_name || !type || !year || !semester) {
-      return res.status(400).json({
-        success: false,
-        message: "All required fields must be provided.",
-      });
-    }
-
-    if (!isResourceType(type)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid resource type.",
-      });
-    }
-
-    // Videos are added through POST /upload (it reads the YouTube link).
-    if (type === "video") {
-      return res.status(400).json({
-        success: false,
-        message: "Use the upload endpoint to add a video.",
-      });
-    }
-
-    const yearNumber = Number(year);
-    const semesterNumber = Number(semester);
-
-    let programmeId = req.user.programme_id;
-
-    if (req.user.role === "super_admin") {
-      programmeId = Number(req.body.programme_id);
-    }
-
-    if (!programmeId) {
-      return res.status(400).json({
-        success: false,
-        message: "Programme is required.",
-      });
-    }
-
-    const { data, error } = await supabase
-      .from("resources")
-      .insert({
-        topic: topic.trim(),
-        type,
-        module_name: module_name.trim(),
-        programme_id: programmeId,
-        year: yearNumber,
-        semester: semesterNumber,
-        file_path: req.body.file_path || null,
-        uploaded_by: req.user.id,
-      })
-      .select()
-      .single();
-
-    if (error) {
-      console.error("Create resource error:", error);
-
-      return res.status(500).json({
-        success: false,
-        message: "Failed to create note.",
-        error: error.message,
-      });
-    }
-
-    return res.status(201).json({
-      success: true,
-      message: "Note created successfully.",
-      resource: data,
-    });
-  } catch (error) {
-    console.error("Create resource error:", error);
 
     return res.status(500).json({
       success: false,

@@ -1,23 +1,57 @@
 import "dotenv/config";
-import express from "express";
+import express, { NextFunction, Request, Response } from "express";
 import cors from "cors";
+import multer from "multer";
 
-import { supabase } from "./config/supabase";
-import {
-  authenticateUser,
-  AuthenticatedRequest,
-} from "./middleware/auth";
-import { requireRole } from "./middleware/role";
 import modulesRoutes from "./routes/modules.routes";
 import resourcesRoutes from "./routes/resources.routes";
 import submissionsRoutes from "./routes/submissions.routes";
 import usersRoutes from "./routes/users.routes";
 import statsRoutes from "./routes/stats.routes";
 
+// ------------------------------------
+// Settings from .env (with local defaults)
+// ------------------------------------
+
+// Port: hosting services set PORT themselves; locally it stays 5000.
+const PORT = Number(process.env.PORT) || 5000;
+
+// Which websites may call this API from the browser (CORS).
+// FRONTEND_URL can hold one or more addresses separated by commas,
+// e.g. "http://localhost:3000,https://novelle.example.com".
+const ALLOWED_ORIGINS = (process.env.FRONTEND_URL ?? "http://localhost:3000")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
 const app = express();
 
-app.use(cors());
+// Don't advertise "X-Powered-By: Express" on every reply.
+app.disable("x-powered-by");
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // No Origin header = not a browser page (curl, server tools): allow.
+      // Our own frontend's address: allow. Any other website: refuse.
+      if (!origin || ALLOWED_ORIGINS.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(null, false);
+      }
+    },
+  })
+);
 app.use(express.json());
+
+// ------------------------------------
+// Routes
+// ------------------------------------
+
+// Health check: lets you (or a hosting service) see the server is up.
+app.get("/", (_req, res) => {
+  res.json({ message: "Novelle backend is running!" });
+});
 
 // Modules API
 app.use("/api/modules", modulesRoutes);
@@ -25,7 +59,7 @@ app.use("/api/modules", modulesRoutes);
 // Resources API
 app.use("/api/resources", resourcesRoutes);
 
-// Submissions API (admin review)
+// Submissions API (student upload + admin review)
 app.use("/api/submissions", submissionsRoutes);
 
 // Users API (super admin: roles, deactivate/activate)
@@ -34,124 +68,48 @@ app.use("/api/users", usersRoutes);
 // Stats API (super admin dashboard numbers)
 app.use("/api/stats", statsRoutes);
 
-const PORT = 5000;
-
-// ------------------------------------
-// Basic backend test
-// ------------------------------------
-
-app.get("/", (_req, res) => {
-  res.json({
-    message: "Novelle backend is running!",
-  });
+// Unknown address -> JSON 404 (instead of Express's HTML page).
+app.use((_req, res) => {
+  res.status(404).json({ success: false, message: "Not found." });
 });
 
 // ------------------------------------
-// Test Supabase connection
+// Error handler (must be last, and must have 4 parameters)
 // ------------------------------------
+// Catches errors that routes don't handle themselves, e.g. a non-PDF or a
+// too-big file on the admin upload, or broken JSON in a request body.
+// Always answers in JSON and never sends the error's stack trace to the browser.
 
-app.get("/api/test-supabase", async (_req, res) => {
-  const { data, error } = await supabase
-    .from("programmes")
-    .select("id, name, short_name")
-    .limit(10);
-
-  if (error) {
-    console.error(error);
-
-    return res.status(500).json({
-      success: false,
-      message: "Supabase connection failed",
-      error: error.message,
-    });
-  }
-
-  return res.json({
-    success: true,
-    message: "Backend connected to Supabase!",
-    programmes: data,
-  });
-});
-
-// ------------------------------------
-// Test authentication
-// ------------------------------------
-
-app.get(
-  "/api/test-auth",
-  authenticateUser,
-  (req: AuthenticatedRequest, res) => {
-    return res.json({
-      success: true,
-      message: "Authentication successful!",
-      user: req.user,
-    });
-  }
-);
-
-// ------------------------------------
-// Test user profile
-// ------------------------------------
-
-app.get(
-  "/api/test-profile",
-  authenticateUser,
-  async (req: AuthenticatedRequest, res) => {
-    try {
-      if (!req.user) {
-        return res.status(401).json({
-          success: false,
-          message: "Authentication required.",
-        });
-      }
-
-      const { data: profile, error } = await supabase
-        .from("profiles")
-        .select(
-          "id, full_name, email, role, programme_id"
-        )
-        .eq("id", req.user.id)
-        .single();
-
-      if (error) {
-        console.error("Profile error:", error);
-
-        return res.status(500).json({
-          success: false,
-          message: "Failed to fetch profile.",
-          error: error.message,
-        });
-      }
-
-      return res.json({
-        success: true,
-        profile,
-      });
-    } catch (error) {
-      console.error("Profile test error:", error);
-
-      return res.status(500).json({
-        success: false,
-        message: "Server error.",
-      });
+app.use(
+  (error: unknown, _req: Request, res: Response, _next: NextFunction) => {
+    if (error instanceof multer.MulterError) {
+      const message =
+        error.code === "LIMIT_FILE_SIZE"
+          ? "PDF file must be 5 MB or smaller."
+          : "File upload failed.";
+      return res.status(400).json({ success: false, message });
     }
-  }
-);
 
-// ------------------------------------
-// Test admin authorization
-// ------------------------------------
+    if (
+      error instanceof Error &&
+      error.message === "Only PDF files are allowed."
+    ) {
+      return res.status(400).json({ success: false, message: error.message });
+    }
 
-app.get(
-  "/api/test-admin",
-  authenticateUser,
-  requireRole("programme_admin", "super_admin"),
-  (req: AuthenticatedRequest, res) => {
-    return res.json({
-      success: true,
-      message: "Admin authorization successful!",
-      user: req.user,
-    });
+    // express.json() sets type "entity.parse.failed" for broken JSON.
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      (error as { type?: string }).type === "entity.parse.failed"
+    ) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid JSON in request." });
+    }
+
+    console.error("Unhandled error:", error);
+    return res.status(500).json({ success: false, message: "Server error." });
   }
 );
 
@@ -160,7 +118,6 @@ app.get(
 // ------------------------------------
 
 app.listen(PORT, () => {
-  console.log(
-    `Novelle backend running on http://localhost:${PORT}`
-  );
+  console.log(`Novelle backend running on http://localhost:${PORT}`);
+  console.log(`Allowed frontend(s): ${ALLOWED_ORIGINS.join(", ")}`);
 });

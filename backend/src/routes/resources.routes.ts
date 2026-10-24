@@ -6,7 +6,6 @@ import { requireRole } from "../middleware/role";
 
 import {
   getResources,
-  createResource,
   updateResource,
   deleteResource,
   uploadResourceFile,
@@ -38,17 +37,6 @@ router.get(
   authenticateUser,
   requireRole("programme_admin", "super_admin"),
   getResources
-);
-
-// ------------------------------------
-// Create resource
-// ------------------------------------
-
-router.post(
-  "/",
-  authenticateUser,
-  requireRole("programme_admin", "super_admin"),
-  createResource
 );
 
 // ------------------------------------
