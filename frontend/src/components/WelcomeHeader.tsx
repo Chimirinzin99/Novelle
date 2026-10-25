@@ -1,7 +1,9 @@
 // The welcome heading + search box at the top of /home and /search.
 // One component, so the two pages always look exactly the same.
-// Part 12: left-aligned, navy Montserrat heading with the gold star from the
-// logo, Novelle's tagline under it (as in the chosen design).
+// Part 12: navy Montserrat heading with the gold star from the logo,
+// Novelle's tagline under it.
+// PDF preview part (user's request, 25 Oct): heading, tagline and search box
+// are centred on the page (left-aligned left a large empty area).
 
 import SearchBox from "@/components/SearchBox";
 
@@ -15,9 +17,9 @@ export default function WelcomeHeader({
   initialQuery = "",
 }: WelcomeHeaderProps) {
   return (
-    <div className="flex flex-col gap-5">
-      <div className="flex flex-col gap-1.5">
-        <h1 className="flex items-center gap-3 text-3xl font-extrabold tracking-tight text-navy">
+    <div className="flex flex-col items-center gap-5 text-center">
+      <div className="flex flex-col items-center gap-1.5">
+        <h1 className="flex flex-wrap items-center justify-center gap-3 text-3xl font-extrabold tracking-tight text-navy">
           <span>
             Welcome back{name && `, ${name}`}
           </span>
@@ -39,10 +41,10 @@ export default function WelcomeHeader({
         </p>
       </div>
 
-      {/* Enter or "Search" goes to /search?q=... (all programmes).
+      {/* Enter goes to /search?q=... (all programmes).
           key: a fresh box whenever the query in the URL changes,
           so it shows the new text. */}
-      <div className="max-w-2xl">
+      <div className="w-full max-w-2xl">
         <SearchBox key={initialQuery} initialQuery={initialQuery} />
       </div>
     </div>

@@ -5,11 +5,13 @@
 // and Solved; the admin can correct both before approving (sent with
 // module_id to POST /api/submissions/:id/approve).
 // Part 12: hard-coded colours switched to the theme colours.
+// PDF preview part: View PDF opens the preview window instead of a new tab.
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { usePreview } from "@/components/PreviewProvider";
 import { BACKEND_URL } from "@/lib/config";
 import { callBackend, readJson } from "@/lib/backend";
 import { REJECTION_REASONS } from "@/lib/rejectionReasons";
@@ -192,20 +194,9 @@ export default function AdminSubmissionsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Open private PDF
-  const handleViewFile = async (filePath: string) => {
-    const { data, error } = await supabase.storage
-      .from("resources")
-      .createSignedUrl(filePath, 60);
-
-    if (error) {
-      console.error(error);
-      setError("Unable to open the submitted file.");
-      return;
-    }
-
-    window.open(data.signedUrl, "_blank");
-  };
+  // Open the submitted (private) PDF in the preview window. Storage RLS
+  // allows admins to see submissions of their programme (all for super admin).
+  const { openPdf } = usePreview();
 
   // Active modules for this submission's programme, year and semester
   const modulesFor = (submission: Submission) => {
@@ -414,7 +405,7 @@ export default function AdminSubmissionsPage() {
                     </div>
 
                     <button
-                      onClick={() => handleViewFile(submission.file_path)}
+                      onClick={() => openPdf(submission.file_path, submission.title)}
                       className="rounded-lg border border-sky-line bg-white px-4 py-2 text-sm font-semibold text-ink-nav hover:bg-cream"
                     >
                       View PDF

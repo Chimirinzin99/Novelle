@@ -4,12 +4,15 @@
 // Handles fetching, filters, PDF viewing/downloading and favourites.
 // Part 13d: cards show the author credit and Solved/Unsolved; question
 // papers and assignments get an extra All / Solved / Unsolved filter.
+// PDF preview part: View opens the preview window instead of a new tab.
 // Part 12: drawn with the shared PageHeader, FilterBar, PdfCard and
 // EmptyState (theme colours); the data code is unchanged.
 
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { usePreview } from "@/components/PreviewProvider";
+import { downloadFile } from "@/lib/files";
 import { setLiked } from "@/lib/likes";
 import FilterBar from "@/components/FilterBar";
 import PageHeader, { CountPill } from "@/components/PageHeader";
@@ -154,37 +157,23 @@ export default function ResourceList({
     setLoading(false);
   }
 
-  async function openFile(filePath: string | null, download: boolean) {
+  // PDF preview part: View opens the preview window (usePreview), Download
+  // saves the file (lib/files.ts). Both used to open a new tab.
+  const { openPdf } = usePreview();
+
+  async function openFile(filePath: string | null, download: boolean, title: string) {
     if (!filePath) {
       setError(`This ${singular} does not have a file.`);
       return;
     }
 
-    const { data, error: urlError } = await supabase.storage
-      .from("resources")
-      .createSignedUrl(
-        filePath,
-        3600,
-        download ? { download: true } : {}
-      );
-
-    if (urlError || !data?.signedUrl) {
-      console.error("Signed URL error:", urlError);
-      setError(
-        `Unable to ${download ? "download" : "open"} this ${singular}.`
-      );
+    if (!download) {
+      openPdf(filePath, title);
       return;
     }
 
-    if (download) {
-      const link = document.createElement("a");
-      link.href = data.signedUrl;
-      link.download = "";
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } else {
-      window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+    if (!(await downloadFile(filePath))) {
+      setError(`Unable to download this ${singular}.`);
     }
   }
 
@@ -326,8 +315,8 @@ export default function ResourceList({
                 authorType={resource.author_type}
                 authorName={resource.author_name}
                 isSolved={resource.is_solved}
-                onView={() => openFile(resource.file_path, false)}
-                onDownload={() => openFile(resource.file_path, true)}
+                onView={() => openFile(resource.file_path, false, resource.name)}
+                onDownload={() => openFile(resource.file_path, true, resource.name)}
                 liked={favourites.includes(resource.id)}
                 likes={likeCounts[resource.id] || 0}
                 onLike={() => handleFavourite(resource.id)}

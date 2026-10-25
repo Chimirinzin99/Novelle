@@ -6,11 +6,14 @@
 // fixed type badges, gold Like button). Data loading is unchanged, except the
 // video query now also reads module_name (shown on the card).
 // Part 13d: PDF cards also show the author credit and Solved/Unsolved.
+// PDF preview part: View opens the preview window instead of a new tab.
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { usePreview } from "@/components/PreviewProvider";
+import { downloadFile } from "@/lib/files";
 import { setLiked } from "@/lib/likes";
 import WelcomeHeader from "@/components/WelcomeHeader";
 import PdfCard from "@/components/PdfCard";
@@ -182,41 +185,12 @@ export default function Home() {
     setLoading(false);
   }
 
-  async function handleView(filePath: string) {
-    const { data, error } = await supabase.storage
-      .from("resources")
-      .createSignedUrl(filePath, 3600);
-
-    if (error || !data?.signedUrl) {
-      console.error("Error creating signed URL:", error);
-      alert("Unable to open this file.");
-      return;
-    }
-
-    window.open(data.signedUrl, "_blank");
-  }
+  // PDF preview part: View opens the preview window (usePreview), Download
+  // saves the file (lib/files.ts). Both used to open a new tab.
+  const { openPdf } = usePreview();
 
   async function handleDownload(filePath: string) {
-    const { data, error } = await supabase.storage
-      .from("resources")
-      .createSignedUrl(filePath, 3600, {
-        download: true,
-      });
-
-    if (error || !data?.signedUrl) {
-      console.error("Error creating download URL:", error);
-      alert("Unable to download this file.");
-      return;
-    }
-
-    const link = document.createElement("a");
-    link.href = data.signedUrl;
-    link.download = "";
-    link.target = "_blank";
-
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    if (!(await downloadFile(filePath))) alert("Unable to download this file.");
   }
 
   // Like / unlike. The heart and count change straight away ("optimistic"),
@@ -303,7 +277,7 @@ export default function Home() {
                 authorType={resource.author_type}
                 authorName={resource.author_name}
                 isSolved={resource.is_solved}
-                onView={() => handleView(resource.file_path)}
+                onView={() => openPdf(resource.file_path, resource.title || resource.topic)}
                 onDownload={() => handleDownload(resource.file_path)}
                 liked={favourites.includes(resource.id)}
                 likes={likeCounts[resource.id] || 0}

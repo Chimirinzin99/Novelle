@@ -1,13 +1,14 @@
 "use client";
 
-// Part 12: hard-coded colours (e.g. bg-[#294C78], text-slate-500) switched to
-// the theme colours from app/globals.css (bg-navy, text-ink-soft …).
-// Nothing else on this page changed.
+// /my-submissions — the student's own submissions and their status.
+// PDF preview part: View opens the preview window instead of a new tab.
+// Part 12: hard-coded colours switched to the theme colours.
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { usePreview } from "@/components/PreviewProvider";
 import { rejectionReasonLabel } from "@/lib/rejectionReasons";
 import { resourceTypeLabel } from "@/lib/resourceTypes";
 
@@ -104,21 +105,9 @@ export default function MySubmissionsPage() {
     setLoading(false);
   }
 
-  // Open the student's own PDF. Allowed by the storage policy from
-  // migration 002 (files in submissions/<their-id>/).
-  async function viewFile(filePath: string) {
-    const { data, error } = await supabase.storage
-      .from("resources")
-      .createSignedUrl(filePath, 60); // link valid for 60 seconds
-
-    if (error || !data) {
-      console.error("View file error:", error);
-      alert("Could not open this file.");
-      return;
-    }
-
-    window.open(data.signedUrl, "_blank");
-  }
+  // Open the student's own PDF in the preview window. Allowed by the
+  // storage policy from migration 002 (files in submissions/<their-id>/).
+  const { openPdf } = usePreview();
 
   // How many submissions have each status (for the filter buttons).
   const counts = {
@@ -302,7 +291,7 @@ export default function MySubmissionsPage() {
                 </div>
 
                 <button
-                  onClick={() => viewFile(submission.file_path)}
+                  onClick={() => openPdf(submission.file_path, submission.title)}
                   className="shrink-0 rounded-lg border border-sky-line px-4 py-2 text-sm font-semibold text-navy transition hover:bg-sky-wash focus:outline-none focus:ring-2 focus:ring-navy/30"
                 >
                   View

@@ -5,11 +5,14 @@
 // Part 12: results use the shared PdfCard / VideoCard (no Like button here)
 // with the programme as a link; the search code is unchanged.
 // Part 13d: PDF cards also show the author credit and Solved/Unsolved.
+// PDF preview part: View opens the preview window instead of a new tab.
 
 import Link from "next/link";
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { usePreview } from "@/components/PreviewProvider";
+import { downloadFile } from "@/lib/files";
 import WelcomeHeader from "@/components/WelcomeHeader";
 import { programmeHref } from "@/lib/programmes";
 import PdfCard from "@/components/PdfCard";
@@ -125,19 +128,12 @@ function SearchResults() {
     setLoading(false);
   }
 
-  // Open (or download) a PDF through a short-lived signed link.
-  async function openFile(filePath: string, download: boolean) {
-    const { data, error: urlError } = await supabase.storage
-      .from("resources")
-      .createSignedUrl(filePath, 60, download ? { download: true } : undefined);
+  // PDF preview part: View opens the preview window (usePreview), Download
+  // saves the file (lib/files.ts). Both used to open a new tab.
+  const { openPdf } = usePreview();
 
-    if (urlError || !data) {
-      console.error("Open file error:", urlError);
-      setError("Could not open this file.");
-      return;
-    }
-
-    window.open(data.signedUrl, "_blank");
+  async function downloadPdf(filePath: string) {
+    if (!(await downloadFile(filePath))) setError("Could not download this file.");
   }
 
   return (
@@ -217,8 +213,8 @@ function SearchResults() {
                       authorName={r.author_name}
                       isSolved={r.is_solved}
                       extra={programmeLink}
-                      onView={() => r.file_path && openFile(r.file_path, false)}
-                      onDownload={() => r.file_path && openFile(r.file_path, true)}
+                      onView={() => r.file_path && openPdf(r.file_path, title)}
+                      onDownload={() => r.file_path && downloadPdf(r.file_path)}
                     />
                   );
                 })}

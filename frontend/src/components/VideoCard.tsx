@@ -1,11 +1,17 @@
+"use client";
+
 // One card for a YouTube video resource — Part 12.
-// Used by /home, the programme videos page, /search and /liked.
-// Only draws; the page passes the data and the like handler.
+// Used by /home, the programme videos page, /search, /liked and
+// /admin/all-resources. The page passes the data and the like handler.
+// PDF preview part: the thumbnail and Watch now play the video in the
+// preview window (usePreview) instead of opening YouTube in a new tab;
+// the window has an "Open on YouTube" button.
 
 import TypeBadge from "@/components/TypeBadge";
 import LikeButton from "@/components/LikeButton";
 import { primaryButton, resourceDetails } from "@/components/PdfCard";
-import { youTubeThumbnail, youTubeWatchUrl } from "@/lib/youtube";
+import { usePreview } from "@/components/PreviewProvider";
+import { youTubeThumbnail } from "@/lib/youtube";
 
 type VideoCardProps = {
   title: string;
@@ -35,18 +41,17 @@ export default function VideoCard({
   likes,
   onLike,
 }: VideoCardProps) {
-  const watchUrl = youTubeWatchUrl(videoId);
+  const { openVideo } = usePreview();
+  const watch = () => openVideo(videoId, title);
 
   return (
     <article className="flex flex-col overflow-hidden rounded-2xl border border-line bg-white transition duration-200 hover:-translate-y-0.5 hover:shadow-md">
-      {/* Thumbnail opens the video on YouTube in a new tab.
-          noopener noreferrer: the new tab can't control this page. */}
-      <a
-        href={watchUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="group relative block outline-none focus-visible:ring-2 focus-visible:ring-navy/40"
-        aria-label={`Watch ${title} on YouTube`}
+      {/* Thumbnail plays the video in the preview window */}
+      <button
+        type="button"
+        onClick={watch}
+        className="group relative block w-full text-left outline-none focus-visible:ring-2 focus-visible:ring-navy/40"
+        aria-label={`Watch ${title}`}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -62,7 +67,7 @@ export default function VideoCard({
             </svg>
           </span>
         </span>
-      </a>
+      </button>
 
       <div className="flex flex-1 flex-col gap-3 p-5">
         <div className="flex items-start justify-between gap-2">
@@ -77,9 +82,9 @@ export default function VideoCard({
         {extra}
 
         <div className="mt-auto flex gap-2 pt-1">
-          <a href={watchUrl} target="_blank" rel="noopener noreferrer" className={primaryButton}>
+          <button type="button" onClick={watch} className={primaryButton}>
             Watch
-          </a>
+          </button>
           {onLike && (
           <LikeButton liked={!!liked} count={likes} label={title} onClick={onLike} />
           )}

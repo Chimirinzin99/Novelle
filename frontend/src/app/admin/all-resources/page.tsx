@@ -11,11 +11,15 @@
 //     (it had no button since the 21 Oct redesign)
 // Part 13d: PDF cards show the author credit and Solved/Unsolved; the Edit
 //   window can change both.
+// PDF preview part: View opens the preview window (Download still saves);
+//   videos play in the window through VideoCard.
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Heart, Pencil, Search, Trash2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { usePreview } from "@/components/PreviewProvider";
+import { downloadFile } from "@/lib/files";
 import { BACKEND_URL } from "@/lib/config";
 import { callBackend, readJson } from "@/lib/backend";
 import { isAdminRole, isSuperAdminRole } from "@/lib/roles";
@@ -140,30 +144,22 @@ export default function AllResourcesPage() {
     });
   }, [filter, query, resources]);
 
+  const { openPdf } = usePreview();
+
+  // View -> preview window; Download -> save the file (lib/files.ts).
   async function openFile(resource: Resource, download: boolean) {
     if (!resource.file_path) {
       setError("This resource does not have a file attached.");
       return;
     }
-    setOpeningId(resource.id);
-    const { data, error: signedUrlError } = await supabase.storage
-      .from("resources")
-      .createSignedUrl(resource.file_path, 3600, download ? { download: true } : {});
-    setOpeningId(null);
-    if (signedUrlError || !data?.signedUrl) {
-      setError(`Unable to ${download ? "download" : "open"} this resource.`);
+    if (!download) {
+      openPdf(resource.file_path, resource.title || resource.topic || "Resource");
       return;
     }
-    if (download) {
-      const link = document.createElement("a");
-      link.href = data.signedUrl;
-      link.download = "";
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-    } else {
-      window.open(data.signedUrl, "_blank", "noopener,noreferrer");
-    }
+    setOpeningId(resource.id);
+    const ok = await downloadFile(resource.file_path);
+    setOpeningId(null);
+    if (!ok) setError("Unable to download this resource.");
   }
 
   async function deleteResource(resource: Resource) {

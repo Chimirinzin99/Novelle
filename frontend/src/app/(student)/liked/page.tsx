@@ -5,11 +5,14 @@
 // EmptyState; each card shows its programme as a link. The data code is
 // unchanged. (Clicking the gold heart unlikes and removes the card.)
 // Part 13d: PDF cards also show the author credit and Solved/Unsolved.
+// PDF preview part: View opens the preview window instead of a new tab.
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { usePreview } from "@/components/PreviewProvider";
+import { downloadFile } from "@/lib/files";
 import { programmeHref } from "@/lib/programmes";
 import PageHeader from "@/components/PageHeader";
 import PdfCard from "@/components/PdfCard";
@@ -85,18 +88,12 @@ export default function LikedPage() {
     setLoading(false);
   }
 
-  async function openFile(filePath: string, download: boolean) {
-    const { data, error } = await supabase.storage
-      .from("resources")
-      .createSignedUrl(filePath, 60, download ? { download: true } : undefined);
+  // PDF preview part: View opens the preview window (usePreview), Download
+  // saves the file (lib/files.ts). Both used to open a new tab.
+  const { openPdf } = usePreview();
 
-    if (error || !data) {
-      console.error("Open file error:", error);
-      alert("Could not open this file.");
-      return;
-    }
-
-    window.open(data.signedUrl, "_blank");
+  async function downloadPdf(filePath: string) {
+    if (!(await downloadFile(filePath))) alert("Could not download this file.");
   }
 
   // Unlike = delete this favourites row (allowed by the existing
@@ -186,8 +183,8 @@ export default function LikedPage() {
                   authorName={resource.author_name}
                   isSolved={resource.is_solved}
                   extra={programmeLink}
-                  onView={() => resource.file_path && openFile(resource.file_path, false)}
-                  onDownload={() => resource.file_path && openFile(resource.file_path, true)}
+                  onView={() => resource.file_path && openPdf(resource.file_path, title)}
+                  onDownload={() => resource.file_path && downloadPdf(resource.file_path)}
                   liked
                   onLike={() => unlike(item.id)}
                 />
