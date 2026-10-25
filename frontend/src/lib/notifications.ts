@@ -1,18 +1,40 @@
+// lib/notifications.ts — Part 13c: notifications now come from the database
+// (table public.notifications, migration 012) instead of localStorage.
+//
+// - The BACKEND writes them: pending (on upload), approved, rejected + reason.
+// - The browser only READS its own rows and marks them read (read_at).
+//   RLS + column grants in 012 make sure it can't do anything else.
+// - The bell (components/Sidebar.tsx) calls fetchNotifications().
+//
+// The two Settings toggles stay in localStorage (they are display choices
+// for this device): "In-app notifications" hides the bell's list,
+// "Pending updates" hides the "waiting for review" ones.
+
+import { supabase } from "@/lib/supabase";
+
+export type NotificationKind = "pending" | "approved" | "rejected";
+
 export type AppNotification = {
-  id: string;
+  id: number;
+  kind: NotificationKind;
   message: string;
   href: string;
   createdAt: string;
   read: boolean;
 };
 
-const STORAGE_KEY = "novelle:notifications";
 const NOTIFICATIONS_EVENT = "novelle:notifications-updated";
 const PREFERENCES_KEY = "novelle:notification-preferences";
+const OLD_STORAGE_KEY = "novelle:notifications"; // the pre-13c browser list
+const BELL_LIMIT = 20; // newest 20 in the bell
+
+// ---------------------------------------------------------------------------
+// Settings toggles (this device only)
+// ---------------------------------------------------------------------------
 
 export type NotificationPreferences = {
   inApp: boolean;
-  uploadUpdates: boolean;
+  uploadUpdates: boolean; // show "pending" notifications
 };
 
 const DEFAULT_PREFERENCES: NotificationPreferences = {
@@ -39,81 +61,104 @@ export function saveNotificationPreferences(
   preferences: NotificationPreferences
 ) {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(PREFERENCES_KEY, JSON.stringify(preferences));
+  try {
+    window.localStorage.setItem(PREFERENCES_KEY, JSON.stringify(preferences));
+  } catch {
+    /* ignore — storage may be blocked */
+  }
+  tellBellToRefresh(); // the bell re-reads with the new choices
 }
 
-function isAppNotification(value: unknown): value is AppNotification {
-  if (!value || typeof value !== "object") return false;
+// ---------------------------------------------------------------------------
+// Reading and marking read
+// ---------------------------------------------------------------------------
 
-  const item = value as Partial<AppNotification>;
-  return (
-    typeof item.id === "string" &&
-    typeof item.message === "string" &&
-    typeof item.href === "string" &&
-    typeof item.createdAt === "string" &&
-    typeof item.read === "boolean"
-  );
+function tellBellToRefresh() {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(NOTIFICATIONS_EVENT));
+  }
 }
 
-export function getNotifications(): AppNotification[] {
+type NotificationRow = {
+  id: number;
+  kind: NotificationKind;
+  message: string;
+  href: string;
+  read_at: string | null;
+  created_at: string;
+};
+
+// The logged-in user's newest notifications (RLS returns only their own).
+// Returns [] when logged out, on error, or when in-app notifications are off.
+export async function fetchNotifications(): Promise<AppNotification[]> {
   if (typeof window === "undefined") return [];
 
+  // One-time tidy-up: the old browser-only list is no longer used.
   try {
-    const stored = window.localStorage.getItem(STORAGE_KEY);
-    const parsed: unknown = stored ? JSON.parse(stored) : [];
-    return Array.isArray(parsed) ? parsed.filter(isAppNotification) : [];
-  } catch (error) {
-    console.error("Could not read notifications:", error);
+    window.localStorage.removeItem(OLD_STORAGE_KEY);
+  } catch {
+    /* ignore */
+  }
+
+  const preferences = getNotificationPreferences();
+  if (!preferences.inApp) return [];
+
+  // getSession() reads the saved login (no network call).
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (!session) return [];
+
+  const { data, error } = await supabase
+    .from("notifications")
+    .select("id, kind, message, href, read_at, created_at")
+    .order("created_at", { ascending: false })
+    .limit(BELL_LIMIT);
+
+  if (error) {
+    console.error("Could not load notifications:", error);
     return [];
   }
+
+  return ((data ?? []) as NotificationRow[])
+    .filter((row) => preferences.uploadUpdates || row.kind !== "pending")
+    .map((row) => ({
+      id: row.id,
+      kind: row.kind,
+      message: row.message,
+      href: row.href,
+      createdAt: row.created_at,
+      read: row.read_at !== null,
+    }));
 }
 
-function saveNotifications(notifications: AppNotification[]) {
-  if (typeof window === "undefined") return;
+// Marks one notification read. Only read_at can change (migration 012).
+export async function markNotificationRead(id: number) {
+  const { error } = await supabase
+    .from("notifications")
+    .update({ read_at: new Date().toISOString() })
+    .eq("id", id)
+    .is("read_at", null);
 
-  try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(notifications));
-    window.dispatchEvent(new Event(NOTIFICATIONS_EVENT));
-  } catch (error) {
-    console.error("Could not save notification:", error);
-  }
+  if (error) console.error("Could not mark notification read:", error);
+  tellBellToRefresh();
 }
 
-export function addNotification(
-  message: string,
-  href: string,
-  category: "upload" = "upload"
-) {
-  const preferences = getNotificationPreferences();
-  if (!preferences.inApp || (category === "upload" && !preferences.uploadUpdates)) {
-    return;
-  }
-  const notification: AppNotification = {
-    id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-    message,
-    href,
-    createdAt: new Date().toISOString(),
-    read: false,
-  };
+// Marks all of the user's unread notifications read.
+export async function markAllNotificationsRead() {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (!session) return;
 
-  saveNotifications([notification, ...getNotifications()].slice(0, 20));
-}
+  const { error } = await supabase
+    .from("notifications")
+    .update({ read_at: new Date().toISOString() })
+    .eq("user_id", session.user.id)
+    .is("read_at", null);
 
-export function markNotificationRead(id: string) {
-  saveNotifications(
-    getNotifications().map((notification) =>
-      notification.id === id ? { ...notification, read: true } : notification
-    )
-  );
-}
-
-export function markAllNotificationsRead() {
-  saveNotifications(
-    getNotifications().map((notification) => ({
-      ...notification,
-      read: true,
-    }))
-  );
+  if (error) console.error("Could not mark notifications read:", error);
+  tellBellToRefresh();
 }
 
 export const notificationsUpdatedEvent = NOTIFICATIONS_EVENT;

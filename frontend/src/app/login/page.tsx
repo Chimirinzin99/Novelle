@@ -1,14 +1,38 @@
 "use client";
 
-// Part 12: theme colours (navy button, pale-blue inputs, cream page) and
-// the Novelle logo on top of the card. The login/sign-up code is unchanged.
+// Login page — Part 13e: logs in through the backend (POST /api/auth/login),
+// which locks an email for 15 minutes after 5 wrong passwords in a row.
+// While locked, the Login button is disabled and shows a countdown.
+// The backend returns the session; supabase.auth.setSession() stores it, so
+// everything after that works exactly as before.
+// Part 13b: if the password used to log in breaks the new rules
+// (an old 6-character password), the user is sent to the page where they can
+// change it, with a notice. Login itself still works.
+// Part 12: theme colours and the Novelle logo on top of the card.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { BACKEND_URL } from "@/lib/config";
+import { callBackend, readJson } from "@/lib/backend";
 import { homePathForRole } from "@/lib/roles";
+import {
+  clearWeakPasswordFlag,
+  markWeakPassword,
+  passwordChangePathForRole,
+  passwordMeetsRules,
+} from "@/lib/password";
 import Logo from "@/components/Logo";
+
+// Part 13e: what POST /api/auth/login sends back
+type LoginReply = {
+  code?: string; // "account_locked", "user_banned", "invalid_credentials", …
+  message?: string;
+  locked_until?: string;
+  session?: { access_token: string; refresh_token: string };
+  weak_password?: boolean;
+};
 
 // Shown when a super admin has deactivated this account (/admin/users).
 const DEACTIVATED_MESSAGE =
@@ -22,6 +46,25 @@ export default function LoginPage() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // Part 13e: lock from the backend — which email, and until when
+  const [lock, setLock] = useState<{ email: string; until: number } | null>(null);
+  const [now, setNow] = useState(() => Date.now());
+
+  // Tick once a second while locked (for the countdown on the button).
+  useEffect(() => {
+    if (!lock) return;
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [lock]);
+
+  // The lock only applies to the email that was locked.
+  const secondsLeft =
+    lock && lock.email === email.trim().toLowerCase()
+      ? Math.max(0, Math.ceil((lock.until - now) / 1000))
+      : 0;
+  const isLocked = secondsLeft > 0;
+  const countdown = `${Math.floor(secondsLeft / 60)}:${String(secondsLeft % 60).padStart(2, "0")}`;
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,20 +84,56 @@ export default function LoginPage() {
       return;
     }
 
-    // Login with Supabase
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: cleanEmail,
-      password,
+    // Part 13e: log in through the backend (it counts wrong passwords).
+    let result: LoginReply = {};
+    try {
+      const response = await callBackend(`${BACKEND_URL}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: cleanEmail, password }),
+      });
+      result = await readJson(response);
+
+      if (!response.ok) {
+        // Locked: remember until when, so the button can count down.
+        if (result.code === "account_locked" && result.locked_until) {
+          setLock({ email: cleanEmail, until: new Date(result.locked_until).getTime() });
+          setNow(Date.now());
+        }
+        // A deactivated account is banned in Supabase Auth (Part 9).
+        setError(
+          result.code === "user_banned"
+            ? DEACTIVATED_MESSAGE
+            : result.message || "Login failed. Please try again."
+        );
+        setLoading(false);
+        return;
+      }
+    } catch (loginError) {
+      // Backend not running / restarting (lib/backend.ts message)
+      setError(loginError instanceof Error ? loginError.message : "Login failed. Please try again.");
+      setLoading(false);
+      return;
+    }
+
+    setLock(null);
+
+    if (!result.session) {
+      setError("Login failed. Please try again.");
+      setLoading(false);
+      return;
+    }
+
+    // Store the session the backend got from Supabase. From here on the
+    // browser is logged in, exactly as with signInWithPassword before.
+    const { data, error: sessionError } = await supabase.auth.setSession({
+      access_token: result.session.access_token,
+      refresh_token: result.session.refresh_token,
     });
 
-    if (error) {
-      // A deactivated account is banned in Supabase Auth (Part 9), which
-      // refuses the login with the code "user_banned".
-      setError(
-        error.code === "user_banned"
-          ? DEACTIVATED_MESSAGE
-          : error.message
-      );
+    if (sessionError) {
+      console.error("Set session error:", sessionError);
+      setError("Login failed. Please try again.");
       setLoading(false);
       return;
     }
@@ -94,6 +173,17 @@ export default function LoginPage() {
       setLoading(false);
       return;
     }
+
+    // Part 13b: weak password? Supabase tells us (weak_password, passed on
+    // by the backend since 13e) when the
+    // password breaks its rules; we also check it ourselves with the same
+    // rules, in case Supabase doesn't send that field.
+    if (result.weak_password || !passwordMeetsRules(password)) {
+      markWeakPassword();
+      router.push(passwordChangePathForRole(profile.role));
+      return;
+    }
+    clearWeakPasswordFlag();
 
     // Redirect according to role (admins -> /admin, students -> /home).
     // The rule lives in lib/roles.ts so login and ExploreButton always agree.
@@ -176,10 +266,10 @@ export default function LoginPage() {
           {/* Login Button */}
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || isLocked}
             className="h-12 w-full rounded-xl bg-navy font-display text-[15px] font-bold tracking-wide text-white outline-none transition hover:bg-navy-soft focus-visible:ring-4 focus-visible:ring-sky-tint disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {loading ? "Logging in..." : "Login"}
+            {loading ? "Logging in..." : isLocked ? `Try again in ${countdown}` : "Login"}
           </button>
 
         </form>

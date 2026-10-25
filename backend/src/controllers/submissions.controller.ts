@@ -1,3 +1,9 @@
+// controllers/submissions.controller.ts — student uploads and admin review.
+// Part 13d: uploads take author credit + Solved/Unsolved (utils/author.ts);
+// approve lets the admin correct them first; GET returns them.
+// Part 13c: each step now also saves a notification for the student
+// (utils/notifications.ts): pending on upload, approved, rejected + reason.
+
 import { Response } from "express";
 import crypto from "crypto";
 
@@ -6,8 +12,12 @@ import { AuthenticatedRequest } from "../middleware/auth";
 import { isResourceType } from "../constants/resourceTypes";
 import {
   REJECTION_REASONS,
+  REJECTION_REASON_LABELS,
   SUBMISSION_STATUSES,
+  type RejectionReason,
 } from "../constants/submissions";
+import { notifyUser, shortTitle } from "../utils/notifications";
+import { readAuthor, readBoolean } from "../utils/author";
 
 const RESOURCE_BUCKET = "resources";
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
@@ -44,6 +54,14 @@ export const uploadStudentSubmission = async (
       return res.status(400).json({ success: false, message: "Your account has no programme assigned." });
     }
 
+    // Part 13d: who made it ("self" = this student) and Solved/Unsolved
+    const author = await readAuthor(req.body, req.user.id);
+    if (!author.ok) {
+      return res.status(400).json({ success: false, message: author.message });
+    }
+    // Only question papers and assignments can be "Solved".
+    const isSolved = type !== "note" && readBoolean(req.body?.is_solved) === true;
+
     const safeFileName = req.file.originalname.replace(/[^a-zA-Z0-9._-]/g, "_");
     uploadedPath = `submissions/${req.user.id}/${crypto.randomUUID()}-${safeFileName}`;
 
@@ -65,11 +83,22 @@ export const uploadStudentSubmission = async (
         file_path: uploadedPath,
         submitted_by: req.user.id,
         status: "pending",
+        author_type: author.fields?.author_type ?? null, // Part 13d
+        author_name: author.fields?.author_name ?? null,
+        is_solved: isSolved,
       })
       .select("id, status")
       .single();
 
     if (insertError) throw insertError;
+
+    // Part 13c: "pending" notification (was written by the browser before)
+    await notifyUser({
+      userId: req.user.id,
+      kind: "pending",
+      submissionId: data.id,
+      message: `"${shortTitle(title)}" was submitted and is waiting for admin review.`,
+    });
 
     return res.status(201).json({
       success: true,
@@ -87,9 +116,11 @@ export const uploadStudentSubmission = async (
 
 type SubmissionRow = {
   id: number;
+  title: string | null; // Part 13c: for the notification text
   type: string;
   programme_id: number;
   status: string;
+  submitted_by: string | null; // Part 13c: who to notify (null = deleted account)
 };
 
 // Loads a submission and checks the admin may review it.
@@ -110,7 +141,7 @@ const findReviewableSubmission = async (
 
   const { data: submission, error } = await supabase
     .from("resource_submissions")
-    .select("id, type, programme_id, status")
+    .select("id, title, type, programme_id, status, submitted_by")
     .eq("id", submissionId)
     .maybeSingle();
 
@@ -181,6 +212,7 @@ export const getSubmissions = async (
       .select(
         `id, title, type, programme_id, module_id, year, semester,
          file_path, status, rejection_reason, reviewed_at, created_at,
+         author_type, author_name, is_solved,
          programme:programmes ( name, short_name ),
          submitter:profiles!resource_submissions_submitted_by_fkey ( full_name, email )`
       )
@@ -227,6 +259,9 @@ export const getSubmissions = async (
 // ------------------------------------
 // POST /api/submissions/:id/approve
 // body: { module_id }
+// Part 13d, optional: author_type, author_name, show_author_name, is_solved
+// — the admin's corrections, saved on the submission before approving so
+// approve_submission() copies them into the new resource.
 // ------------------------------------
 
 const APPROVE_ERRORS: Record<string, [number, string]> = {
@@ -267,6 +302,34 @@ export const approveSubmission = async (
       });
     }
 
+    // Part 13d: admin's corrections to author / Solved (only fields sent).
+    // "self" here means the student who submitted it.
+    const author = await readAuthor(req.body, submission.submitted_by);
+    if (!author.ok) {
+      return res.status(400).json({ success: false, message: author.message });
+    }
+    const solved = readBoolean(req.body?.is_solved);
+    const corrections: Record<string, unknown> = { ...(author.fields ?? {}) };
+    if (solved !== undefined) {
+      corrections.is_solved = submission.type !== "note" && solved;
+    }
+
+    if (Object.keys(corrections).length > 0) {
+      const { error: correctError } = await supabase
+        .from("resource_submissions")
+        .update(corrections)
+        .eq("id", submission.id)
+        .eq("status", "pending");
+
+      if (correctError) {
+        console.error("Approve corrections error:", correctError);
+        return res.status(500).json({
+          success: false,
+          message: "Failed to save the author / Solved changes.",
+        });
+      }
+    }
+
     // One database call: creates the resource and marks the
     // submission approved together, or does neither.
     const { data: resource, error } = await supabase.rpc(
@@ -296,6 +359,14 @@ export const approveSubmission = async (
         error: error.message,
       });
     }
+
+    // Part 13c: tell the student
+    await notifyUser({
+      userId: submission.submitted_by,
+      kind: "approved",
+      submissionId: submission.id,
+      message: `"${shortTitle(submission.title)}" was approved and is now published.`,
+    });
 
     return res.json({
       success: true,
@@ -369,6 +440,16 @@ export const rejectSubmission = async (
         message: "This submission has already been reviewed.",
       });
     }
+
+    // Part 13c: tell the student, with the reason
+    await notifyUser({
+      userId: submission.submitted_by,
+      kind: "rejected",
+      submissionId: submission.id,
+      message: `"${shortTitle(submission.title)}" was rejected: ${
+        REJECTION_REASON_LABELS[reason as RejectionReason]
+      }.`,
+    });
 
     return res.json({
       success: true,

@@ -11,6 +11,8 @@
 // module, and keeps title and topic the same for approved submissions.
 // A PDF can't be swapped here (delete it and upload the new one instead), and
 // a video stays a video.
+// Part 13d: also edits "Who made it?" (author credit) and, for question
+// papers and assignments, Solved — again sending only what changed.
 
 import { useEffect, useState } from "react";
 import { X } from "lucide-react";
@@ -19,6 +21,15 @@ import { BACKEND_URL } from "@/lib/config";
 import { callBackend, readJson } from "@/lib/backend";
 import { RESOURCE_TYPES } from "@/lib/resourceTypes";
 import { parseYouTubeId, youTubeWatchUrl } from "@/lib/youtube";
+import {
+  authorFormError,
+  authorFormFrom,
+  authorJson,
+  isSolvableType,
+  sameAuthor,
+  type AuthorForm,
+} from "@/lib/author";
+import AuthorFields, { SolvedField } from "@/components/AuthorFields";
 
 // The fields of a resource this window needs.
 export type EditableResource = {
@@ -32,6 +43,9 @@ export type EditableResource = {
   year: number;
   semester: number;
   video_id: string | null;
+  author_type: string | null; // Part 13d
+  author_name: string | null;
+  is_solved: boolean;
 };
 
 // A row from GET /api/modules (programme admins only get their own programme's).
@@ -77,6 +91,10 @@ export default function EditResourceDialog({
   // "" = keep the current module.
   const [moduleId, setModuleId] = useState(resource.module_id ? String(resource.module_id) : "");
   const [videoUrl, setVideoUrl] = useState(resource.video_id ? youTubeWatchUrl(resource.video_id) : "");
+  // Part 13d: credit + Solved, starting from the saved values
+  const initialAuthor = authorFormFrom(resource.author_type, resource.author_name);
+  const [author, setAuthor] = useState<AuthorForm>(initialAuthor);
+  const [isSolved, setIsSolved] = useState(resource.is_solved === true);
 
   const [modules, setModules] = useState<Module[]>([]);
   const [programmes, setProgrammes] = useState<Programme[]>([]);
@@ -139,7 +157,7 @@ export default function EditResourceDialog({
       return;
     }
 
-    const changes: Record<string, string> = {};
+    const changes: Record<string, string | boolean> = {};
 
     // The backend calls this field "topic" (it also updates title when there is one).
     if (name.trim() !== currentName) changes.topic = name.trim();
@@ -153,6 +171,19 @@ export default function EditResourceDialog({
         return;
       }
       if (newVideoId !== resource.video_id) changes.video_url = videoUrl.trim();
+    }
+
+    // Part 13d: author credit (only if changed) and Solved
+    if (!sameAuthor(author, initialAuthor)) {
+      const authorProblem = authorFormError(author);
+      if (authorProblem) {
+        setError(authorProblem);
+        return;
+      }
+      Object.assign(changes, authorJson(author));
+    }
+    if (isSolvableType(type) && isSolved !== (resource.is_solved === true)) {
+      changes.is_solved = isSolved;
     }
 
     if (Object.keys(changes).length === 0) {
@@ -338,6 +369,25 @@ export default function EditResourceDialog({
             </label>
             <input id="edit-video" type="url" value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} className={inputClass} />
           </div>
+        )}
+
+        {/* Part 13d: who made it ("the uploader" = the student for approved
+            submissions, the admin for admin uploads) */}
+        <fieldset>
+          <legend className={labelClass}>Who made it?</legend>
+          <AuthorFields
+            idPrefix={`edit-${resource.id}`}
+            value={author}
+            onChange={setAuthor}
+            disabled={saving}
+            selfLabel="The uploader made it"
+            showNameLabel="Show the uploader's name"
+          />
+        </fieldset>
+
+        {/* Solved: question papers and assignments only */}
+        {isSolvableType(type) && (
+          <SolvedField checked={isSolved} onChange={setIsSolved} disabled={saving} />
         )}
 
         {error && (

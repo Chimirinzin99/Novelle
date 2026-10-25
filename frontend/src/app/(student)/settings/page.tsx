@@ -1,8 +1,10 @@
 "use client";
 
-// Part 12: hard-coded colours (e.g. bg-[#294C78], text-slate-500) switched to
-// the theme colours from app/globals.css (bg-navy, text-ink-soft …).
-// Nothing else on this page changed.
+// Student Settings — Part 13c: "Upload updates" renamed "Pending updates".
+// Part 13b: "Account security" uses the shared password
+// rules (lib/password.ts) with the live checklist, and shows a gold notice
+// when login found the current password too weak.
+// Part 12: hard-coded colours switched to the theme colours.
 
 import { useEffect, useState, type FormEvent } from "react";
 import {
@@ -19,6 +21,15 @@ import {
   type NotificationPreferences,
 } from "@/lib/notifications";
 import { supabase } from "@/lib/supabase";
+import {
+  clearWeakPasswordFlag,
+  hasWeakPasswordFlag,
+  passwordMeetsRules,
+  PASSWORD_RULES_MESSAGE,
+  WEAK_PASSWORD_CODE,
+} from "@/lib/password";
+import PasswordChecklist from "@/components/PasswordChecklist";
+import WeakPasswordNotice from "@/components/WeakPasswordNotice";
 
 type FontSize = "small" | "default" | "large";
 
@@ -81,8 +92,11 @@ export default function SettingsPage() {
   const [savingPassword, setSavingPassword] = useState(false);
   const [passwordMessage, setPasswordMessage] = useState("");
   const [passwordError, setPasswordError] = useState("");
+  // Part 13b: true when login found the password too weak
+  const [weakPasswordNotice, setWeakPasswordNotice] = useState(false);
 
   useEffect(() => {
+    setWeakPasswordNotice(hasWeakPasswordFlag());
     setPreferences(getNotificationPreferences());
     const savedFontSize = window.localStorage.getItem("novelle:font-size");
     if (savedFontSize === "small" || savedFontSize === "large") {
@@ -113,8 +127,9 @@ export default function SettingsPage() {
     event.preventDefault();
     setPasswordError("");
     setPasswordMessage("");
-    if (password.length < 8) {
-      setPasswordError("Use at least 8 characters for your new password.");
+    // Shared rules (lib/password.ts) — was only "at least 8 characters"
+    if (!passwordMeetsRules(password)) {
+      setPasswordError(PASSWORD_RULES_MESSAGE);
       return;
     }
     if (password !== confirmPassword) {
@@ -126,12 +141,26 @@ export default function SettingsPage() {
     const { error } = await supabase.auth.updateUser({ password });
     setSavingPassword(false);
     if (error) {
-      setPasswordError(error.message);
+      setPasswordError(
+        error.code === "same_password"
+          ? "Your new password must be different from your old one."
+          : error.code === WEAK_PASSWORD_CODE
+            ? PASSWORD_RULES_MESSAGE
+            : error.message
+      );
       return;
     }
     setPassword("");
     setConfirmPassword("");
     setPasswordMessage("Your password has been updated.");
+    // Strong password saved: the weak-password notice can go.
+    clearWeakPasswordFlag();
+    setWeakPasswordNotice(false);
+  }
+
+  function dismissWeakPasswordNotice() {
+    clearWeakPasswordFlag();
+    setWeakPasswordNotice(false);
   }
 
   return (
@@ -142,6 +171,9 @@ export default function SettingsPage() {
           <h1 className="mt-2 text-3xl font-bold tracking-tight">Settings</h1>
           <p className="mt-2 text-ink-soft">Adjust how Novelle looks, keeps you updated, and protects your account.</p>
         </header>
+
+        {/* Part 13b: shown after logging in with a password that breaks the rules */}
+        {weakPasswordNotice && <WeakPasswordNotice onDismiss={dismissWeakPasswordNotice} />}
 
         <section className="mb-6 rounded-2xl border border-line bg-white p-5 shadow-sm md:p-7">
           <div className="mb-2 flex items-center gap-3">
@@ -166,8 +198,9 @@ export default function SettingsPage() {
           <SettingRow title="In-app notifications" description="Show updates in the bell menu.">
             <Toggle checked={preferences.inApp} onChange={(value) => updatePreference("inApp", value)} label="In-app notifications" />
           </SettingRow>
-          <SettingRow title="Upload updates" description="Notify me when a resource submission is received.">
-            <Toggle checked={preferences.uploadUpdates} onChange={(value) => updatePreference("uploadUpdates", value)} label="Upload updates" />
+          {/* Part 13c: approved/rejected always show; this hides only "pending" */}
+          <SettingRow title="Pending updates" description="Show when a resource you submitted is waiting for review. Approved and rejected updates always show.">
+            <Toggle checked={preferences.uploadUpdates} onChange={(value) => updatePreference("uploadUpdates", value)} label="Pending updates" />
           </SettingRow>
         </section>
 
@@ -178,8 +211,10 @@ export default function SettingsPage() {
           </div>
           <div className="mb-5 flex items-center gap-2 rounded-xl bg-sky-wash px-4 py-3 text-sm text-ink-soft"><Eye className="h-4 w-4 shrink-0 text-ink-soft" /> Signed in as <span className="font-medium text-ink">{email || "Loading account…"}</span></div>
           <form onSubmit={changePassword} className="grid gap-4 md:grid-cols-2">
-            <label className="text-sm font-medium">New password<input type="password" autoComplete="new-password" minLength={8} required value={password} onChange={(event) => setPassword(event.target.value)} placeholder="At least 8 characters" className="mt-2 w-full rounded-xl border border-sky-line bg-white px-4 py-3 font-normal outline-none transition focus:border-navy-soft focus:ring-2 focus:ring-navy-soft/20" /></label>
-            <label className="text-sm font-medium">Confirm password<input type="password" autoComplete="new-password" minLength={8} required value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} placeholder="Enter it again" className="mt-2 w-full rounded-xl border border-sky-line bg-white px-4 py-3 font-normal outline-none transition focus:border-navy-soft focus:ring-2 focus:ring-navy-soft/20" /></label>
+            <label className="text-sm font-medium">New password<input type="password" autoComplete="new-password" aria-describedby="password-rules" required value={password} onChange={(event) => setPassword(event.target.value)} placeholder="New password" className="mt-2 w-full rounded-xl border border-sky-line bg-white px-4 py-3 font-normal outline-none transition focus:border-navy-soft focus:ring-2 focus:ring-navy-soft/20" /></label>
+            <label className="text-sm font-medium">Confirm password<input type="password" autoComplete="new-password" required value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} placeholder="Enter it again" className="mt-2 w-full rounded-xl border border-sky-line bg-white px-4 py-3 font-normal outline-none transition focus:border-navy-soft focus:ring-2 focus:ring-navy-soft/20" /></label>
+            {/* Strength bar + rules (Part 13b), across both columns */}
+            <div className="md:col-span-2"><PasswordChecklist password={password} id="password-rules" /></div>
             <div className="flex flex-wrap items-center gap-3 md:col-span-2">
               <button type="submit" disabled={savingPassword} className="rounded-xl bg-navy px-5 py-3 text-sm font-semibold text-white transition hover:bg-navy-soft disabled:cursor-not-allowed disabled:opacity-60">{savingPassword ? "Updating…" : "Update password"}</button>
               {passwordMessage && <p role="status" className="flex items-center gap-1.5 text-sm text-emerald-700"><Check className="h-4 w-4" />{passwordMessage}</p>}

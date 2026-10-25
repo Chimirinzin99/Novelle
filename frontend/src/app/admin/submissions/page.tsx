@@ -1,8 +1,10 @@
 "use client";
 
-// Part 12: hard-coded colours (gray/blue/black and old hexes) switched to the
-// theme colours from app/globals.css (navy, ink, line, sky-…, gold-…).
-// Nothing else on this page changed.
+// Admin review of pending submissions (/admin/submissions).
+// Part 13d: each submission shows what the student said about who made it
+// and Solved; the admin can correct both before approving (sent with
+// module_id to POST /api/submissions/:id/approve).
+// Part 12: hard-coded colours switched to the theme colours.
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -12,6 +14,14 @@ import { BACKEND_URL } from "@/lib/config";
 import { callBackend, readJson } from "@/lib/backend";
 import { REJECTION_REASONS } from "@/lib/rejectionReasons";
 import { resourceTypeLabel } from "@/lib/resourceTypes";
+import {
+  authorFormError,
+  authorFormFrom,
+  authorJson,
+  isSolvableType,
+  type AuthorForm,
+} from "@/lib/author";
+import AuthorFields, { SolvedField } from "@/components/AuthorFields";
 import {
   isAdminRole,
   isProgrammeAdminRole,
@@ -32,6 +42,9 @@ type Submission = {
   file_path: string;
   status: string;
   created_at: string;
+  author_type: string | null; // Part 13d
+  author_name: string | null;
+  is_solved: boolean;
   programme: { name: string; short_name: string | null } | null;
   submitter: { full_name: string | null; email: string | null } | null;
 };
@@ -63,6 +76,9 @@ export default function AdminSubmissionsPage() {
   const [selectedModule, setSelectedModule] = useState<Record<number, string>>({});
   const [selectedReason, setSelectedReason] = useState<Record<number, string>>({});
   const [showRejectFor, setShowRejectFor] = useState<number | null>(null);
+  // Part 13d: author credit + Solved per submission (pre-filled from the student)
+  const [authorForms, setAuthorForms] = useState<Record<number, AuthorForm>>({});
+  const [solvedForms, setSolvedForms] = useState<Record<number, boolean>>({});
 
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<number | null>(null);
@@ -149,8 +165,19 @@ export default function AdminSubmissionsPage() {
         backendFetch("/api/modules"),
       ]);
 
-      setSubmissions(submissionsData.submissions || []);
+      const loaded: Submission[] = submissionsData.submissions || [];
+      setSubmissions(loaded);
       setModules(modulesData.modules || []);
+
+      // Part 13d: start each form with what the student chose
+      setAuthorForms(
+        Object.fromEntries(
+          loaded.map((s) => [s.id, authorFormFrom(s.author_type, s.author_name)])
+        )
+      );
+      setSolvedForms(
+        Object.fromEntries(loaded.map((s) => [s.id, s.is_solved === true]))
+      );
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Could not connect to the backend."
@@ -213,12 +240,27 @@ export default function AdminSubmissionsPage() {
       return;
     }
 
+    // Part 13d: check the credit (an old submission may have none — fine)
+    const author = authorForms[submission.id];
+    const authorProblem =
+      author && author.authorType ? authorFormError(author) : "";
+    if (authorProblem) {
+      setError(authorProblem);
+      return;
+    }
+
     setBusyId(submission.id);
 
     try {
       await backendFetch(`/api/submissions/${submission.id}/approve`, {
         method: "POST",
-        body: JSON.stringify({ module_id: Number(moduleId) }),
+        body: JSON.stringify({
+          module_id: Number(moduleId),
+          ...(author ? authorJson(author) : {}), // Part 13d
+          ...(isSolvableType(submission.type)
+            ? { is_solved: solvedForms[submission.id] === true }
+            : {}),
+        }),
       });
 
       removeFromList(submission.id);
@@ -481,6 +523,39 @@ export default function AdminSubmissionsPage() {
                         </select>
                       </div>
                     </div>
+                  </div>
+
+                  {/* Part 13d: author credit + Solved (pre-filled from the student) */}
+                  <div className="mt-4 rounded-lg bg-cream p-4">
+                    <p className="text-sm font-semibold text-ink">
+                      Who made it?
+                    </p>
+                    <p className="mt-1 mb-3 text-xs text-ink-soft">
+                      {authorForms[submission.id]?.authorType
+                        ? "This is what the student chose. Correct it if it's wrong."
+                        : "The student didn't say (submitted before this option existed)."}
+                    </p>
+                    <AuthorFields
+                      idPrefix={`review-${submission.id}`}
+                      value={authorForms[submission.id] ?? authorFormFrom(null, null)}
+                      onChange={(next) =>
+                        setAuthorForms((current) => ({ ...current, [submission.id]: next }))
+                      }
+                      disabled={busy}
+                      selfLabel="The student made it"
+                      showNameLabel="Show the student's name"
+                    />
+                    {isSolvableType(submission.type) && (
+                      <div className="mt-4 border-t border-line pt-4">
+                        <SolvedField
+                          checked={solvedForms[submission.id] === true}
+                          onChange={(checked) =>
+                            setSolvedForms((current) => ({ ...current, [submission.id]: checked }))
+                          }
+                          disabled={busy}
+                        />
+                      </div>
+                    )}
                   </div>
 
                   {/* Reject reason (shown after clicking Reject) */}

@@ -1,3 +1,6 @@
+// server.ts — the Novelle backend (Express).
+// Part 13e: adds /api/auth (login with lockout).
+
 import "dotenv/config";
 import express, { NextFunction, Request, Response } from "express";
 import cors from "cors";
@@ -8,6 +11,7 @@ import resourcesRoutes from "./routes/resources.routes";
 import submissionsRoutes from "./routes/submissions.routes";
 import usersRoutes from "./routes/users.routes";
 import statsRoutes from "./routes/stats.routes";
+import authRoutes from "./routes/auth.routes";
 
 // ------------------------------------
 // Settings from .env (with local defaults)
@@ -67,6 +71,9 @@ app.use("/api/users", usersRoutes);
 
 // Stats API (super admin dashboard numbers)
 app.use("/api/stats", statsRoutes);
+
+// Auth API (Part 13e: login with lockout after 5 wrong passwords)
+app.use("/api/auth", authRoutes);
 
 // Unknown address -> JSON 404 (instead of Express's HTML page).
 app.use((_req, res) => {

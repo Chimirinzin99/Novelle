@@ -1,12 +1,15 @@
 "use client";
 
-// Part 12: theme colours (navy button, pale-blue inputs, cream page) and
-// the Novelle logo on top of the card. The reset code is unchanged.
+// Reset password page — Part 13a: the new password must follow the shared
+// rules (lib/password.ts) and shows the live checklist.
+// Part 12: theme colours and the Novelle logo on top of the card.
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import Logo from "@/components/Logo";
+import PasswordChecklist from "@/components/PasswordChecklist";
+import { passwordMeetsRules, PASSWORD_RULES_MESSAGE } from "@/lib/password";
 
 // /reset-password does two jobs:
 //
@@ -21,8 +24,6 @@ import Logo from "@/components/Logo";
 // Supabase -> Authentication -> URL Configuration -> Redirect URLs.
 
 type Mode = "checking" | "request" | "sent" | "update" | "done";
-
-const MIN_PASSWORD_LENGTH = 8; // same rule as the Settings page
 
 export default function ResetPasswordPage() {
   const router = useRouter();
@@ -119,10 +120,9 @@ export default function ResetPasswordPage() {
     e.preventDefault();
     setError("");
 
-    if (password.length < MIN_PASSWORD_LENGTH) {
-      setError(
-        `Use at least ${MIN_PASSWORD_LENGTH} characters for your new password.`
-      );
+    // Same rules as the register page (lib/password.ts)
+    if (!passwordMeetsRules(password)) {
+      setError(PASSWORD_RULES_MESSAGE);
       return;
     }
 
@@ -142,7 +142,9 @@ export default function ResetPasswordPage() {
       setError(
         updateError.code === "same_password"
           ? "Your new password must be different from your old one."
-          : updateError.message
+          : updateError.code === "weak_password"
+            ? PASSWORD_RULES_MESSAGE
+            : updateError.message
       );
       return;
     }
@@ -240,7 +242,7 @@ export default function ResetPasswordPage() {
                 Choose a new password
               </h1>
               <p className="mt-2 text-sm text-ink-soft">
-                Use at least {MIN_PASSWORD_LENGTH} characters.
+                Pick a password that ticks every rule below.
               </p>
             </div>
 
@@ -258,9 +260,13 @@ export default function ResetPasswordPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   autoComplete="new-password"
+                  aria-describedby="password-rules"
                   required
                   className={inputClass}
                 />
+
+                {/* Strength bar + rules, ticked as the user types */}
+                <PasswordChecklist password={password} id="password-rules" />
               </div>
 
               <div>

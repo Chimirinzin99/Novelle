@@ -1,13 +1,15 @@
-// Part 12: theme colours (navy button, pale-blue inputs, cream page) and
-// the Novelle logo on top of the card. The sign-up code is unchanged, except
-// the email label/placeholder now say RUB ("yourname@rub.edu.bt"): the old
-// text said "@cst.edu.bt", but only @rub.edu.bt addresses are accepted.
+// Register page — Part 13a: stronger password rules (lib/password.ts) with a
+// live checklist under the password box; sign-up uses the trimmed email;
+// the confirmation link now opens /login (was the landing page).
+// Part 12: theme colours and the Novelle logo on top of the card.
 
 "use client";
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import Logo from "@/components/Logo";
+import PasswordChecklist from "@/components/PasswordChecklist";
+import { passwordMeetsRules, PASSWORD_RULES_MESSAGE } from "@/lib/password";
 
 type Programme = {
   id: number;
@@ -70,46 +72,51 @@ export default function RegisterPage() {
       return;
     }
 
-    // Check CST email
+    // Check RUB email (spaces removed, lower case)
     const cleanEmail = email.trim().toLowerCase();
 
-if (!cleanEmail.endsWith("@rub.edu.bt")) {
-  setError(
-    "Please use your RUB email address, for example: yourname@rub.edu.bt"
-  );
-  setLoading(false);
-  return;
-}
+    if (!cleanEmail.endsWith("@rub.edu.bt")) {
+      setError(
+        "Please use your RUB email address, for example: yourname@rub.edu.bt"
+      );
+      setLoading(false);
+      return;
+    }
 
-    // Check password
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters.");
+    // Check password against the shared rules (lib/password.ts)
+    if (!passwordMeetsRules(password)) {
+      setError(PASSWORD_RULES_MESSAGE);
       setLoading(false);
       return;
     }
 
     // Create Supabase account
     const { error } = await supabase.auth.signUp({
-      email: email.toLowerCase(),
+      email: cleanEmail, // was email.toLowerCase() — spaces were not removed
       password: password,
       options: {
-  emailRedirectTo: `${window.location.origin}/`,
-  data: {
-    full_name: fullName,
-    programme_id: programmeId,
-  },
-},
+        // Link in the confirmation email opens the login page.
+        // This URL must be in Supabase -> Authentication -> Redirect URLs.
+        emailRedirectTo: `${window.location.origin}/login`,
+        data: {
+          full_name: fullName,
+          programme_id: programmeId,
+        },
+      },
     });
 
     if (error) {
       console.error("Registration error:", error);
-      setError(error.message);
+      // Supabase checks the same rules; "weak_password" = a rule failed there.
+      setError(
+        error.code === "weak_password" ? PASSWORD_RULES_MESSAGE : error.message
+      );
       setLoading(false);
       return;
     }
 
     setSuccess(
-      "Registration successful! Please check your CST email and confirm your account before logging in."
+      "Registration successful! Please check your RUB email (and the spam folder) and confirm your account before logging in."
     );
 
     // Clear form
@@ -135,7 +142,7 @@ if (!cleanEmail.endsWith("@rub.edu.bt")) {
           </h1>
 
           <p className="mt-2 text-sm text-ink-soft">
-            Register using your CST email
+            Register using your RUB email
           </p>
         </div>
 
@@ -186,13 +193,14 @@ if (!cleanEmail.endsWith("@rub.edu.bt")) {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Create a password"
+              autoComplete="new-password"
+              aria-describedby="password-rules"
               required
               className="h-12 w-full rounded-xl border-2 border-sky-line bg-white px-4 text-base text-ink placeholder:text-ink-soft outline-none transition focus:border-navy-soft focus:ring-4 focus:ring-sky-tint"
             />
 
-            <p className="mt-1 text-xs text-ink-soft">
-              Minimum 6 characters
-            </p>
+            {/* Strength bar + rules, ticked as the user types */}
+            <PasswordChecklist password={password} id="password-rules" />
           </div>
 
           {/* Programme */}

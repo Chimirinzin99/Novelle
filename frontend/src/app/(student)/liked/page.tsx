@@ -4,6 +4,7 @@
 // Part 12: drawn with the shared PageHeader, PdfCard, VideoCard and
 // EmptyState; each card shows its programme as a link. The data code is
 // unchanged. (Clicking the gold heart unlikes and removes the card.)
+// Part 13d: PDF cards also show the author credit and Solved/Unsolved.
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -30,6 +31,9 @@ type LikedItem = {
     semester: number | null;
     file_path: string | null; // empty for videos
     video_id: string | null; // set only for videos
+    author_type: string | null; // Part 13d
+    author_name: string | null;
+    is_solved: boolean;
     programmes: { name: string } | null;
   } | null;
 };
@@ -63,7 +67,7 @@ export default function LikedPage() {
     const { data, error } = await supabase
       .from("favourites")
       .select(
-        "id, created_at, resources(id, title, topic, type, module_name, year, semester, file_path, video_id, programmes(name))"
+        "id, created_at, resources(id, title, topic, type, module_name, year, semester, file_path, video_id, author_type, author_name, is_solved, programmes(name))"
       )
       .eq("user_id", user.id)
       .order("created_at", { ascending: false }); // most recently liked first
@@ -178,6 +182,9 @@ export default function LikedPage() {
                   moduleName={resource.module_name}
                   year={resource.year}
                   semester={resource.semester}
+                  authorType={resource.author_type}
+                  authorName={resource.author_name}
+                  isSolved={resource.is_solved}
                   extra={programmeLink}
                   onView={() => resource.file_path && openFile(resource.file_path, false)}
                   onDownload={() => resource.file_path && openFile(resource.file_path, true)}

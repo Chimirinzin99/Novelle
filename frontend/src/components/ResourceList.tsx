@@ -2,6 +2,8 @@
 
 // Shared resource list for Notes, Question Papers and Assignments.
 // Handles fetching, filters, PDF viewing/downloading and favourites.
+// Part 13d: cards show the author credit and Solved/Unsolved; question
+// papers and assignments get an extra All / Solved / Unsolved filter.
 // Part 12: drawn with the shared PageHeader, FilterBar, PdfCard and
 // EmptyState (theme colours); the data code is unchanged.
 
@@ -15,6 +17,15 @@ import PdfCard from "@/components/PdfCard";
 import EmptyState from "@/components/EmptyState";
 import { findProgrammeBySlug } from "@/lib/programmes";
 import type { ResourceTypeCode } from "@/lib/resourceTypes";
+import { isSolvableType } from "@/lib/author";
+
+// Part 13d: the Solved filter's three choices
+type SolvedFilter = "all" | "solved" | "unsolved";
+const SOLVED_FILTERS: { value: SolvedFilter; label: string }[] = [
+  { value: "all", label: "All" },
+  { value: "solved", label: "Solved" },
+  { value: "unsolved", label: "Unsolved" },
+];
 
 type ResourceListProps = {
   type: Exclude<ResourceTypeCode, "video">;
@@ -31,6 +42,9 @@ type Resource = {
   semester: number;
   module_name: string;
   file_path: string | null;
+  author_type: string | null; // Part 13d
+  author_name: string | null;
+  is_solved: boolean;
 };
 
 export default function ResourceList({
@@ -54,6 +68,8 @@ export default function ResourceList({
   const [selectedYear, setSelectedYear] = useState("All Years");
   const [selectedSemester, setSelectedSemester] = useState("All Semesters");
   const [selectedModule, setSelectedModule] = useState("All Modules");
+  const [solvedFilter, setSolvedFilter] = useState<SolvedFilter>("all"); // Part 13d
+  const showSolvedFilter = isSolvableType(type);
 
   useEffect(() => {
     fetchResources();
@@ -76,7 +92,7 @@ export default function ResourceList({
 
     const { data, error: loadError } = await supabase
       .from("resources")
-      .select("id, title, topic, year, semester, module_name, file_path")
+      .select("id, title, topic, year, semester, module_name, file_path, author_type, author_name, is_solved")
       .eq("programme_id", programmeData.id)
       .eq("type", type)
       .order("created_at", { ascending: false });
@@ -95,6 +111,9 @@ export default function ResourceList({
       semester: item.semester,
       module_name: item.module_name || "Unknown Module",
       file_path: item.file_path,
+      author_type: item.author_type,
+      author_name: item.author_name,
+      is_solved: item.is_solved === true,
     }));
 
     setResources(loaded);
@@ -209,13 +228,18 @@ export default function ResourceList({
       selectedModule === "All Modules" ||
       resource.module_name === selectedModule;
 
-    return yearMatch && semesterMatch && moduleMatch;
+    const solvedMatch =
+      solvedFilter === "all" ||
+      (solvedFilter === "solved") === resource.is_solved;
+
+    return yearMatch && semesterMatch && moduleMatch && solvedMatch;
   });
 
   function clearFilters() {
     setSelectedYear("All Years");
     setSelectedSemester("All Semesters");
     setSelectedModule("All Modules");
+    setSolvedFilter("all");
   }
 
   return (
@@ -247,6 +271,29 @@ export default function ResourceList({
           onClear={clearFilters}
         />
 
+        {/* Part 13d: All / Solved / Unsolved (question papers, assignments) */}
+        {showSolvedFilter && (
+          <div role="group" aria-label="Solved filter" className="-mt-2 mb-6 flex flex-wrap items-center gap-2">
+            <span className="mr-1 text-sm font-semibold text-ink-nav">Answers:</span>
+            {SOLVED_FILTERS.map((option) => {
+              const active = solvedFilter === option.value;
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => setSolvedFilter(option.value)}
+                  className={`rounded-full px-3.5 py-1.5 text-sm font-semibold outline-none transition focus-visible:ring-2 focus-visible:ring-navy/40 ${
+                    active ? "bg-navy text-white" : "border border-sky-line bg-white text-navy hover:bg-sky-wash"
+                  }`}
+                >
+                  {option.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         {error && (
           <div
             role="alert"
@@ -276,6 +323,9 @@ export default function ResourceList({
                 moduleName={resource.module_name}
                 year={resource.year}
                 semester={resource.semester}
+                authorType={resource.author_type}
+                authorName={resource.author_name}
+                isSolved={resource.is_solved}
                 onView={() => openFile(resource.file_path, false)}
                 onDownload={() => openFile(resource.file_path, true)}
                 liked={favourites.includes(resource.id)}

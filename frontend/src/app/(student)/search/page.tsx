@@ -4,6 +4,7 @@
 // A resource matches if q appears (any case) in its title, topic or module name.
 // Part 12: results use the shared PdfCard / VideoCard (no Like button here)
 // with the programme as a link; the search code is unchanged.
+// Part 13d: PDF cards also show the author credit and Solved/Unsolved.
 
 import Link from "next/link";
 import { Suspense, useEffect, useState } from "react";
@@ -29,6 +30,9 @@ type Result = {
   semester: number | null;
   file_path: string | null; // PDFs
   video_id: string | null; // videos
+  author_type: string | null; // Part 13d
+  author_name: string | null;
+  is_solved: boolean;
   programmes: { name: string } | null;
 };
 
@@ -102,7 +106,7 @@ function SearchResults() {
     const { data, error: searchError } = await supabase
       .from("resources")
       .select(
-        "id, title, topic, type, module_name, year, semester, file_path, video_id, programmes(name)"
+        "id, title, topic, type, module_name, year, semester, file_path, video_id, author_type, author_name, is_solved, programmes(name)"
       )
       .or(
         `title.ilike.${pattern},topic.ilike.${pattern},module_name.ilike.${pattern}`
@@ -209,6 +213,9 @@ function SearchResults() {
                       moduleName={r.module_name}
                       year={r.year}
                       semester={r.semester}
+                      authorType={r.author_type}
+                      authorName={r.author_name}
+                      isSolved={r.is_solved}
                       extra={programmeLink}
                       onView={() => r.file_path && openFile(r.file_path, false)}
                       onDownload={() => r.file_path && openFile(r.file_path, true)}

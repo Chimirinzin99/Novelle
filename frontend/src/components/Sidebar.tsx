@@ -1,11 +1,11 @@
 "use client";
 
 // The student sidebar, shown on every page in app/(student)/ (see layout.tsx).
-// Part 12: restyled with the theme colours from globals.css (navy, sky,
-// gold, …) and the shared <Logo />. My Submissions and Liked live on
-// /profile (Chimi's layout), not in the sidebar.
-// The behaviour is unchanged: notifications bell, programme zoom-on-scroll,
-// login/logout.
+// Part 13c: the bell now reads real notifications from the database
+// (lib/notifications.ts): pending, approved and rejected (with the reason).
+// It refreshes on load, on login/logout, when the window gets focus, when the
+// panel opens and every minute; each item shows a coloured status word.
+// Part 12: restyled with the theme colours and the shared <Logo />.
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -14,12 +14,23 @@ import { supabase } from "@/lib/supabase";
 import { programmeHref } from "@/lib/programmes";
 import Logo from "@/components/Logo";
 import {
-  getNotifications,
+  fetchNotifications,
   markAllNotificationsRead,
   markNotificationRead,
   notificationsUpdatedEvent,
   type AppNotification,
+  type NotificationKind,
 } from "@/lib/notifications";
+
+// Part 13c: status word + colour per notification kind
+// (gold = pending, green = success, red = rejected — the app's colour rules).
+const KIND_LABEL: Record<NotificationKind, { text: string; className: string }> = {
+  pending: { text: "Pending", className: "text-gold-ink" },
+  approved: { text: "Approved", className: "text-green-700" },
+  rejected: { text: "Rejected", className: "text-red-700" },
+};
+
+const REFRESH_EVERY_MS = 60_000; // re-check the bell once a minute
 
 // name = exact programme name in the database (used for the URL);
 // label = what the sidebar shows (with the short form).
@@ -208,13 +219,17 @@ export default function Sidebar() {
   useEffect(() => {
     let mounted = true;
 
-    const syncNotifications = () => {
-      if (mounted) setNotifications(getNotifications());
+    // Part 13c: async — reads the database (only this user's rows, via RLS)
+    const syncNotifications = async () => {
+      const list = await fetchNotifications();
+      if (mounted) setNotifications(list);
     };
 
-    syncNotifications();
+    void syncNotifications();
     window.addEventListener(notificationsUpdatedEvent, syncNotifications);
-    window.addEventListener("storage", syncNotifications);
+    window.addEventListener("storage", syncNotifications); // toggles changed in another tab
+    window.addEventListener("focus", syncNotifications); // back to this tab
+    const timer = window.setInterval(syncNotifications, REFRESH_EVERY_MS);
 
     const checkUser = async () => {
       const {
@@ -229,13 +244,18 @@ export default function Sidebar() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       if (mounted) setLoggedIn(!!session);
+      // Logged in as someone else / logged out: reload the bell.
+      // (setTimeout: Supabase advises not to await its calls inside this callback.)
+      setTimeout(() => void syncNotifications(), 0);
     });
 
     return () => {
       mounted = false;
       subscription.unsubscribe();
+      window.clearInterval(timer);
       window.removeEventListener(notificationsUpdatedEvent, syncNotifications);
       window.removeEventListener("storage", syncNotifications);
+      window.removeEventListener("focus", syncNotifications);
     };
   }, []);
 
@@ -265,9 +285,26 @@ export default function Sidebar() {
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   function openNotification(notification: AppNotification) {
-    markNotificationRead(notification.id);
+    // Show it as read straight away; the database update runs in the background.
+    setNotifications((list) =>
+      list.map((n) => (n.id === notification.id ? { ...n, read: true } : n))
+    );
+    if (!notification.read) void markNotificationRead(notification.id);
     setNotificationsOpen(false);
     router.push(notification.href);
+  }
+
+  function markAllRead() {
+    setNotifications((list) => list.map((n) => ({ ...n, read: true })));
+    void markAllNotificationsRead();
+  }
+
+  // Opening the panel re-checks for new notifications.
+  function toggleNotifications() {
+    if (!notificationsOpen) {
+      void fetchNotifications().then(setNotifications);
+    }
+    setNotificationsOpen(!notificationsOpen);
   }
 
   const handleLogout = async () => {
@@ -322,7 +359,7 @@ export default function Sidebar() {
           <div ref={notificationsRef} className="relative">
             <button
               type="button"
-              onClick={() => setNotificationsOpen((open) => !open)}
+              onClick={toggleNotifications}
               aria-label={`Notifications${
                 unreadCount ? `, ${unreadCount} unread` : ""
               }`}
@@ -351,10 +388,7 @@ export default function Sidebar() {
                   {unreadCount > 0 && (
                     <button
                       type="button"
-                      onClick={() => {
-                        markAllNotificationsRead();
-                        setNotifications(getNotifications());
-                      }}
+                      onClick={markAllRead}
                       className="text-xs font-semibold text-navy-soft hover:text-navy"
                     >
                       Mark all read
@@ -386,6 +420,12 @@ export default function Sidebar() {
                           />
 
                           <span className="min-w-0">
+                            {/* Part 13c: coloured status word */}
+                            <span
+                              className={`block text-xs font-bold uppercase tracking-wide ${KIND_LABEL[notification.kind].className}`}
+                            >
+                              {KIND_LABEL[notification.kind].text}
+                            </span>
                             <span className="block text-sm leading-5 text-ink">
                               {notification.message}
                             </span>

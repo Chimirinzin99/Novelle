@@ -5,6 +5,7 @@
 // Part 12: cards are the shared <PdfCard /> and <VideoCard /> (theme colours,
 // fixed type badges, gold Like button). Data loading is unchanged, except the
 // video query now also reads module_name (shown on the card).
+// Part 13d: PDF cards also show the author credit and Solved/Unsolved.
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -25,6 +26,9 @@ type PdfResource = {
   year: number;
   semester: number;
   file_path: string;
+  author_type: string | null; // Part 13d
+  author_name: string | null;
+  is_solved: boolean;
 };
 
 type Video = {
@@ -93,7 +97,7 @@ export default function Home() {
     const { data: resources, error: resourcesError } = await supabase
       .from("resources")
       .select(
-        "id, title, topic, type, module_name, year, semester, file_path"
+        "id, title, topic, type, module_name, year, semester, file_path, author_type, author_name, is_solved"
       )
       .eq("programme_id", profile.programme_id)
       .in("type", ["note", "question_paper", "assignment"])
@@ -296,6 +300,9 @@ export default function Home() {
                 moduleName={resource.module_name}
                 year={resource.year}
                 semester={resource.semester}
+                authorType={resource.author_type}
+                authorName={resource.author_name}
+                isSolved={resource.is_solved}
                 onView={() => handleView(resource.file_path)}
                 onDownload={() => handleDownload(resource.file_path)}
                 liked={favourites.includes(resource.id)}

@@ -5,14 +5,26 @@
 // Part 12: new layout — one column in the order a student fills it in
 // (what type -> title -> PDF -> submit). The old two-column layout hid the
 // Submit button below the screen on laptops (the page could not scroll).
-// The submit code is unchanged.
+// Part 13d: new step 4 "Who made it?" (I made this + "show my name" /
+// someone else + their name / not sure) and a Solved tick box for question
+// papers and assignments (components/AuthorFields.tsx, lib/author.ts).
+// Part 13c: the "pending" notification is now saved by the backend
+// (POST /api/submissions/upload), so this page no longer writes one.
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { BACKEND_URL } from "@/lib/config";
 import { callBackend, readJson } from "@/lib/backend";
-import { addNotification } from "@/lib/notifications";
+import {
+  EMPTY_AUTHOR_FORM,
+  appendAuthorFields,
+  appendSolvedField,
+  authorFormError,
+  isSolvableType,
+  type AuthorForm,
+} from "@/lib/author";
+import AuthorFields, { SolvedField } from "@/components/AuthorFields";
 import {
   STUDENT_SUBMIT_TYPES,
   resourceTypeBadge,
@@ -43,6 +55,9 @@ export default function SubmitNotePage() {
   const [title, setTitle] = useState("");
   const [type, setType] = useState<ResourceTypeCode>("note");
   const [file, setFile] = useState<File | null>(null);
+  // Part 13d: who made it + Solved
+  const [author, setAuthor] = useState<AuthorForm>(EMPTY_AUTHOR_FORM);
+  const [isSolved, setIsSolved] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
@@ -99,6 +114,8 @@ export default function SubmitNotePage() {
     setTitle("");
     setType("note");
     setFile(null);
+    setAuthor(EMPTY_AUTHOR_FORM);
+    setIsSolved(false);
     setError("");
     setMessage("");
     clearFileInput();
@@ -125,6 +142,13 @@ export default function SubmitNotePage() {
 
     if (file.size > 5 * 1024 * 1024) {
       setError("The PDF must be 5 MB or smaller.");
+      return;
+    }
+
+    // Part 13d: "Who made it?" must be answered
+    const authorProblem = authorFormError(author);
+    if (authorProblem) {
+      setError(authorProblem);
       return;
     }
 
@@ -180,6 +204,8 @@ export default function SubmitNotePage() {
       formData.append("title", title.trim());
       formData.append("type", type);
       formData.append("file", file);
+      appendAuthorFields(formData, author); // Part 13d
+      appendSolvedField(formData, isSolvableType(type) && isSolved);
 
       const response = await callBackend(`${BACKEND_URL}/api/submissions/upload`, {
         method: "POST",
@@ -195,6 +221,8 @@ export default function SubmitNotePage() {
       setTitle("");
       setType("note");
       setFile(null);
+      setAuthor(EMPTY_AUTHOR_FORM);
+      setIsSolved(false);
 
       const fileInput = document.getElementById(
         "pdf-file"
@@ -203,11 +231,6 @@ export default function SubmitNotePage() {
       if (fileInput) {
         fileInput.value = "";
       }
-
-      addNotification(
-        "Your resource submission is pending admin review.",
-        "/my-submissions"
-      );
 
       // Show a one-time confirmation after navigating to My Submissions.
       sessionStorage.setItem(
@@ -392,6 +415,26 @@ export default function SubmitNotePage() {
               </label>
             )}
           </div>
+
+          {/* 4. Who made it? (Part 13d) — credit for the original author */}
+          <fieldset disabled={loading}>
+            <legend className={stepLabel}>4. Who made it?</legend>
+            <AuthorFields
+              idPrefix="submit"
+              value={author}
+              onChange={setAuthor}
+              disabled={loading}
+              selfLabel="I made this"
+              showNameLabel="Show my name on it"
+            />
+
+            {/* Solved / Unsolved: question papers and assignments only */}
+            {isSolvableType(type) && (
+              <div className="mt-4 border-t border-line pt-4">
+                <SolvedField checked={isSolved} onChange={setIsSolved} disabled={loading} />
+              </div>
+            )}
+          </fieldset>
 
           {error && (
             <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">

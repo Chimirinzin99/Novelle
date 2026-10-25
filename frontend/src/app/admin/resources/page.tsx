@@ -1,5 +1,8 @@
 "use client";
 
+// Part 13d: optional "Who made it?" (I made this = the admin's own name /
+// someone else + name / not sure) and, for question papers and assignments,
+// a Solved tick box. Sent with the upload (backend utils/author.ts).
 // Part 12: hard-coded colours (gray/blue/black and old hexes) switched to the
 // theme colours from app/globals.css (navy, ink, line, sky-…, gold-…).
 // Part 12 also removed this page's old resource list code (the card, the
@@ -24,6 +27,15 @@ import { isAdminRole, isSuperAdminRole } from "@/lib/roles";
 import { BACKEND_URL } from "@/lib/config";
 import { callBackend, readJson } from "@/lib/backend";
 import { RESOURCE_TYPES } from "@/lib/resourceTypes";
+import {
+  EMPTY_AUTHOR_FORM,
+  appendAuthorFields,
+  appendSolvedField,
+  authorFormError,
+  isSolvableType,
+  type AuthorForm,
+} from "@/lib/author";
+import AuthorFields, { SolvedField } from "@/components/AuthorFields";
 import {
   parseYouTubeId,
   youTubeThumbnail,
@@ -72,6 +84,9 @@ export default function ManageResourcesPage() {
   const [moduleId, setModuleId] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [videoUrl, setVideoUrl] = useState("");
+  // Part 13d: optional credit + Solved
+  const [author, setAuthor] = useState<AuthorForm>(EMPTY_AUTHOR_FORM);
+  const [isSolved, setIsSolved] = useState(false);
 
   // Videos use a YouTube link instead of a PDF.
   const isVideo = type === "video";
@@ -249,6 +264,15 @@ export default function ManageResourcesPage() {
       }
     }
 
+    // Part 13d: the credit is optional for admins, but must be complete
+    if (author.authorType) {
+      const authorProblem = authorFormError(author);
+      if (authorProblem) {
+        setError(authorProblem);
+        return;
+      }
+    }
+
     setUploading(true);
 
     try {
@@ -281,6 +305,10 @@ export default function ManageResourcesPage() {
         formData.append("file", file);
       }
 
+      // Part 13d: an admin's "I made this" always shows their own name
+      appendAuthorFields(formData, { ...author, showName: true });
+      appendSolvedField(formData, isSolvableType(type) && isSolved);
+
       const response = await callBackend(
         `${BACKEND_URL}/api/resources/upload`,
         {
@@ -311,6 +339,8 @@ export default function ManageResourcesPage() {
       setModuleId("");
       setFile(null);
       setVideoUrl("");
+      setAuthor(EMPTY_AUTHOR_FORM);
+      setIsSolved(false);
 
       const fileInput = document.getElementById(
         "pdf"
@@ -665,6 +695,33 @@ export default function ManageResourcesPage() {
                     </p>
                   )}
                 </div>
+              )}
+
+              {/* Part 13d: who made it (optional) + Solved */}
+              <fieldset>
+                <legend className="mb-1.5 block text-xs font-medium text-ink-nav">
+                  Who made it? <span className="text-ink-soft">(optional)</span>
+                </legend>
+                <AuthorFields
+                  idPrefix="admin-upload"
+                  value={author}
+                  onChange={setAuthor}
+                  disabled={uploading}
+                  selfLabel="I made this"
+                />
+                {author.authorType && (
+                  <button
+                    type="button"
+                    onClick={() => setAuthor(EMPTY_AUTHOR_FORM)}
+                    className="mt-2 text-xs font-semibold text-navy-soft hover:text-navy hover:underline"
+                  >
+                    Clear choice
+                  </button>
+                )}
+              </fieldset>
+
+              {isSolvableType(type) && (
+                <SolvedField checked={isSolved} onChange={setIsSolved} disabled={uploading} />
               )}
 
               {/* Upload */}

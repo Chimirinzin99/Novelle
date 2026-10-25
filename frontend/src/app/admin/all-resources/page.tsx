@@ -9,6 +9,8 @@
 //     things when browsing the student pages.
 //   - the Edit (pencil) button is back, opening <EditResourceDialog />
 //     (it had no button since the 21 Oct redesign)
+// Part 13d: PDF cards show the author credit and Solved/Unsolved; the Edit
+//   window can change both.
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -35,13 +37,16 @@ type Resource = {
   programme_id: number;
   file_path: string | null;
   video_id: string | null;
+  author_type: string | null; // Part 13d
+  author_name: string | null;
+  is_solved: boolean;
   created_at: string;
   programmes: { name: string } | null;
 };
 
 // The columns this page reads (also used to reload one resource after an edit).
 const RESOURCE_COLUMNS =
-  "id, title, topic, type, module_id, module_name, year, semester, programme_id, file_path, video_id, created_at, programmes(name)";
+  "id, title, topic, type, module_id, module_name, year, semester, programme_id, file_path, video_id, author_type, author_name, is_solved, created_at, programmes(name)";
 
 const filters = [
   { value: "all", label: "All resources" },
@@ -355,6 +360,9 @@ export default function AllResourcesPage() {
                   moduleName={resource.module_name}
                   year={resource.year}
                   semester={resource.semester}
+                  authorType={resource.author_type}
+                  authorName={resource.author_name}
+                  isSolved={resource.is_solved}
                   extra={programmeLink}
                   onView={() => openFile(resource, false)}
                   onDownload={() => openFile(resource, true)}

@@ -1,3 +1,7 @@
+// controllers/resources.controller.ts — admin list, upload, edit, delete.
+// Part 13d: author credit + Solved/Unsolved (utils/author.ts) on upload and
+// edit; GET returns author_type, author_name, is_solved.
+
 import { Response } from "express";
 import crypto from "crypto";
 
@@ -8,6 +12,10 @@ const BUCKET_NAME = "resources";
 
 import { isResourceType } from "../constants/resourceTypes";
 import { parseYouTubeId } from "../utils/youtube";
+import { readAuthor, readBoolean } from "../utils/author";
+
+// Part 13d: only these types can be marked Solved.
+const SOLVABLE_TYPES = ["question_paper", "assignment"];
 
 export const getResources = async (
   req: AuthenticatedRequest,
@@ -24,7 +32,7 @@ export const getResources = async (
     let query = supabase
       .from("resources")
       .select(
-        "id, title, topic, type, module_id, module_name, programme_id, year, semester, file_path, video_id, uploaded_by, created_at"
+        "id, title, topic, type, module_id, module_name, programme_id, year, semester, file_path, video_id, uploaded_by, created_at, author_type, author_name, is_solved"
       )
       .order("created_at", { ascending: false });
 
@@ -92,6 +100,14 @@ export const uploadResourceFile = async (
         message: "Invalid resource type.",
       });
     }
+
+    // Part 13d: who made it ("self" = this admin) and Solved/Unsolved
+    const author = await readAuthor(req.body, req.user.id);
+    if (!author.ok) {
+      return res.status(400).json({ success: false, message: author.message });
+    }
+    const isSolved =
+      SOLVABLE_TYPES.includes(type) && readBoolean(req.body.is_solved) === true;
 
     // Videos are a YouTube link (no file); every other type is a PDF.
     const isVideo = type === "video";
@@ -218,6 +234,9 @@ export const uploadResourceFile = async (
         file_path: filePath, // null for videos
         video_id: videoId, // null for PDFs
         uploaded_by: req.user.id,
+        author_type: author.fields?.author_type ?? null, // Part 13d
+        author_name: author.fields?.author_name ?? null,
+        is_solved: isSolved,
       })
       .select()
       .single();
@@ -264,6 +283,9 @@ export const uploadResourceFile = async (
 //   module_id - new module; name, year, semester and programme are copied
 //               from the module, same as when uploading
 //   video_url - new YouTube link (videos only)
+//   author_type / author_name / show_author_name - author credit (Part 13d;
+//               "self" = whoever uploaded it, see utils/author.ts)
+//   is_solved - Solved/Unsolved (question papers and assignments)
 // The PDF itself can't be replaced here: delete and upload again instead.
 // ------------------------------------
 export const updateResource = async (
@@ -282,7 +304,7 @@ export const updateResource = async (
 
     const { data: existing, error: findError } = await supabase
       .from("resources")
-      .select("id, programme_id, type, title")
+      .select("id, programme_id, type, title, uploaded_by")
       .eq("id", resourceId)
       .single();
 
@@ -395,6 +417,25 @@ export const updateResource = async (
       }
 
       updates.video_id = videoId;
+    }
+
+    // Part 13d: author credit ("self" = the person who uploaded it)
+    const author = await readAuthor(req.body, existing.uploaded_by);
+    if (!author.ok) {
+      return res.status(400).json({ success: false, message: author.message });
+    }
+    if (author.fields) {
+      updates.author_type = author.fields.author_type;
+      updates.author_name = author.fields.author_name;
+    }
+
+    // Part 13d: Solved/Unsolved. Uses the new type if it is changing.
+    const finalType = (updates.type as string | undefined) ?? existing.type;
+    const solved = readBoolean(req.body.is_solved);
+    if (solved !== undefined) {
+      updates.is_solved = SOLVABLE_TYPES.includes(finalType) && solved;
+    } else if (updates.type !== undefined && !SOLVABLE_TYPES.includes(finalType)) {
+      updates.is_solved = false; // became a note: drop the tag
     }
 
     if (Object.keys(updates).length === 0) {
