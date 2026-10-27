@@ -34,7 +34,9 @@ app.use("/api/users", usersRoutes);
 // Stats API (super admin dashboard numbers)
 app.use("/api/stats", statsRoutes);
 
-const PORT = 5000;
+// Set PORT in backend/.env to use another port (e.g. on Macs, where
+// AirPlay Receiver already uses 5000). Defaults to 5000.
+const PORT = Number(process.env.PORT) || 5000;
 
 // ------------------------------------
 // Basic backend test
