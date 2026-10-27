@@ -47,89 +47,95 @@ export default function ResourceList({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  // Show the loading state again when the page switches to another
+  // programme (Next.js keeps this component mounted between them).
+  const [loadedKey, setLoadedKey] = useState(`${programmeSlug}|${type}`);
+  if (loadedKey !== `${programmeSlug}|${type}`) {
+    setLoadedKey(`${programmeSlug}|${type}`);
+    setLoading(true);
+    setError("");
+  }
+
   const [selectedYear, setSelectedYear] = useState("All Years");
   const [selectedSemester, setSelectedSemester] = useState("All Semesters");
   const [selectedModule, setSelectedModule] = useState("All Modules");
 
   useEffect(() => {
+    async function fetchResources() {
+      const programmeData = await findProgrammeBySlug(programmeSlug);
+
+      if (!programmeData) {
+        setError(`Unable to find programme "${programmeSlug}".`);
+        setLoading(false);
+        return;
+      }
+
+      setProgramme(programmeData.name);
+
+      const { data, error: loadError } = await supabase
+        .from("resources")
+        .select("id, title, topic, year, semester, module_name, file_path")
+        .eq("programme_id", programmeData.id)
+        .eq("type", type)
+        .order("created_at", { ascending: false });
+
+      if (loadError) {
+        console.error(`Load ${plural} error:`, loadError);
+        setError(`Unable to load ${plural}.`);
+        setLoading(false);
+        return;
+      }
+
+      const loaded: Resource[] = (data || []).map((item) => ({
+        id: item.id,
+        name: item.title || item.topic,
+        year: item.year,
+        semester: item.semester,
+        module_name: item.module_name || "Unknown Module",
+        file_path: item.file_path,
+      }));
+
+      setResources(loaded);
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (user) {
+        const { data: favouriteData, error: favouriteError } = await supabase
+          .from("favourites")
+          .select("resource_id")
+          .eq("user_id", user.id);
+
+        if (favouriteError) {
+          console.error("Favourite loading error:", favouriteError);
+        } else {
+          setFavourites((favouriteData || []).map((f) => f.resource_id));
+        }
+      } else {
+        setFavourites([]);
+      }
+
+      const counts: Record<number, number> = {};
+
+      await Promise.all(
+        loaded.map(async (resource) => {
+          const { data: likeCount, error: likeError } = await supabase.rpc(
+            "get_like_count",
+            { p_resource_id: resource.id }
+          );
+
+          counts[resource.id] = likeError ? 0 : Number(likeCount) || 0;
+        })
+      );
+
+      setLikeCounts(counts);
+      setLoading(false);
+    }
+
     fetchResources();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [programmeSlug, type]);
-
-  async function fetchResources() {
-    setLoading(true);
-    setError("");
-
-    const programmeData = await findProgrammeBySlug(programmeSlug);
-
-    if (!programmeData) {
-      setError(`Unable to find programme "${programmeSlug}".`);
-      setLoading(false);
-      return;
-    }
-
-    setProgramme(programmeData.name);
-
-    const { data, error: loadError } = await supabase
-      .from("resources")
-      .select("id, title, topic, year, semester, module_name, file_path")
-      .eq("programme_id", programmeData.id)
-      .eq("type", type)
-      .order("created_at", { ascending: false });
-
-    if (loadError) {
-      console.error(`Load ${plural} error:`, loadError);
-      setError(`Unable to load ${plural}.`);
-      setLoading(false);
-      return;
-    }
-
-    const loaded: Resource[] = (data || []).map((item) => ({
-      id: item.id,
-      name: item.title || item.topic,
-      year: item.year,
-      semester: item.semester,
-      module_name: item.module_name || "Unknown Module",
-      file_path: item.file_path,
-    }));
-
-    setResources(loaded);
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (user) {
-      const { data: favouriteData, error: favouriteError } = await supabase
-        .from("favourites")
-        .select("resource_id")
-        .eq("user_id", user.id);
-
-      if (favouriteError) {
-        console.error("Favourite loading error:", favouriteError);
-      } else {
-        setFavourites((favouriteData || []).map((f) => f.resource_id));
-      }
-    } else {
-      setFavourites([]);
-    }
-
-    const counts: Record<number, number> = {};
-
-    await Promise.all(
-      loaded.map(async (resource) => {
-        const { data: likeCount, error: likeError } = await supabase.rpc(
-          "get_like_count",
-          { p_resource_id: resource.id }
-        );
-
-        counts[resource.id] = likeError ? 0 : Number(likeCount) || 0;
-      })
-    );
-
-    setLikeCounts(counts);
-    setLoading(false);
-  }
 
   async function openFile(filePath: string | null, download: boolean) {
     if (!filePath) {
@@ -244,12 +250,12 @@ export default function ResourceList({
   }
 
   return (
-    <main className="min-h-full bg-[#FCFBF8] text-[#24344D]">
+    <main className="min-h-full bg-[#FCFBF8] dark:bg-[#0E141D] text-[#24344D] dark:text-[#E5EAF1]">
       <section className="min-w-0 flex-1 px-5 py-7 md:px-10 md:py-9 lg:px-12">
         {/* Back navigation */}
         <Link
           href={`/programmes/${encodeURIComponent(programmeSlug)}`}
-          className="mb-7 inline-flex items-center gap-2 rounded-xl border border-[#E7E5DF] bg-white px-4 py-2.5 text-sm font-medium text-[#294C78] shadow-sm transition hover:border-[#C8D5E7] hover:bg-[#E7EEF8] focus:outline-none focus:ring-2 focus:ring-[#294C78]/30"
+          className="mb-7 inline-flex items-center gap-2 rounded-xl border border-[#E7E5DF] dark:border-[#263345] bg-white dark:bg-[#172130] px-4 py-2.5 text-sm font-medium text-[#294C78] dark:text-[#9CB9E3] shadow-sm transition hover:border-[#C8D5E7] dark:hover:border-[#33445A] hover:bg-[#E7EEF8] dark:hover:bg-[#1E3150] focus:outline-none focus:ring-2 focus:ring-[#294C78]/30"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -270,23 +276,23 @@ export default function ResourceList({
 
         {/* Page heading */}
         <div className="mb-8">
-          <p className="text-sm font-semibold text-[#456FAD]">
+          <p className="text-sm font-semibold text-[#456FAD] dark:text-[#86A8DA]">
             {programme || "Loading programme…"}
           </p>
 
           <div className="mt-2 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
             <div>
-              <h1 className="text-3xl font-bold tracking-tight text-[#24344D] md:text-4xl">
+              <h1 className="text-3xl font-bold tracking-tight text-[#24344D] dark:text-[#E5EAF1] md:text-4xl">
                 {heading}
               </h1>
 
-              <p className="mt-2 text-sm leading-6 text-slate-500">
+              <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-[#8B98AA]">
                 {description}
               </p>
             </div>
 
             {!loading && (
-              <span className="inline-flex w-fit items-center rounded-full border border-[#E7E5DF] bg-white px-3 py-1.5 text-sm font-medium text-[#294C78]">
+              <span className="inline-flex w-fit items-center rounded-full border border-[#E7E5DF] dark:border-[#263345] bg-white dark:bg-[#172130] px-3 py-1.5 text-sm font-medium text-[#294C78] dark:text-[#9CB9E3]">
                 {filtered.length}{" "}
                 {filtered.length === 1 ? singular : plural}
               </span>
@@ -312,7 +318,7 @@ export default function ResourceList({
         {error && (
           <div
             role="alert"
-            className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700"
+            className="mb-6 rounded-xl border border-red-200 dark:border-red-900/60 bg-red-50 dark:bg-red-950/40 px-4 py-3 text-sm font-medium text-red-700 dark:text-red-300"
           >
             {error}
           </div>
@@ -320,15 +326,15 @@ export default function ResourceList({
 
         {/* Loading, empty state, or resources */}
         {loading ? (
-          <div className="rounded-2xl border border-[#E7E5DF] bg-white p-10 text-center shadow-sm">
-            <div className="mx-auto mb-3 h-6 w-6 animate-spin rounded-full border-2 border-[#D9E3F2] border-t-[#294C78]" />
-            <p className="text-sm text-slate-500">
+          <div className="rounded-2xl border border-[#E7E5DF] dark:border-[#263345] bg-white dark:bg-[#172130] p-10 text-center shadow-sm">
+            <div className="mx-auto mb-3 h-6 w-6 animate-spin rounded-full border-2 border-[#D9E3F2] dark:border-[#263345] border-t-[#294C78]" />
+            <p className="text-sm text-slate-500 dark:text-[#8B98AA]">
               Loading {plural}…
             </p>
           </div>
         ) : filtered.length === 0 ? (
-          <div className="rounded-2xl border border-[#E7E5DF] bg-white px-6 py-14 text-center shadow-sm">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#E7EEF8] text-[#294C78]">
+          <div className="rounded-2xl border border-[#E7E5DF] dark:border-[#263345] bg-white dark:bg-[#172130] px-6 py-14 text-center shadow-sm">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#E7EEF8] dark:bg-[#1E3150] text-[#294C78] dark:text-[#9CB9E3]">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 fill="none"
@@ -345,11 +351,11 @@ export default function ResourceList({
               </svg>
             </div>
 
-            <h2 className="mt-5 text-lg font-semibold text-[#24344D]">
+            <h2 className="mt-5 text-lg font-semibold text-[#24344D] dark:text-[#E5EAF1]">
               No {plural} found
             </h2>
 
-            <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500">
+            <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500 dark:text-[#8B98AA]">
               There are no matching {plural} for these filters yet. Try
               changing your selections or check back later.
             </p>
@@ -371,10 +377,10 @@ export default function ResourceList({
               return (
                 <article
                   key={resource.id}
-                  className="group flex min-h-[215px] flex-col rounded-2xl border border-[#E7E5DF] bg-white p-5 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-[#C8D5E7] hover:shadow-md"
+                  className="group flex min-h-[215px] flex-col rounded-2xl border border-[#E7E5DF] dark:border-[#263345] bg-white dark:bg-[#172130] p-5 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-[#C8D5E7] dark:hover:border-[#33445A] hover:shadow-md"
                 >
                   <div className="mb-4 flex items-start justify-between gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#E7EEF8] text-[#294C78]">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#E7EEF8] dark:bg-[#1E3150] text-[#294C78] dark:text-[#9CB9E3]">
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
                         fill="none"
@@ -391,24 +397,24 @@ export default function ResourceList({
                       </svg>
                     </div>
 
-                    <span className="rounded-full bg-[#F5F3EE] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                    <span className="rounded-full bg-[#F5F3EE] dark:bg-[#0E141D] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-[#8B98AA]">
                       Year {resource.year}
                     </span>
                   </div>
 
-                  <h3 className="line-clamp-2 text-sm font-semibold leading-5 text-[#24344D]">
+                  <h3 className="line-clamp-2 text-sm font-semibold leading-5 text-[#24344D] dark:text-[#E5EAF1]">
                     {resource.name}
                   </h3>
 
-                  <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-500">
+                  <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-500 dark:text-[#8B98AA]">
                     {resource.module_name}
                   </p>
 
-                  <div className="mt-3 text-xs text-slate-400">
+                  <div className="mt-3 text-xs text-slate-400 dark:text-[#6B788A]">
                     Semester {resource.semester}
                   </div>
 
-                  <div className="mt-auto flex items-center gap-2 border-t border-[#F0EEE8] pt-4">
+                  <div className="mt-auto flex items-center gap-2 border-t border-[#F0EEE8] dark:border-[#263345] pt-4">
                     <button
                       type="button"
                       onClick={() => openFile(resource.file_path, false)}
@@ -420,7 +426,7 @@ export default function ResourceList({
                     <button
                       type="button"
                       onClick={() => openFile(resource.file_path, true)}
-                      className="flex-1 rounded-lg border border-[#D9DEE7] bg-white px-2 py-2.5 text-xs font-semibold text-[#294C78] transition hover:bg-[#F0F4FA] focus:outline-none focus:ring-2 focus:ring-[#294C78]/30"
+                      className="flex-1 rounded-lg border border-[#D9DEE7] dark:border-[#263345] bg-white dark:bg-[#172130] px-2 py-2.5 text-xs font-semibold text-[#294C78] dark:text-[#9CB9E3] transition hover:bg-[#F0F4FA] dark:hover:bg-[#1D2938] focus:outline-none focus:ring-2 focus:ring-[#294C78]/30"
                     >
                       Download
                     </button>
@@ -433,10 +439,10 @@ export default function ResourceList({
                         isFavourite ? "Unlike resource" : "Like resource"
                       }
                       aria-pressed={isFavourite}
-                      className={`flex h-9 min-w-11 items-center justify-center gap-1 rounded-lg border px-2 transition focus:outline-none focus:ring-2 focus:ring-red-300 ${
+                      className={`flex h-9 min-w-11 items-center justify-center gap-1 rounded-lg border px-2 transition focus:outline-none focus:ring-2 focus:ring-red-300 dark:focus:ring-red-800 ${
                         isFavourite
-                          ? "border-red-200 bg-red-50 text-red-500"
-                          : "border-[#E7E5DF] bg-white text-slate-500 hover:border-red-200 hover:bg-red-50 hover:text-red-500"
+                          ? "border-red-200 dark:border-red-900/60 bg-red-50 dark:bg-red-950/40 text-red-500 dark:text-red-400"
+                          : "border-[#E7E5DF] dark:border-[#263345] bg-white dark:bg-[#172130] text-slate-500 dark:text-[#8B98AA] hover:border-red-200 dark:hover:border-red-900/60 hover:bg-red-50 dark:hover:bg-red-950/40 hover:text-red-500 dark:hover:text-red-400"
                       }`}
                     >
                       <svg

@@ -1,6 +1,7 @@
 
 import Link from "next/link";
 import ExploreButton from "@/components/ExploreButton";
+import ThemeToggle from "@/components/ThemeToggle";
 
 // Public landing page, shown at "/".
 // No "use client" at the top: this page has no state, clicks handled in code,
@@ -26,10 +27,10 @@ const features = [
 
 export default function LandingPage() {
   return (
-    <main className="flex min-h-screen flex-col bg-gray-200">
+    <main className="flex min-h-screen flex-col bg-gray-200 dark:bg-[#0E141D]">
       {/* Header: small text logo on the left, links on the right */}
       <header className="flex items-center justify-between px-6 py-5 md:px-10">
-        <Link href="/" className="text-xl font-bold text-blue-600">
+        <Link href="/" className="text-xl font-bold text-blue-600 dark:text-blue-300">
           Novelle
         </Link>
 
@@ -37,34 +38,39 @@ export default function LandingPage() {
           {/* "#about" jumps to the element with id="about" further down this page */}
           <a
             href="#about"
-            className="hidden rounded-md px-4 py-2 text-sm font-medium text-gray-700 hover:bg-white sm:block"
+            className="hidden rounded-md px-4 py-2 text-sm font-medium text-gray-700 dark:text-[#B4BFCD] hover:bg-white dark:hover:bg-[#1D2938] sm:block"
           >
             About Us
           </a>
 
           <Link
             href="/login"
-            className="rounded-md px-4 py-2 text-sm font-medium text-gray-700 hover:bg-white"
+            className="rounded-md px-4 py-2 text-sm font-medium text-gray-700 dark:text-[#B4BFCD] hover:bg-white dark:hover:bg-[#1D2938]"
           >
             Login
           </Link>
 
           <Link
             href="/register"
-            className="rounded-md bg-black px-4 py-2 text-sm font-medium text-white hover:bg-gray-700"
+            className="rounded-md bg-black dark:bg-[#3A649C] px-4 py-2 text-sm font-medium text-white hover:bg-gray-700 dark:hover:bg-[#33598C]"
           >
             Sign Up
           </Link>
+
+          <ThemeToggle
+            variant="icon"
+            className="rounded-md p-2 text-gray-700 hover:bg-white dark:text-[#B4BFCD] dark:hover:bg-[#1D2938]"
+          />
         </nav>
       </header>
 
       {/* Hero: big centred wordmark and the Explore button */}
       <section className="flex min-h-[70vh] flex-col items-center justify-center px-6 text-center">
-        <h1 className="text-6xl font-bold tracking-tight text-blue-600 md:text-8xl">
+        <h1 className="text-6xl font-bold tracking-tight text-blue-600 dark:text-blue-300 md:text-8xl">
           Novelle
         </h1>
 
-        <p className="mt-4 max-w-xl text-lg text-gray-500">
+        <p className="mt-4 max-w-xl text-lg text-gray-500 dark:text-[#8B98AA]">
           Notes and learning resources, shared by CST students.
         </p>
 
@@ -74,11 +80,11 @@ export default function LandingPage() {
       </section>
 
       {/* About Us */}
-      <section id="about" className="bg-white px-6 py-20 md:px-10">
+      <section id="about" className="bg-white dark:bg-[#172130] px-6 py-20 md:px-10">
         <div className="mx-auto max-w-5xl">
-          <h2 className="text-3xl font-bold text-gray-900">About Us</h2>
+          <h2 className="text-3xl font-bold text-gray-900 dark:text-[#E5EAF1]">About Us</h2>
 
-          <p className="mt-4 max-w-3xl leading-7 text-gray-600">
+          <p className="mt-4 max-w-3xl leading-7 text-gray-600 dark:text-[#B4BFCD]">
             Novelle is a resource-sharing platform for students of the College
             of Science and Technology. Instead of hunting through group chats
             for last year&apos;s notes, students can find study material for
@@ -90,12 +96,12 @@ export default function LandingPage() {
             {features.map((feature) => (
               <div
                 key={feature.title}
-                className="rounded-xl border border-gray-200 bg-gray-50 p-6"
+                className="rounded-xl border border-gray-200 dark:border-[#263345] bg-gray-50 dark:bg-[#0E141D] p-6"
               >
-                <h3 className="font-semibold text-gray-900">
+                <h3 className="font-semibold text-gray-900 dark:text-[#E5EAF1]">
                   {feature.title}
                 </h3>
-                <p className="mt-2 text-sm leading-6 text-gray-500">
+                <p className="mt-2 text-sm leading-6 text-gray-500 dark:text-[#8B98AA]">
                   {feature.text}
                 </p>
               </div>
@@ -105,7 +111,7 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="px-6 py-6 text-center text-xs text-gray-500">
+      <footer className="px-6 py-6 text-center text-xs text-gray-500 dark:text-[#8B98AA]">
         Novelle · College of Science and Technology, Royal University of Bhutan
       </footer>
     </main>

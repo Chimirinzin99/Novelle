@@ -1,8 +1,9 @@
 
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { findProgrammeBySlug } from "@/lib/programmes";
 
@@ -13,9 +14,9 @@ const CATEGORIES = [
     description:
       "Find study notes and learning materials organized by module.",
     linkText: "Browse notes",
-    iconBox: "bg-indigo-50 text-indigo-600",
-    hoverBorder: "hover:border-indigo-300",
-    linkColour: "text-indigo-600",
+    iconBox: "bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-300",
+    hoverBorder: "hover:border-indigo-300 dark:hover:border-indigo-800",
+    linkColour: "text-indigo-600 dark:text-indigo-300",
     iconPaths: [
       "M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25",
     ],
@@ -26,9 +27,9 @@ const CATEGORIES = [
     description:
       "Access previous examination papers organized by year and module.",
     linkText: "Browse papers",
-    iconBox: "bg-cyan-50 text-cyan-600",
-    hoverBorder: "hover:border-cyan-300",
-    linkColour: "text-cyan-600",
+    iconBox: "bg-cyan-50 dark:bg-cyan-950/40 text-cyan-600 dark:text-cyan-400",
+    hoverBorder: "hover:border-cyan-300 dark:hover:border-cyan-800",
+    linkColour: "text-cyan-600 dark:text-cyan-400",
     iconPaths: [
       "M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z",
     ],
@@ -39,9 +40,9 @@ const CATEGORIES = [
     description:
       "Find assignments and coursework for your modules.",
     linkText: "Browse assignments",
-    iconBox: "bg-fuchsia-50 text-fuchsia-600",
-    hoverBorder: "hover:border-fuchsia-300",
-    linkColour: "text-fuchsia-600",
+    iconBox: "bg-fuchsia-50 dark:bg-fuchsia-950/40 text-fuchsia-600 dark:text-fuchsia-400",
+    hoverBorder: "hover:border-fuchsia-300 dark:hover:border-fuchsia-800",
+    linkColour: "text-fuchsia-600 dark:text-fuchsia-400",
     iconPaths: [
       "M9 5.25h6m-7.5 3h9m-10.5 3h12m-12 3h7.5M6 3.75h12A2.25 2.25 0 0120.25 6v14.25A2.25 2.25 0 0118 22.5H6a2.25 2.25 0 01-2.25-2.25V6A2.25 2.25 0 016 3.75z",
     ],
@@ -52,9 +53,9 @@ const CATEGORIES = [
     description:
       "Watch video lessons chosen by your programme admins.",
     linkText: "Browse videos",
-    iconBox: "bg-rose-50 text-rose-600",
-    hoverBorder: "hover:border-rose-300",
-    linkColour: "text-rose-600",
+    iconBox: "bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400",
+    hoverBorder: "hover:border-rose-300 dark:hover:border-rose-800",
+    linkColour: "text-rose-600 dark:text-rose-400",
     iconPaths: [
       "M21 12a9 9 0 11-18 0 9 9 0 0118 0z",
       "M15.91 11.672a.375.375 0 010 .656l-5.603 3.113a.375.375 0 01-.557-.328V8.887c0-.286.307-.466.557-.327l5.603 3.112z",
@@ -69,13 +70,13 @@ function ArtisticBackground() {
       className="pointer-events-none absolute inset-0 overflow-hidden"
     >
       {/* Soft watercolor-style color fields */}
-     <div className="absolute inset-0 bg-[#FCFBF8]" />
+     <div className="absolute inset-0 bg-[#FCFBF8] dark:bg-[#0E141D]" />
 
       <div className="absolute -right-32 -top-32 h-[480px] w-[480px] rounded-full bg-blue-300/20 blur-[100px]" />
 
       <div className="absolute -bottom-40 -left-32 h-[520px] w-[520px] rounded-full bg-violet-300/20 blur-[110px]" />
 
-      <div className="absolute right-[10%] top-[38%] h-72 w-72 rounded-full bg-amber-200/20 blur-[90px]" />
+      <div className="absolute right-[10%] top-[38%] h-72 w-72 rounded-full bg-amber-200/20 dark:bg-amber-500/10 blur-[90px]" />
 
       {/* Fine artistic lines and constellations */}
       <svg
@@ -240,7 +241,6 @@ function ArtisticBackground() {
 
 export default function ProgrammePage() {
   const params = useParams();
-  const router = useRouter();
 
   const programme = decodeURIComponent(
     params.programme as string
@@ -262,23 +262,15 @@ export default function ProgrammePage() {
     };
   }, [programme]);
 
-  function handleBack() {
-    if (window.history.length > 1) {
-      router.back();
-    } else {
-      router.push("/home");
-    }
-  }
-
   if (programmeName === null) {
     return (
-      <main className="relative isolate min-h-full overflow-hidden bg-[#FCFBF8] px-6 py-8 text-gray-900 md:px-10 lg:px-16">
+      <main className="relative isolate min-h-full overflow-hidden bg-[#FCFBF8] dark:bg-[#0E141D] px-6 py-8 text-gray-900 dark:text-[#E5EAF1] md:px-10 lg:px-16">
         <ArtisticBackground />
 
         <div className="relative z-10 mx-auto max-w-5xl">
           
 
-          <div className="rounded-2xl border border-red-200/70 bg-white/80 p-8 text-red-600 shadow-sm backdrop-blur-md">
+          <div className="rounded-2xl border border-red-200/70 dark:border-red-900/60 bg-white/80 dark:bg-[#172130]/80 p-8 text-red-600 dark:text-red-400 shadow-sm backdrop-blur-md">
             <h1 className="text-xl font-semibold">
               Programme not found
             </h1>
@@ -293,7 +285,7 @@ export default function ProgrammePage() {
   }
 
   return (
-    <main className="relative isolate min-h-full overflow-hidden bg-[#FCFBF8] px-6 py-8 text-gray-900 md:px-10 lg:px-16">
+    <main className="relative isolate min-h-full overflow-hidden bg-[#FCFBF8] dark:bg-[#0E141D] px-6 py-8 text-gray-900 dark:text-[#E5EAF1] md:px-10 lg:px-16">
       {/* Artistic page background */}
       <ArtisticBackground />
 
@@ -306,10 +298,13 @@ export default function ProgrammePage() {
 {/* Slim programme hero banner */}
 <div className="relative mb-8 h-[180px] overflow-hidden rounded-2xl shadow-md sm:h-[200px] lg:h-[220px]">
   {/* Image fills the entire banner */}
-  <img
+  <Image
     src="/images/image.png"
     alt="Bhutan-inspired landscape"
-    className="absolute inset-0 h-full w-full object-cover object-center"
+    fill
+    priority
+    sizes="(max-width: 1024px) 100vw, 1024px"
+    className="object-cover object-center"
   />
 
   {/* Overlay covers the entire image */}
@@ -333,15 +328,15 @@ export default function ProgrammePage() {
 
 
         {/* Divider */}
-        <div className="mb-8 h-px bg-gradient-to-r from-indigo-200 via-violet-200 to-transparent" />
+        <div className="mb-8 h-px bg-gradient-to-r from-indigo-200 dark:from-indigo-800 via-violet-200 dark:via-violet-800 to-transparent" />
 
         {/* Section heading */}
         <div className="mb-6">
-          <h2 className="text-lg font-semibold text-slate-900">
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-[#E5EAF1]">
             Explore resources
           </h2>
 
-          <p className="mt-1 text-sm text-slate-600">
+          <p className="mt-1 text-sm text-slate-600 dark:text-[#B4BFCD]">
             Choose a category to continue your learning journey.
           </p>
         </div>
@@ -355,7 +350,7 @@ export default function ProgrammePage() {
               className="group"
             >
               <div
-                className={`group/card relative flex min-h-[225px] flex-col overflow-hidden rounded-2xl border border-white/90 bg-white/85 p-7 shadow-[0_8px_30px_rgba(68,78,130,0.06)] backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:bg-white hover:shadow-[0_16px_40px_rgba(68,78,130,0.12)] ${category.hoverBorder}`}
+                className={`group/card relative flex min-h-[225px] flex-col overflow-hidden rounded-2xl border border-white/90 dark:border-[#263345]/90 bg-white/85 dark:bg-[#172130]/85 p-7 shadow-[0_8px_30px_rgba(68,78,130,0.06)] backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:bg-white dark:hover:bg-[#1D2938] hover:shadow-[0_16px_40px_rgba(68,78,130,0.12)] ${category.hoverBorder}`}
               >
                 {/* Card's own artistic geometric detail */}
                 <div
@@ -413,17 +408,17 @@ export default function ProgrammePage() {
                       </svg>
                     </div>
 
-                    <span className="text-xs font-semibold tracking-widest text-slate-400">
+                    <span className="text-xs font-semibold tracking-widest text-slate-400 dark:text-[#6B788A]">
                       {String(index + 1).padStart(2, "0")}
                     </span>
                   </div>
 
                   <div className="mt-auto pt-6">
-                    <h3 className="text-xl font-semibold text-slate-900">
+                    <h3 className="text-xl font-semibold text-slate-900 dark:text-[#E5EAF1]">
                       {category.title}
                     </h3>
 
-                    <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                    <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-[#B4BFCD]">
                       {category.description}
                     </p>
 
@@ -455,14 +450,14 @@ export default function ProgrammePage() {
         </div>
 
         {/* Small footer detail */}
-        <div className="mt-10 flex items-center justify-center gap-2 text-xs text-slate-500">
+        <div className="mt-10 flex items-center justify-center gap-2 text-xs text-slate-500 dark:text-[#8B98AA]">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             fill="none"
             viewBox="0 0 24 24"
             strokeWidth={1.5}
             stroke="currentColor"
-            className="h-4 w-4 text-amber-600"
+            className="h-4 w-4 text-amber-600 dark:text-amber-400"
           >
             <path
               strokeLinecap="round"

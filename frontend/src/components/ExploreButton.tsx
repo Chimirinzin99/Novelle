@@ -33,7 +33,7 @@ export default function ExploreButton() {
   return (
     <Link
       href={href}
-      className="mt-10 rounded-xl bg-black px-10 py-3 text-base font-semibold text-white shadow-md transition hover:bg-gray-700"
+      className="mt-10 rounded-xl bg-black dark:bg-[#3A649C] px-10 py-3 text-base font-semibold text-white shadow-md transition hover:bg-gray-700 dark:hover:bg-[#33598C]"
     >
       Explore
     </Link>

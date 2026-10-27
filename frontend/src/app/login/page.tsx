@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import ThemeToggle from "@/components/ThemeToggle";
 import { homePathForRole } from "@/lib/roles";
 
 // Shown when a super admin has deactivated this account (/admin/users).
@@ -96,16 +97,20 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-gray-50 px-6">
-      <div className="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
+    <main className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-[#0E141D] px-6">
+      <div className="fixed right-4 top-4 z-50">
+        <ThemeToggle variant="icon" />
+      </div>
+
+      <div className="w-full max-w-md rounded-2xl border border-gray-200 dark:border-[#263345] bg-white dark:bg-[#172130] p-8 shadow-sm">
 
         {/* Header */}
         <div className="mb-8 text-center">
-          <h1 className="text-3xl font-bold text-gray-900">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-[#E5EAF1]">
             Welcome to Novelle
           </h1>
 
-          <p className="mt-2 text-sm text-gray-500">
+          <p className="mt-2 text-sm text-gray-500 dark:text-[#8B98AA]">
             Sign in to access your CST resources
           </p>
         </div>
@@ -115,7 +120,7 @@ export default function LoginPage() {
 
           {/* Email */}
           <div>
-            <label className="mb-2 block text-sm font-medium text-gray-700">
+            <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-[#B4BFCD]">
               RUB Email
             </label>
 
@@ -125,21 +130,21 @@ export default function LoginPage() {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="yourname@rub.edu.bt"
               required
-              className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder:text-gray-400 outline-none focus:border-black focus:ring-1 focus:ring-black"
+              className="w-full rounded-lg border border-gray-300 dark:border-[#33445A] bg-white dark:bg-[#172130] px-4 py-3 text-gray-900 dark:text-[#E5EAF1] placeholder:text-gray-400 dark:placeholder:text-[#6B788A] outline-none focus:border-black dark:focus:border-slate-400 focus:ring-1 focus:ring-black dark:focus:ring-slate-400"
             />
           </div>
 
           {/* Password */}
           <div>
             <div className="mb-2 flex items-center justify-between">
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-sm font-medium text-gray-700 dark:text-[#B4BFCD]">
                 Password
               </label>
 
               {/* Opens the page that emails a reset link */}
               <a
                 href="/reset-password"
-                className="text-sm font-medium text-gray-500 hover:text-black hover:underline"
+                className="text-sm font-medium text-gray-500 dark:text-[#8B98AA] hover:text-black dark:hover:text-[#E5EAF1] hover:underline"
               >
                 Forgot password?
               </a>
@@ -151,13 +156,13 @@ export default function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Enter your password"
               required
-              className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder:text-gray-400 outline-none focus:border-black focus:ring-1 focus:ring-black"
+              className="w-full rounded-lg border border-gray-300 dark:border-[#33445A] bg-white dark:bg-[#172130] px-4 py-3 text-gray-900 dark:text-[#E5EAF1] placeholder:text-gray-400 dark:placeholder:text-[#6B788A] outline-none focus:border-black dark:focus:border-slate-400 focus:ring-1 focus:ring-black dark:focus:ring-slate-400"
             />
           </div>
 
           {/* Error */}
           {error && (
-            <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">
+            <div className="rounded-lg bg-red-50 dark:bg-red-950/40 px-4 py-3 text-sm text-red-600 dark:text-red-400">
               {error}
             </div>
           )}
@@ -166,7 +171,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-lg bg-black py-3 font-medium text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
+            className="w-full rounded-lg bg-black dark:bg-[#3A649C] py-3 font-medium text-white transition hover:bg-gray-800 dark:hover:bg-[#33598C] disabled:cursor-not-allowed disabled:opacity-50"
           >
             {loading ? "Logging in..." : "Login"}
           </button>
@@ -174,12 +179,12 @@ export default function LoginPage() {
         </form>
 
         {/* Register */}
-        <p className="mt-6 text-center text-sm text-gray-500">
-          Don't have an account?{" "}
+        <p className="mt-6 text-center text-sm text-gray-500 dark:text-[#8B98AA]">
+          Don&apos;t have an account?{" "}
 
           <a
             href="/register"
-            className="font-medium text-black hover:underline"
+            className="font-medium text-black dark:text-[#E5EAF1] hover:underline"
           >
             Register
           </a>

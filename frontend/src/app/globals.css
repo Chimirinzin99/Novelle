@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+/* Dark mode is switched by the `dark` class on <html> (see lib/theme.ts),
+   not only by the operating system setting, so the in-app toggle works. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -12,11 +16,15 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html.dark {
+  --background: #0e141d;
+  --foreground: #e5eaf1;
+  color-scheme: dark;
+}
+
+/* Focus rings with an offset should sit on the dark page, not on white. */
+html.dark * {
+  --tw-ring-offset-color: #172130;
 }
 
 body {

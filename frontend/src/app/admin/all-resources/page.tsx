@@ -54,14 +54,13 @@ export default function AllResourcesPage() {
 
   useEffect(() => {
     const requestedType = new URLSearchParams(window.location.search).get("type");
-    if (requestedType && filters.some((item) => item.value === requestedType)) {
-      setFilter(requestedType);
-    }
 
     async function loadResources() {
-      setLoading(true);
-      setError("");
       const { data: { user }, error: authError } = await supabase.auth.getUser();
+      // "?type=notes" etc. opens the page with that filter selected.
+      if (requestedType && filters.some((item) => item.value === requestedType)) {
+        setFilter(requestedType);
+      }
       if (authError || !user) {
         router.replace("/login");
         return;
@@ -222,45 +221,45 @@ export default function AllResourcesPage() {
   }
 
   return (
-    <main className="min-h-full bg-slate-50 px-5 py-7 text-[#24344D] md:px-10 md:py-9 lg:px-12">
+    <main className="min-h-full bg-slate-50 dark:bg-[#0E141D] px-5 py-7 text-[#24344D] dark:text-[#E5EAF1] md:px-10 md:py-9 lg:px-12">
       <div className="mx-auto max-w-7xl">
-        <button onClick={() => router.push("/admin")} className="mb-6 inline-flex items-center gap-2 rounded-xl border border-[#E7E5DF] bg-white px-4 py-2.5 text-sm font-medium text-[#294C78] shadow-sm transition hover:bg-[#E7EEF8]">
+        <button onClick={() => router.push("/admin")} className="mb-6 inline-flex items-center gap-2 rounded-xl border border-[#E7E5DF] dark:border-[#263345] bg-white dark:bg-[#172130] px-4 py-2.5 text-sm font-medium text-[#294C78] dark:text-[#9CB9E3] shadow-sm transition hover:bg-[#E7EEF8] dark:hover:bg-[#1E3150]">
           <ArrowLeft className="h-4 w-4" /> Back to Dashboard
         </button>
 
         <header className="mb-7 flex flex-col justify-between gap-5 md:flex-row md:items-end">
           <div>
-            <p className="text-sm font-semibold text-[#456FAD]">Resource library</p>
+            <p className="text-sm font-semibold text-[#456FAD] dark:text-[#86A8DA]">Resource library</p>
             <h1 className="mt-1 text-3xl font-bold tracking-tight md:text-4xl">All resources</h1>
-            <p className="mt-2 text-sm text-slate-500">Browse notes, papers, assignments, and videos in your admin scope.</p>
+            <p className="mt-2 text-sm text-slate-500 dark:text-[#8B98AA]">Browse notes, papers, assignments, and videos in your admin scope.</p>
           </div>
-          {!loading && <span className="w-fit rounded-full border border-[#E7E5DF] bg-white px-3 py-1.5 text-sm font-medium text-[#294C78]">{visibleResources.length} {visibleResources.length === 1 ? "resource" : "resources"}</span>}
+          {!loading && <span className="w-fit rounded-full border border-[#E7E5DF] dark:border-[#263345] bg-white dark:bg-[#172130] px-3 py-1.5 text-sm font-medium text-[#294C78] dark:text-[#9CB9E3]">{visibleResources.length} {visibleResources.length === 1 ? "resource" : "resources"}</span>}
         </header>
 
         <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Filter resources by type">
             {filters.map((item) => (
-              <button key={item.value} role="tab" aria-selected={filter === item.value} onClick={() => setFilter(item.value)} className={`shrink-0 rounded-full px-4 py-2 text-sm font-medium transition ${filter === item.value ? "bg-[#294C78] text-white" : "border border-[#E7E5DF] bg-white text-slate-600 hover:bg-[#F1F4F8]"}`}>
+              <button key={item.value} role="tab" aria-selected={filter === item.value} onClick={() => setFilter(item.value)} className={`shrink-0 rounded-full px-4 py-2 text-sm font-medium transition ${filter === item.value ? "bg-[#294C78] text-white" : "border border-[#E7E5DF] dark:border-[#263345] bg-white dark:bg-[#172130] text-slate-600 dark:text-[#B4BFCD] hover:bg-[#F1F4F8] dark:hover:bg-[#121A25]"}`}>
                 {item.label}
               </button>
             ))}
           </div>
           <label className="relative block w-full lg:max-w-sm">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search title, module, programme…" className="w-full rounded-xl border border-[#E7E5DF] bg-white py-2.5 pl-10 pr-4 text-sm outline-none focus:border-[#456FAD] focus:ring-2 focus:ring-[#456FAD]/20" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-[#6B788A]" />
+            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search title, module, programme…" className="w-full rounded-xl border border-[#E7E5DF] dark:border-[#263345] bg-white dark:bg-[#172130] py-2.5 pl-10 pr-4 text-sm outline-none focus:border-[#456FAD] focus:ring-2 focus:ring-[#456FAD]/20" />
           </label>
         </div>
 
-        {error && <div role="alert" className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
-        {success && <div role="status" className="mb-5 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">{success}</div>}
+        {error && <div role="alert" className="mb-5 rounded-xl border border-red-200 dark:border-red-900/60 bg-red-50 dark:bg-red-950/40 px-4 py-3 text-sm text-red-700 dark:text-red-300">{error}</div>}
+        {success && <div role="status" className="mb-5 rounded-xl border border-green-200 dark:border-green-900/60 bg-green-50 dark:bg-green-950/40 px-4 py-3 text-sm text-green-700 dark:text-green-400">{success}</div>}
 
         {loading ? (
-          <div className="rounded-2xl border border-[#E7E5DF] bg-white p-10 text-center text-sm text-slate-500">Loading resources…</div>
+          <div className="rounded-2xl border border-[#E7E5DF] dark:border-[#263345] bg-white dark:bg-[#172130] p-10 text-center text-sm text-slate-500 dark:text-[#8B98AA]">Loading resources…</div>
         ) : visibleResources.length === 0 ? (
-          <div className="rounded-2xl border border-[#E7E5DF] bg-white px-6 py-14 text-center shadow-sm">
-            <BookOpen className="mx-auto h-8 w-8 text-[#456FAD]" />
+          <div className="rounded-2xl border border-[#E7E5DF] dark:border-[#263345] bg-white dark:bg-[#172130] px-6 py-14 text-center shadow-sm">
+            <BookOpen className="mx-auto h-8 w-8 text-[#456FAD] dark:text-[#86A8DA]" />
             <h2 className="mt-4 text-lg font-semibold">No resources found</h2>
-            <p className="mt-2 text-sm text-slate-500">Try another search or resource type.</p>
+            <p className="mt-2 text-sm text-slate-500 dark:text-[#8B98AA]">Try another search or resource type.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -271,35 +270,35 @@ export default function AllResourcesPage() {
               const isFavourite = favourites.includes(resource.id);
               const likes = likeCounts[resource.id] || 0;
               return (
-                <article key={resource.id} className="flex min-h-[215px] flex-col overflow-hidden rounded-2xl border border-[#E7E5DF] bg-white shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-[#C8D5E7] hover:shadow-md">
+                <article key={resource.id} className="flex min-h-[215px] flex-col overflow-hidden rounded-2xl border border-[#E7E5DF] dark:border-[#263345] bg-white dark:bg-[#172130] shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-[#C8D5E7] dark:hover:border-[#33445A] hover:shadow-md">
                   {isVideo && videoId ? (
-                    <a href={youTubeWatchUrl(videoId)} target="_blank" rel="noopener noreferrer" className="relative block aspect-video bg-slate-100">
+                    <a href={youTubeWatchUrl(videoId)} target="_blank" rel="noopener noreferrer" className="relative block aspect-video bg-slate-100 dark:bg-[#1D2938]">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={youTubeThumbnail(videoId)} alt={`${title} thumbnail`} className="h-full w-full object-cover" />
-                      <span className="absolute inset-0 flex items-center justify-center bg-black/10 text-white"><span className="rounded-full bg-black/65 px-4 py-2 text-sm font-semibold">Play video</span></span>
+                      <span className="absolute inset-0 flex items-center justify-center bg-black/10 dark:bg-[#3A649C]/10 text-white"><span className="rounded-full bg-black/65 dark:bg-[#3A649C]/65 px-4 py-2 text-sm font-semibold">Play video</span></span>
                     </a>
                   ) : null}
                   <div className={`flex flex-1 flex-col ${isVideo && videoId ? "p-4" : "p-5"}`}>
                     <div className="flex items-start justify-between gap-2">
-                      <h2 className="line-clamp-2 min-h-10 text-sm font-semibold leading-5 text-[#24344D]">{title}</h2>
-                      <span className="shrink-0 rounded-full bg-[#E7EEF8] px-2 py-1 text-[10px] font-medium text-[#294C78]">{resourceTypeLabel(resource.type)}</span>
+                      <h2 className="line-clamp-2 min-h-10 text-sm font-semibold leading-5 text-[#24344D] dark:text-[#E5EAF1]">{title}</h2>
+                      <span className="shrink-0 rounded-full bg-[#E7EEF8] dark:bg-[#1E3150] px-2 py-1 text-[10px] font-medium text-[#294C78] dark:text-[#9CB9E3]">{resourceTypeLabel(resource.type)}</span>
                     </div>
-                    <p className="mt-2 line-clamp-1 text-xs text-slate-500">{resource.module_name || "Unknown module"}{resource.programmes?.name ? ` · ${resource.programmes.name}` : ""}</p>
-                    <div className="mt-3 flex items-center justify-between text-xs text-slate-500"><span>Year {resource.year}</span><span>Semester {resource.semester}</span></div>
-                    <div className="mt-auto flex items-center gap-2 border-t border-[#E7E5DF] pt-3">
+                    <p className="mt-2 line-clamp-1 text-xs text-slate-500 dark:text-[#8B98AA]">{resource.module_name || "Unknown module"}{resource.programmes?.name ? ` · ${resource.programmes.name}` : ""}</p>
+                    <div className="mt-3 flex items-center justify-between text-xs text-slate-500 dark:text-[#8B98AA]"><span>Year {resource.year}</span><span>Semester {resource.semester}</span></div>
+                    <div className="mt-auto flex items-center gap-2 border-t border-[#E7E5DF] dark:border-[#263345] pt-3">
                       {isVideo && videoId ? (
                         <a href={youTubeWatchUrl(videoId)} target="_blank" rel="noopener noreferrer" className="flex-1 rounded-md bg-[#294C78] px-2 py-2.5 text-center text-xs font-medium text-white hover:bg-[#203B60]">Watch</a>
                       ) : (
                         <>
                           <button onClick={() => openFile(resource, false)} disabled={!resource.file_path || openingId === resource.id} className="flex-1 rounded-md bg-[#294C78] px-2 py-2.5 text-xs font-medium text-white hover:bg-[#203B60] disabled:opacity-50">{openingId === resource.id ? "Opening…" : "View"}</button>
-                      <button onClick={() => openFile(resource, true)} disabled={!resource.file_path || openingId === resource.id} className="flex-1 rounded-md border border-[#D9DEE7] px-2 py-2.5 text-xs font-medium text-[#294C78] hover:bg-[#F0F4FA] disabled:opacity-50">Download</button>
+                      <button onClick={() => openFile(resource, true)} disabled={!resource.file_path || openingId === resource.id} className="flex-1 rounded-md border border-[#D9DEE7] dark:border-[#263345] px-2 py-2.5 text-xs font-medium text-[#294C78] dark:text-[#9CB9E3] hover:bg-[#F0F4FA] dark:hover:bg-[#1D2938] disabled:opacity-50">Download</button>
                         </>
                       )}
-                      <button onClick={() => toggleFavourite(resource.id)} title={isFavourite ? "Unlike" : "Like"} aria-label={`${isFavourite ? "Unlike" : "Like"} ${title}; ${likes} likes`} aria-pressed={isFavourite} className={`flex h-9 w-14 shrink-0 items-center justify-center gap-1 rounded-md border transition ${isFavourite ? "border-red-200 bg-red-50 text-red-500" : "border-[#D9DEE7] text-slate-500 hover:bg-red-50 hover:text-red-500"}`}>
+                      <button onClick={() => toggleFavourite(resource.id)} title={isFavourite ? "Unlike" : "Like"} aria-label={`${isFavourite ? "Unlike" : "Like"} ${title}; ${likes} likes`} aria-pressed={isFavourite} className={`flex h-9 w-14 shrink-0 items-center justify-center gap-1 rounded-md border transition ${isFavourite ? "border-red-200 dark:border-red-900/60 bg-red-50 dark:bg-red-950/40 text-red-500 dark:text-red-400" : "border-[#D9DEE7] dark:border-[#263345] text-slate-500 dark:text-[#8B98AA] hover:bg-red-50 dark:hover:bg-red-950/40 hover:text-red-500 dark:hover:text-red-400"}`}>
                         <Heart className="h-4 w-4" fill={isFavourite ? "currentColor" : "none"} />
                         <span className="text-xs leading-none">{likes}</span>
                       </button>
-                      <button onClick={() => deleteResource(resource)} disabled={deletingId === resource.id} title="Delete resource" aria-label={`Delete ${title}`} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-[#E7E5DF] text-slate-500 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600 disabled:cursor-wait disabled:opacity-50">
+                      <button onClick={() => deleteResource(resource)} disabled={deletingId === resource.id} title="Delete resource" aria-label={`Delete ${title}`} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-[#E7E5DF] dark:border-[#263345] text-slate-500 dark:text-[#8B98AA] transition hover:border-red-200 dark:hover:border-red-900/60 hover:bg-red-50 dark:hover:bg-red-950/40 hover:text-red-600 dark:hover:text-red-400 disabled:cursor-wait disabled:opacity-50">
                         <Trash2 className="h-4 w-4" />
                       </button>
                     </div>

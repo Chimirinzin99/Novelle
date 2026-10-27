@@ -17,20 +17,15 @@ import {
   X,
   FileText,
   Upload,
-  Trash2,
-  ExternalLink,
-  Play,
-  Pencil,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { isAdminRole, isSuperAdminRole } from "@/lib/roles";
 import { BACKEND_URL } from "@/lib/config";
 import { callBackend, readJson } from "@/lib/backend";
-import { RESOURCE_TYPES, resourceTypeLabel } from "@/lib/resourceTypes";
+import { RESOURCE_TYPES } from "@/lib/resourceTypes";
 import {
   parseYouTubeId,
   youTubeThumbnail,
-  youTubeWatchUrl,
 } from "@/lib/youtube";
 
 type Resource = {
@@ -76,7 +71,7 @@ export default function ManageResourcesPage() {
   const router = useRouter();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [programmeName, setProgrammeName] = useState("");
-  const [resources, setResources] = useState<Resource[]>([]);
+  const [, setResources] = useState<Resource[]>([]);
 
   // Dropdown data
   const [modules, setModules] = useState<Module[]>([]);
@@ -120,83 +115,6 @@ export default function ManageResourcesPage() {
   const [editVideoUrl, setEditVideoUrl] = useState("");
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    loadPage();
-  }, []);
-
-  async function loadPage() {
-    setLoading(true);
-    setError("");
-
-    try {
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
-
-      if (userError || !user) {
-        setError("Please log in.");
-        setLoading(false);
-        return;
-      }
-
-      const { data: profileData, error: profileError } =
-        await supabase
-          .from("profiles")
-          .select("id, full_name, email, role, programme_id")
-          .eq("id", user.id)
-          .single();
-
-      if (profileError || !profileData) {
-        console.error(profileError);
-        setError("Unable to load your profile.");
-        setLoading(false);
-        return;
-      }
-
-      // lib/roles.ts decides who counts as an admin.
-      if (!isAdminRole(profileData.role)) {
-        setError("You do not have permission to access this page.");
-        setLoading(false);
-        return;
-      }
-
-      setProfile(profileData);
-
-      if (profileData.programme_id) {
-        const { data: programmeData } = await supabase
-          .from("programmes")
-          .select("name")
-          .eq("id", profileData.programme_id)
-          .single();
-
-        if (programmeData) {
-          setProgrammeName(programmeData.name);
-        }
-      }
-
-      // Super admins upload for any programme, so they get a Programme
-      // dropdown. Programme admins always upload to their own programme.
-      if (isSuperAdminRole(profileData.role)) {
-        const { data: programmeList } = await supabase
-          .from("programmes")
-          .select("id, name")
-          .order("name");
-
-        setProgrammes(programmeList || []);
-      }
-
-      // Load the module list and the resources at the same time.
-      await loadModules();
-
-      setLoading(false);
-    } catch (err) {
-      console.error(err);
-      setError("Something went wrong.");
-      setLoading(false);
-    }
-  }
-
   // Modules for the Module dropdown. The backend already limits programme
   // admins to their own programme's modules.
   async function loadModules() {
@@ -232,6 +150,80 @@ export default function ManageResourcesPage() {
       );
     }
   }
+
+  useEffect(() => {
+    async function loadPage() {
+      try {
+        const {
+          data: { user },
+          error: userError,
+        } = await supabase.auth.getUser();
+
+        if (userError || !user) {
+          setError("Please log in.");
+          setLoading(false);
+          return;
+        }
+
+        const { data: profileData, error: profileError } =
+          await supabase
+            .from("profiles")
+            .select("id, full_name, email, role, programme_id")
+            .eq("id", user.id)
+            .single();
+
+        if (profileError || !profileData) {
+          console.error(profileError);
+          setError("Unable to load your profile.");
+          setLoading(false);
+          return;
+        }
+
+        // lib/roles.ts decides who counts as an admin.
+        if (!isAdminRole(profileData.role)) {
+          setError("You do not have permission to access this page.");
+          setLoading(false);
+          return;
+        }
+
+        setProfile(profileData);
+
+        if (profileData.programme_id) {
+          const { data: programmeData } = await supabase
+            .from("programmes")
+            .select("name")
+            .eq("id", profileData.programme_id)
+            .single();
+
+          if (programmeData) {
+            setProgrammeName(programmeData.name);
+          }
+        }
+
+        // Super admins upload for any programme, so they get a Programme
+        // dropdown. Programme admins always upload to their own programme.
+        if (isSuperAdminRole(profileData.role)) {
+          const { data: programmeList } = await supabase
+            .from("programmes")
+            .select("id, name")
+            .order("name");
+
+          setProgrammes(programmeList || []);
+        }
+
+        // Load the module list and the resources at the same time.
+        await loadModules();
+
+        setLoading(false);
+      } catch (err) {
+        console.error(err);
+        setError("Something went wrong.");
+        setLoading(false);
+      }
+    }
+
+    loadPage();
+  }, []);
 
   async function loadResources() {
     try {
@@ -399,76 +391,6 @@ export default function ManageResourcesPage() {
     setUploading(false);
   }
 
-  async function handleDelete(resource: Resource) {
-    const confirmed = window.confirm(
-      `Delete "${resource.topic}"?`
-    );
-
-    if (!confirmed) {
-      return;
-    }
-
-    setError("");
-    setSuccess("");
-
-    try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      const token = session?.access_token;
-
-      if (!token) {
-        setError("Your login session has expired.");
-        return;
-      }
-
-      const response = await callBackend(
-        `${BACKEND_URL}/api/resources/${resource.id}`,
-        {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      const data = await readJson(response);
-
-      if (!response.ok) {
-        setError(data.message || "Failed to delete.");
-        return;
-      }
-
-      setSuccess("Deleted successfully.");
-
-      await loadResources();
-    } catch (err) {
-      console.error(err);
-      setError(
-        err instanceof Error ? err.message : "Unable to connect to the backend."
-      );
-    }
-  }
-
-  // Open the Edit window, filled in with the resource's current values.
-  function openEdit(resource: Resource) {
-    setError("");
-    setSuccess("");
-    setEditing(resource);
-    setEditTopic(resource.topic);
-    setEditType(resource.type);
-    setEditProgrammeId(String(resource.programme_id));
-    setEditYear(String(resource.year));
-    setEditSemester(String(resource.semester));
-    // Old uploads with a typed module name have no module_id yet:
-    // the admin can pick one now, or leave the module as it is.
-    setEditModuleId(resource.module_id ? String(resource.module_id) : "");
-    setEditVideoUrl(
-      resource.video_id ? youTubeWatchUrl(resource.video_id) : ""
-    );
-  }
-
   // Send only what changed to PUT /api/resources/:id.
   async function handleSaveEdit(event: React.FormEvent) {
     event.preventDefault();
@@ -566,124 +488,6 @@ export default function ManageResourcesPage() {
     setSaving(false);
   }
 
-  async function handleView(resource: Resource) {
-    // Videos open on YouTube in a new tab.
-    if (resource.video_id) {
-      window.open(youTubeWatchUrl(resource.video_id), "_blank");
-      return;
-    }
-
-    const filePath = resource.file_path;
-
-    if (!filePath) {
-      setError("This item does not have a file.");
-      return;
-    }
-
-    const { data, error } = await supabase.storage
-      .from("resources")
-      .createSignedUrl(filePath, 3600);
-
-    if (error || !data?.signedUrl) {
-      console.error(error);
-      setError("Unable to open the PDF.");
-      return;
-    }
-
-    window.open(data.signedUrl, "_blank");
-  }
-
-
-  
-function ResourceCard({
-  resource,
-}: {
-  resource: Resource;
-}) {
-  const isVideoResource = resource.type === "video";
-
-  return (
-    <div
-      className={`group flex flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg ${
-        isVideoResource ? "min-h-[300px]" : "h-[210px]"
-      }`}
-    >
-      {/* Video thumbnail */}
-      {isVideoResource && resource.video_id && (
-        <div className="relative">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={youTubeThumbnail(resource.video_id)}
-            alt={resource.topic}
-            loading="lazy"
-            className="aspect-video w-full bg-gray-100 object-cover"
-          />
-
-          <span className="absolute inset-0 flex items-center justify-center bg-black/0 transition group-hover:bg-black/20">
-            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-black/70 text-white">
-              <Play className="ml-0.5 h-4 w-4" />
-            </span>
-          </span>
-        </div>
-      )}
-
-      {/* Card content */}
-      <div className="flex flex-1 flex-col p-4">
-        {/* Title and resource type */}
-        <div className="flex items-start justify-between gap-2">
-          <h3 className="line-clamp-2 text-sm font-semibold text-gray-900">
-            {resource.topic}
-          </h3>
-
-          <span className="shrink-0 rounded-full bg-indigo-50 px-2 py-1 text-[10px] font-medium text-indigo-600">
-            {resourceTypeLabel(resource.type)}
-          </span>
-        </div>
-
-        {/* Module name */}
-        <p className="mt-2 line-clamp-1 text-xs leading-5 text-gray-500">
-          {resource.module_name || "Unknown Module"}
-        </p>
-
-        {/* Year and semester */}
-        <div className="mt-3 flex items-center justify-between text-[10px] text-gray-400">
-          <span>Year {resource.year}</span>
-          <span>Semester {resource.semester}</span>
-        </div>
-
-        {/* Actions */}
-        <div className="mt-auto flex items-center gap-2 border-t border-gray-100 pt-3">
-          <button
-            onClick={() => handleView(resource)}
-            className="flex-1 rounded-md bg-black px-2 py-2 text-xs font-medium text-white transition hover:bg-gray-700"
-          >
-            {isVideoResource ? "Watch" : "View"}
-          </button>
-
-          <button
-            onClick={() => openEdit(resource)}
-            title="Edit resource"
-            aria-label="Edit resource"
-            className="flex h-9 w-9 items-center justify-center rounded-md border border-gray-200 text-gray-600 transition hover:bg-gray-50"
-          >
-            <Pencil className="h-4 w-4" />
-          </button>
-
-          <button
-            onClick={() => handleDelete(resource)}
-            title="Delete resource"
-            aria-label="Delete resource"
-            className="flex h-9 w-9 items-center justify-center rounded-md border border-gray-200 text-gray-500 transition hover:border-red-200 hover:bg-red-50 hover:text-red-500"
-          >
-            <Trash2 className="h-4 w-4" />
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-
   // Active modules for a year + semester (and programme, for super admins).
   // Used by both the Add form and the Edit window.
   function modulesFor(programme: string, yr: string, sem: string) {
@@ -718,9 +522,9 @@ function ResourceCard({
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-slate-50 p-8">
-        <div className="mx-auto max-w-7xl rounded-2xl bg-white p-10 text-center">
-          <p className="text-sm text-gray-500">
+      <main className="min-h-screen bg-slate-50 dark:bg-[#0E141D] p-8">
+        <div className="mx-auto max-w-7xl rounded-2xl bg-white dark:bg-[#172130] p-10 text-center">
+          <p className="text-sm text-gray-500 dark:text-[#8B98AA]">
             Loading resources...
           </p>
         </div>
@@ -730,9 +534,9 @@ function ResourceCard({
 
   if (!profile) {
     return (
-      <main className="min-h-screen bg-slate-50 p-8">
-        <div className="mx-auto max-w-7xl rounded-2xl bg-white p-10 text-center">
-          <p className="text-sm text-red-500">
+      <main className="min-h-screen bg-slate-50 dark:bg-[#0E141D] p-8">
+        <div className="mx-auto max-w-7xl rounded-2xl bg-white dark:bg-[#172130] p-10 text-center">
+          <p className="text-sm text-red-500 dark:text-red-400">
             {error || "Access denied."}
           </p>
         </div>
@@ -741,34 +545,34 @@ function ResourceCard({
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 text-gray-900">
+    <main className="min-h-screen bg-slate-50 dark:bg-[#0E141D] text-gray-900 dark:text-[#E5EAF1]">
 
       {/* ================= NAVBAR ================= */}
 
-      <nav className="sticky top-0 z-50 border-b border-gray-200 bg-white shadow-sm">
+      <nav className="sticky top-0 z-50 border-b border-gray-200 dark:border-[#263345] bg-white dark:bg-[#172130] shadow-sm">
         <div className="mx-auto flex h-16 max-w-[1500px] items-center gap-4 px-5 md:px-8">
 
           <button
             onClick={() => router.push("/admin")}
-            className="flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-2 text-xs font-medium text-gray-700 transition hover:border-gray-400 hover:bg-gray-50"
+            className="flex items-center gap-1.5 rounded-md border border-gray-300 dark:border-[#33445A] bg-white dark:bg-[#172130] px-3 py-2 text-xs font-medium text-gray-700 dark:text-[#B4BFCD] transition hover:border-gray-400 dark:hover:border-[#33445A] hover:bg-gray-50 dark:hover:bg-[#1D2938]"
           >
             <ArrowLeft className="h-4 w-4" />
             Back to Dashboard
           </button>
 
-          <div className="hidden h-6 w-px bg-gray-200 sm:block" />
+          <div className="hidden h-6 w-px bg-gray-200 dark:bg-[#263446] sm:block" />
 
           <button
-            onClick={() => (window.location.href = "/")}
-            className="text-lg font-bold tracking-tight text-gray-900 transition hover:text-blue-600"
+            onClick={() => router.push("/")}
+            className="text-lg font-bold tracking-tight text-gray-900 dark:text-[#E5EAF1] transition hover:text-blue-600 dark:hover:text-blue-300"
           >
             Novelle
           </button>
 
           <div className="hidden items-center gap-2 sm:flex">
-            <span className="text-gray-300">/</span>
+            <span className="text-gray-300 dark:text-[#6B788A]">/</span>
 
-            <span className="text-sm font-bold text-black">
+            <span className="text-sm font-bold text-black dark:text-[#E5EAF1]">
               {/* The super admin works across programmes, so their own
                   profile programme isn't shown here. */}
               {isSuperAdmin ? "All programmes" : programmeName || "Programme"}
@@ -780,11 +584,11 @@ function ResourceCard({
               onClick={() =>
                 setProfileOpen((current) => !current)
               }
-              className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-2.5 py-2 transition hover:bg-gray-50"
+              className="flex items-center gap-2 rounded-lg border border-gray-200 dark:border-[#263345] bg-white dark:bg-[#172130] px-2.5 py-2 transition hover:bg-gray-50 dark:hover:bg-[#1D2938]"
             >
-              <UserCircle className="h-5 w-5 text-gray-600" />
+              <UserCircle className="h-5 w-5 text-gray-600 dark:text-[#B4BFCD]" />
 
-              <span className="hidden max-w-[120px] truncate text-xs font-medium text-gray-700 lg:block">
+              <span className="hidden max-w-[120px] truncate text-xs font-medium text-gray-700 dark:text-[#B4BFCD] lg:block">
                 {profile.full_name || "Admin"}
               </span>
             </button>
@@ -797,18 +601,18 @@ function ResourceCard({
                   className="fixed inset-0 z-40 cursor-default"
                 />
 
-                <div className="absolute right-0 top-12 z-50 w-60 rounded-xl border border-gray-200 bg-white p-2 shadow-lg">
+                <div className="absolute right-0 top-12 z-50 w-60 rounded-xl border border-gray-200 dark:border-[#263345] bg-white dark:bg-[#172130] p-2 shadow-lg">
 
-                  <div className="border-b border-gray-100 px-3 py-3">
-                    <p className="truncate text-sm font-semibold text-gray-900">
+                  <div className="border-b border-gray-100 dark:border-[#263345] px-3 py-3">
+                    <p className="truncate text-sm font-semibold text-gray-900 dark:text-[#E5EAF1]">
                       {profile.full_name}
                     </p>
 
-                    <p className="mt-0.5 truncate text-xs text-gray-500">
+                    <p className="mt-0.5 truncate text-xs text-gray-500 dark:text-[#8B98AA]">
                       {profile.email}
                     </p>
 
-                    <p className="mt-2 inline-block rounded-full bg-gray-100 px-2 py-1 text-[10px] font-medium uppercase tracking-wide text-gray-500">
+                    <p className="mt-2 inline-block rounded-full bg-gray-100 dark:bg-[#1D2938] px-2 py-1 text-[10px] font-medium uppercase tracking-wide text-gray-500 dark:text-[#8B98AA]">
                       {profile.role.replace("_", " ")}
                     </p>
                   </div>
@@ -816,9 +620,10 @@ function ResourceCard({
                   <button
                     onClick={async () => {
                       await supabase.auth.signOut();
-                      window.location.href = "/login";
+                      router.push("/login");
+                      router.refresh();
                     }}
-                    className="mt-1 flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-gray-600 transition hover:bg-red-50 hover:text-red-600"
+                    className="mt-1 flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-gray-600 dark:text-[#B4BFCD] transition hover:bg-red-50 dark:hover:bg-red-950/40 hover:text-red-600 dark:hover:text-red-400"
                   >
                     <LogOut className="h-4 w-4" />
                     Logout
@@ -838,13 +643,13 @@ function ResourceCard({
         {/* Messages */}
 
         {error && (
-          <div className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
+          <div className="mb-5 rounded-xl border border-red-200 dark:border-red-900/60 bg-red-50 dark:bg-red-950/40 px-4 py-3 text-sm font-medium text-red-600 dark:text-red-400">
             {error}
           </div>
         )}
 
         {success && (
-          <div className="mb-5 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-medium text-green-600">
+          <div className="mb-5 rounded-xl border border-green-200 dark:border-green-900/60 bg-green-50 dark:bg-green-950/40 px-4 py-3 text-sm font-medium text-green-600 dark:text-green-400">
             {success}
           </div>
         )}
@@ -855,21 +660,21 @@ function ResourceCard({
 
           {/* ADD RESOURCE */}
 
-          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+          <div className="rounded-2xl border border-gray-200 dark:border-[#263345] bg-white dark:bg-[#172130] p-5 shadow-sm">
 
             <div className="mb-5 flex items-start justify-between">
               <div>
-                <h2 className="text-lg font-semibold text-gray-900">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-[#E5EAF1]">
                   Add Resource
                 </h2>
 
-                <p className="mt-1 text-xs text-gray-500">
+                <p className="mt-1 text-xs text-gray-500 dark:text-[#8B98AA]">
                   Share a note, question paper, assignment, or video.
                 </p>
               </div>
 
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gray-100">
-                <Upload className="h-4 w-4 text-gray-500" />
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gray-100 dark:bg-[#1D2938]">
+                <Upload className="h-4 w-4 text-gray-500 dark:text-[#8B98AA]" />
               </div>
             </div>
 
@@ -881,7 +686,7 @@ function ResourceCard({
               {/* Topic */}
 
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-gray-700">
+                <label className="mb-1.5 block text-xs font-medium text-gray-700 dark:text-[#B4BFCD]">
                   Topic
                 </label>
 
@@ -892,14 +697,14 @@ function ResourceCard({
                     setTopic(e.target.value)
                   }
                   placeholder="Enter topic"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none transition focus:border-gray-900 focus:ring-1 focus:ring-gray-900"
+                  className="w-full rounded-lg border border-gray-300 dark:border-[#33445A] px-3 py-2.5 text-sm outline-none transition focus:border-gray-900 dark:focus:border-slate-400 focus:ring-1 focus:ring-gray-900 dark:focus:ring-slate-400"
                 />
               </div>
 
               {/* Type */}
 
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-gray-700">
+                <label className="mb-1.5 block text-xs font-medium text-gray-700 dark:text-[#B4BFCD]">
                   Type
                 </label>
 
@@ -908,7 +713,7 @@ function ResourceCard({
                   onChange={(e) =>
                     setType(e.target.value)
                   }
-                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-gray-900 focus:ring-1 focus:ring-gray-900"
+                  className="w-full rounded-lg border border-gray-300 dark:border-[#33445A] bg-white dark:bg-[#172130] px-3 py-2.5 text-sm outline-none transition focus:border-gray-900 dark:focus:border-slate-400 focus:ring-1 focus:ring-gray-900 dark:focus:ring-slate-400"
                 >
                   {RESOURCE_TYPES.map((t) => (
                     <option key={t.code} value={t.code}>
@@ -922,7 +727,7 @@ function ResourceCard({
 
               {isSuperAdmin && (
                 <div>
-                  <label className="mb-1.5 block text-xs font-medium text-gray-700">
+                  <label className="mb-1.5 block text-xs font-medium text-gray-700 dark:text-[#B4BFCD]">
                     Programme
                   </label>
 
@@ -932,7 +737,7 @@ function ResourceCard({
                       setProgrammeId(e.target.value);
                       setModuleId(""); // old module may belong to another programme
                     }}
-                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-gray-900 focus:ring-1 focus:ring-gray-900"
+                    className="w-full rounded-lg border border-gray-300 dark:border-[#33445A] bg-white dark:bg-[#172130] px-3 py-2.5 text-sm outline-none transition focus:border-gray-900 dark:focus:border-slate-400 focus:ring-1 focus:ring-gray-900 dark:focus:ring-slate-400"
                   >
                     <option value="">Select programme</option>
                     {programmes.map((p) => (
@@ -949,7 +754,7 @@ function ResourceCard({
               <div className="grid grid-cols-2 gap-3">
 
                 <div>
-                  <label className="mb-1.5 block text-xs font-medium text-gray-700">
+                  <label className="mb-1.5 block text-xs font-medium text-gray-700 dark:text-[#B4BFCD]">
                     Year
                   </label>
 
@@ -959,7 +764,7 @@ function ResourceCard({
                       setYear(e.target.value);
                       setModuleId(""); // the module list changes
                     }}
-                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-gray-900 focus:ring-1 focus:ring-gray-900"
+                    className="w-full rounded-lg border border-gray-300 dark:border-[#33445A] bg-white dark:bg-[#172130] px-3 py-2.5 text-sm outline-none transition focus:border-gray-900 dark:focus:border-slate-400 focus:ring-1 focus:ring-gray-900 dark:focus:ring-slate-400"
                   >
                     <option value="">Select</option>
                     <option value="1">Year 1</option>
@@ -970,7 +775,7 @@ function ResourceCard({
                 </div>
 
                 <div>
-                  <label className="mb-1.5 block text-xs font-medium text-gray-700">
+                  <label className="mb-1.5 block text-xs font-medium text-gray-700 dark:text-[#B4BFCD]">
                     Semester
                   </label>
 
@@ -980,7 +785,7 @@ function ResourceCard({
                       setSemester(e.target.value);
                       setModuleId(""); // the module list changes
                     }}
-                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-gray-900 focus:ring-1 focus:ring-gray-900"
+                    className="w-full rounded-lg border border-gray-300 dark:border-[#33445A] bg-white dark:bg-[#172130] px-3 py-2.5 text-sm outline-none transition focus:border-gray-900 dark:focus:border-slate-400 focus:ring-1 focus:ring-gray-900 dark:focus:ring-slate-400"
                   >
                     <option value="">Select</option>
 
@@ -999,7 +804,7 @@ function ResourceCard({
               {/* Module (from the modules table) */}
 
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-gray-700">
+                <label className="mb-1.5 block text-xs font-medium text-gray-700 dark:text-[#B4BFCD]">
                   Module
                 </label>
 
@@ -1007,7 +812,7 @@ function ResourceCard({
                   value={moduleId}
                   onChange={(e) => setModuleId(e.target.value)}
                   disabled={moduleOptions.length === 0}
-                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-gray-900 focus:ring-1 focus:ring-gray-900 disabled:bg-gray-50 disabled:text-gray-400"
+                  className="w-full rounded-lg border border-gray-300 dark:border-[#33445A] bg-white dark:bg-[#172130] px-3 py-2.5 text-sm outline-none transition focus:border-gray-900 dark:focus:border-slate-400 focus:ring-1 focus:ring-gray-900 dark:focus:ring-slate-400 disabled:bg-gray-50 dark:disabled:bg-[#0E141D] disabled:text-gray-400 dark:disabled:text-[#6B788A]"
                 >
                   <option value="">{modulePlaceholder}</option>
                   {moduleOptions.map((m) => (
@@ -1024,7 +829,7 @@ function ResourceCard({
                 <div>
                   <label
                     htmlFor="video-url"
-                    className="mb-1.5 block text-xs font-medium text-gray-700"
+                    className="mb-1.5 block text-xs font-medium text-gray-700 dark:text-[#B4BFCD]"
                   >
                     YouTube Link
                   </label>
@@ -1037,10 +842,10 @@ function ResourceCard({
                       setVideoUrl(e.target.value)
                     }
                     placeholder="https://www.youtube.com/watch?v=..."
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none transition focus:border-gray-900 focus:ring-1 focus:ring-gray-900"
+                    className="w-full rounded-lg border border-gray-300 dark:border-[#33445A] px-3 py-2.5 text-sm outline-none transition focus:border-gray-900 dark:focus:border-slate-400 focus:ring-1 focus:ring-gray-900 dark:focus:ring-slate-400"
                   />
 
-                  <p className="mt-1 text-[10px] text-gray-400">
+                  <p className="mt-1 text-[10px] text-gray-400 dark:text-[#6B788A]">
                     Tip: for your own lecture recordings, upload them to
                     YouTube as Unlisted and paste the link here.
                   </p>
@@ -1052,10 +857,10 @@ function ResourceCard({
                       <img
                         src={youTubeThumbnail(previewVideoId)}
                         alt="Video thumbnail preview"
-                        className="mt-3 aspect-video w-full rounded-lg bg-gray-100 object-cover"
+                        className="mt-3 aspect-video w-full rounded-lg bg-gray-100 dark:bg-[#1D2938] object-cover"
                       />
                     ) : (
-                      <p className="mt-2 text-[11px] text-red-500">
+                      <p className="mt-2 text-[11px] text-red-500 dark:text-red-400">
                         This doesn&apos;t look like a YouTube video link.
                       </p>
                     ))}
@@ -1064,24 +869,24 @@ function ResourceCard({
                 <div>
                   <label
                     htmlFor="pdf"
-                    className="mb-1.5 block text-xs font-medium text-gray-700"
+                    className="mb-1.5 block text-xs font-medium text-gray-700 dark:text-[#B4BFCD]"
                   >
                     PDF File
                   </label>
 
                   <label
                     htmlFor="pdf"
-                    className="flex cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-gray-300 bg-gray-50 px-4 py-5 text-center transition hover:border-gray-400 hover:bg-gray-100"
+                    className="flex cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-gray-300 dark:border-[#33445A] bg-gray-50 dark:bg-[#0E141D] px-4 py-5 text-center transition hover:border-gray-400 dark:hover:border-[#33445A] hover:bg-gray-100 dark:hover:bg-[#263446]"
                   >
-                    <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-lg bg-white shadow-sm">
-                      <FileText className="h-4 w-4 text-gray-500" />
+                    <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-lg bg-white dark:bg-[#172130] shadow-sm">
+                      <FileText className="h-4 w-4 text-gray-500 dark:text-[#8B98AA]" />
                     </div>
 
-                    <p className="text-xs font-medium text-gray-700">
+                    <p className="text-xs font-medium text-gray-700 dark:text-[#B4BFCD]">
                       Select PDF file
                     </p>
 
-                    <p className="mt-1 text-[10px] text-gray-400">
+                    <p className="mt-1 text-[10px] text-gray-400 dark:text-[#6B788A]">
                       PDF only · Maximum size: 5 MB
                     </p>
 
@@ -1099,7 +904,7 @@ function ResourceCard({
                   </label>
 
                   {file && (
-                    <p className="mt-2 truncate text-[11px] text-gray-500">
+                    <p className="mt-2 truncate text-[11px] text-gray-500 dark:text-[#8B98AA]">
                       Selected: {file.name}
                     </p>
                   )}
@@ -1111,7 +916,7 @@ function ResourceCard({
               <button
                 type="submit"
                 disabled={uploading}
-                className="flex w-full items-center justify-center gap-2 rounded-lg bg-gray-900 px-5 py-2.5 text-xs font-semibold text-white transition hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-gray-900 dark:bg-[#3A649C] px-5 py-2.5 text-xs font-semibold text-white transition hover:bg-gray-700 dark:hover:bg-[#33598C] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Upload className="h-3.5 w-3.5" />
 
@@ -1123,14 +928,14 @@ function ResourceCard({
             </form>
           </div>
 
-          <div className="flex min-h-64 flex-col items-center justify-center rounded-2xl border border-dashed border-gray-300 bg-white p-8 text-center">
-            <FileText className="h-8 w-8 text-gray-400" />
-            <h2 className="mt-4 text-base font-semibold text-gray-900">Your resource library is separate</h2>
-            <p className="mt-2 max-w-sm text-sm leading-6 text-gray-500">Browse, search, and remove published resources from the All Resources page.</p>
+          <div className="flex min-h-64 flex-col items-center justify-center rounded-2xl border border-dashed border-gray-300 dark:border-[#33445A] bg-white dark:bg-[#172130] p-8 text-center">
+            <FileText className="h-8 w-8 text-gray-400 dark:text-[#6B788A]" />
+            <h2 className="mt-4 text-base font-semibold text-gray-900 dark:text-[#E5EAF1]">Your resource library is separate</h2>
+            <p className="mt-2 max-w-sm text-sm leading-6 text-gray-500 dark:text-[#8B98AA]">Browse, search, and remove published resources from the All Resources page.</p>
             <button
               type="button"
               onClick={() => router.push("/admin/all-resources")}
-              className="mt-5 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
+              className="mt-5 rounded-lg border border-gray-200 dark:border-[#263345] bg-white dark:bg-[#172130] px-4 py-2.5 text-sm font-semibold text-gray-700 dark:text-[#B4BFCD] transition hover:bg-gray-50 dark:hover:bg-[#1D2938]"
             >
               Browse all resources
             </button>
@@ -1142,17 +947,17 @@ function ResourceCard({
       {/* ================= EDIT WINDOW ================= */}
 
       {editing && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 dark:bg-[#3A649C]/40 p-4">
           <form
             onSubmit={handleSaveEdit}
-            className="max-h-[90vh] w-full max-w-md space-y-4 overflow-y-auto rounded-2xl bg-white p-6 shadow-xl"
+            className="max-h-[90vh] w-full max-w-md space-y-4 overflow-y-auto rounded-2xl bg-white dark:bg-[#172130] p-6 shadow-xl"
           >
             <div className="flex items-start justify-between">
               <div>
-                <h2 className="text-lg font-semibold text-gray-900">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-[#E5EAF1]">
                   Edit Resource
                 </h2>
-                <p className="mt-1 text-xs text-gray-500">
+                <p className="mt-1 text-xs text-gray-500 dark:text-[#8B98AA]">
                   Currently: {editing.module_name} · Year {editing.year} ·
                   Semester {editing.semester}
                 </p>
@@ -1161,7 +966,7 @@ function ResourceCard({
               <button
                 type="button"
                 onClick={() => setEditing(null)}
-                className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+                className="rounded p-1 text-gray-400 dark:text-[#6B788A] hover:bg-gray-100 dark:hover:bg-[#263446] hover:text-gray-700 dark:hover:text-[#B4BFCD]"
                 title="Close"
               >
                 <X className="h-4 w-4" />
@@ -1170,27 +975,27 @@ function ResourceCard({
 
             {/* Topic */}
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-gray-700">
+              <label className="mb-1.5 block text-xs font-medium text-gray-700 dark:text-[#B4BFCD]">
                 Topic
               </label>
               <input
                 type="text"
                 value={editTopic}
                 onChange={(e) => setEditTopic(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-gray-900 focus:ring-1 focus:ring-gray-900"
+                className="w-full rounded-lg border border-gray-300 dark:border-[#33445A] bg-white dark:bg-[#172130] px-3 py-2.5 text-sm outline-none transition focus:border-gray-900 dark:focus:border-slate-400 focus:ring-1 focus:ring-gray-900 dark:focus:ring-slate-400"
               />
             </div>
 
             {/* Type: a video stays a video, a PDF stays a PDF type */}
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-gray-700">
+              <label className="mb-1.5 block text-xs font-medium text-gray-700 dark:text-[#B4BFCD]">
                 Type
               </label>
               <select
                 value={editType}
                 onChange={(e) => setEditType(e.target.value)}
                 disabled={editing.type === "video"}
-                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-gray-900 focus:ring-1 focus:ring-gray-900 disabled:bg-gray-50 disabled:text-gray-400"
+                className="w-full rounded-lg border border-gray-300 dark:border-[#33445A] bg-white dark:bg-[#172130] px-3 py-2.5 text-sm outline-none transition focus:border-gray-900 dark:focus:border-slate-400 focus:ring-1 focus:ring-gray-900 dark:focus:ring-slate-400 disabled:bg-gray-50 dark:disabled:bg-[#0E141D] disabled:text-gray-400 dark:disabled:text-[#6B788A]"
               >
                 {RESOURCE_TYPES.filter(
                   (t) =>
@@ -1206,7 +1011,7 @@ function ResourceCard({
             {/* Programme (super admins only) */}
             {isSuperAdmin && (
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-gray-700">
+                <label className="mb-1.5 block text-xs font-medium text-gray-700 dark:text-[#B4BFCD]">
                   Programme
                 </label>
                 <select
@@ -1215,7 +1020,7 @@ function ResourceCard({
                     setEditProgrammeId(e.target.value);
                     setEditModuleId("");
                   }}
-                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-gray-900 focus:ring-1 focus:ring-gray-900"
+                  className="w-full rounded-lg border border-gray-300 dark:border-[#33445A] bg-white dark:bg-[#172130] px-3 py-2.5 text-sm outline-none transition focus:border-gray-900 dark:focus:border-slate-400 focus:ring-1 focus:ring-gray-900 dark:focus:ring-slate-400"
                 >
                   <option value="">Select programme</option>
                   {programmes.map((p) => (
@@ -1230,7 +1035,7 @@ function ResourceCard({
             {/* Year + Semester narrow down the Module list */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-gray-700">
+                <label className="mb-1.5 block text-xs font-medium text-gray-700 dark:text-[#B4BFCD]">
                   Year
                 </label>
                 <select
@@ -1239,7 +1044,7 @@ function ResourceCard({
                     setEditYear(e.target.value);
                     setEditModuleId("");
                   }}
-                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-gray-900 focus:ring-1 focus:ring-gray-900"
+                  className="w-full rounded-lg border border-gray-300 dark:border-[#33445A] bg-white dark:bg-[#172130] px-3 py-2.5 text-sm outline-none transition focus:border-gray-900 dark:focus:border-slate-400 focus:ring-1 focus:ring-gray-900 dark:focus:ring-slate-400"
                 >
                   <option value="1">Year 1</option>
                   <option value="2">Year 2</option>
@@ -1249,7 +1054,7 @@ function ResourceCard({
               </div>
 
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-gray-700">
+                <label className="mb-1.5 block text-xs font-medium text-gray-700 dark:text-[#B4BFCD]">
                   Semester
                 </label>
                 <select
@@ -1258,7 +1063,7 @@ function ResourceCard({
                     setEditSemester(e.target.value);
                     setEditModuleId("");
                   }}
-                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-gray-900 focus:ring-1 focus:ring-gray-900"
+                  className="w-full rounded-lg border border-gray-300 dark:border-[#33445A] bg-white dark:bg-[#172130] px-3 py-2.5 text-sm outline-none transition focus:border-gray-900 dark:focus:border-slate-400 focus:ring-1 focus:ring-gray-900 dark:focus:ring-slate-400"
                 >
                   <option value="1">Semester 1</option>
                   <option value="2">Semester 2</option>
@@ -1268,13 +1073,13 @@ function ResourceCard({
 
             {/* Module: leaving it empty keeps the current module */}
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-gray-700">
+              <label className="mb-1.5 block text-xs font-medium text-gray-700 dark:text-[#B4BFCD]">
                 Module
               </label>
               <select
                 value={editModuleId}
                 onChange={(e) => setEditModuleId(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-gray-900 focus:ring-1 focus:ring-gray-900"
+                className="w-full rounded-lg border border-gray-300 dark:border-[#33445A] bg-white dark:bg-[#172130] px-3 py-2.5 text-sm outline-none transition focus:border-gray-900 dark:focus:border-slate-400 focus:ring-1 focus:ring-gray-900 dark:focus:ring-slate-400"
               >
                 <option value="">Keep current module</option>
                 {editModuleOptions.map((m) => (
@@ -1289,14 +1094,14 @@ function ResourceCard({
                 swapped here: delete it and upload the new one instead. */}
             {editing.video_id && (
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-gray-700">
+                <label className="mb-1.5 block text-xs font-medium text-gray-700 dark:text-[#B4BFCD]">
                   YouTube Link
                 </label>
                 <input
                   type="url"
                   value={editVideoUrl}
                   onChange={(e) => setEditVideoUrl(e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-gray-900 focus:ring-1 focus:ring-gray-900"
+                  className="w-full rounded-lg border border-gray-300 dark:border-[#33445A] bg-white dark:bg-[#172130] px-3 py-2.5 text-sm outline-none transition focus:border-gray-900 dark:focus:border-slate-400 focus:ring-1 focus:ring-gray-900 dark:focus:ring-slate-400"
                 />
               </div>
             )}
@@ -1305,14 +1110,14 @@ function ResourceCard({
               <button
                 type="button"
                 onClick={() => setEditing(null)}
-                className="rounded-lg border border-gray-200 px-4 py-2 text-xs font-medium text-gray-600 hover:bg-gray-50"
+                className="rounded-lg border border-gray-200 dark:border-[#263345] px-4 py-2 text-xs font-medium text-gray-600 dark:text-[#B4BFCD] hover:bg-gray-50 dark:hover:bg-[#1D2938]"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={saving}
-                className="rounded-lg bg-gray-900 px-4 py-2 text-xs font-semibold text-white hover:bg-gray-700 disabled:opacity-50"
+                className="rounded-lg bg-gray-900 dark:bg-[#3A649C] px-4 py-2 text-xs font-semibold text-white hover:bg-gray-700 dark:hover:bg-[#33598C] disabled:opacity-50"
               >
                 {saving ? "Saving..." : "Save changes"}
               </button>

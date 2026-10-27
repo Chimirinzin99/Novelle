@@ -23,7 +23,7 @@ const SEMESTERS = ["All Semesters", "Semester 1", "Semester 2"];
 
 // Same look for every dropdown, defined once.
 const selectClass =
-  "rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:border-blue-500 focus:outline-none";
+  "rounded-lg border border-gray-200 dark:border-[#263345] bg-white dark:bg-[#172130] px-3 py-2 text-sm text-gray-700 dark:text-[#B4BFCD] focus:border-blue-500 focus:outline-none";
 
 export default function FilterBar({
   year,
@@ -44,8 +44,8 @@ export default function FilterBar({
   return (
     // flex-wrap: on narrow screens the dropdowns drop to a second line
     // instead of squashing together.
-    <div className="mb-8 flex flex-wrap items-center gap-3 rounded-2xl bg-white p-4 shadow-sm">
-      <span className="text-sm font-semibold text-gray-900">Filter</span>
+    <div className="mb-8 flex flex-wrap items-center gap-3 rounded-2xl bg-white dark:bg-[#172130] p-4 shadow-sm">
+      <span className="text-sm font-semibold text-gray-900 dark:text-[#E5EAF1]">Filter</span>
 
       <select
         value={year}
@@ -87,7 +87,7 @@ export default function FilterBar({
       {isFiltered && (
         <button
           onClick={onClear}
-          className="ml-auto text-sm font-medium text-gray-500 hover:text-gray-900"
+          className="ml-auto text-sm font-medium text-gray-500 dark:text-[#8B98AA] hover:text-gray-900 dark:hover:text-[#E5EAF1]"
         >
           Clear filters
         </button>

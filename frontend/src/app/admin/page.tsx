@@ -362,8 +362,8 @@ export default function AdminPage() {
 
   if (loading) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-slate-50">
-        <p className="text-sm text-gray-500">
+      <main className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-[#0E141D]">
+        <p className="text-sm text-gray-500 dark:text-[#8B98AA]">
           Loading admin dashboard...
         </p>
       </main>
@@ -372,12 +372,12 @@ export default function AdminPage() {
 
   if (error) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-slate-50 px-6">
-        <div className="rounded-2xl border border-red-200 bg-white p-6 text-center shadow-sm">
-          <h1 className="text-lg font-semibold text-red-600">
+      <main className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-[#0E141D] px-6">
+        <div className="rounded-2xl border border-red-200 dark:border-red-900/60 bg-white dark:bg-[#172130] p-6 text-center shadow-sm">
+          <h1 className="text-lg font-semibold text-red-600 dark:text-red-400">
             Unable to load dashboard
           </h1>
-          <p className="mt-2 text-sm text-gray-600">{error}</p>
+          <p className="mt-2 text-sm text-gray-600 dark:text-[#B4BFCD]">{error}</p>
         </div>
       </main>
     );
@@ -390,21 +390,21 @@ export default function AdminPage() {
   const isSuperAdmin = isSuperAdminRole(profile.role);
 
   return (
-    <main className="min-h-full bg-slate-50 text-gray-900">
+    <main className="min-h-full bg-slate-50 dark:bg-[#0E141D] text-gray-900 dark:text-[#E5EAF1]">
       <div className="w-full px-5 py-6 md:px-8 md:py-8 lg:px-10">
           {/* Welcome */}
           <div className="mb-8 flex items-start justify-between gap-4">
             <div>
-              <p className="text-sm font-medium text-blue-600">
+              <p className="text-sm font-medium text-blue-600 dark:text-blue-300">
                 {isSuperAdmin ? "Super Admin" : "Programme Admin"}
               </p>
 
-              <h1 className="mt-1 text-3xl font-bold tracking-tight text-gray-900">
+              <h1 className="mt-1 text-3xl font-bold tracking-tight text-gray-900 dark:text-[#E5EAF1]">
                 Welcome back
                 {profile.full_name ? `, ${profile.full_name}` : ""}
               </h1>
 
-              <p className="mt-2 text-sm text-gray-500">
+              <p className="mt-2 text-sm text-gray-500 dark:text-[#8B98AA]">
                 {isSuperAdmin
                   ? "Overview of Novelle resources across CST."
                   : `Overview of ${programmeName} resources.`}
@@ -416,7 +416,7 @@ export default function AdminPage() {
                 type="button"
                 onClick={() => router.push("/")}
                 aria-label="Back to Novelle site"
-                className="inline-flex h-11 items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 text-sm font-medium text-gray-600 shadow-sm transition hover:bg-gray-50 hover:text-gray-900"
+                className="inline-flex h-11 items-center gap-2 rounded-xl border border-gray-200 dark:border-[#263345] bg-white dark:bg-[#172130] px-3 text-sm font-medium text-gray-600 dark:text-[#B4BFCD] shadow-sm transition hover:bg-gray-50 dark:hover:bg-[#1D2938] hover:text-gray-900 dark:hover:text-[#E5EAF1]"
               >
                 <ArrowLeft className="h-4 w-4" />
                 <span className="hidden sm:inline">Back to site</span>
@@ -427,22 +427,22 @@ export default function AdminPage() {
                 onClick={() => setNotificationsOpen((open) => !open)}
                 aria-label={`Notifications${pendingCount ? `, ${pendingCount} pending submissions` : ""}`}
                 aria-expanded={notificationsOpen}
-                className="relative flex h-11 w-11 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-600 shadow-sm transition hover:bg-gray-50 hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                className="relative flex h-11 w-11 items-center justify-center rounded-xl border border-gray-200 dark:border-[#263345] bg-white dark:bg-[#172130] text-gray-600 dark:text-[#B4BFCD] shadow-sm transition hover:bg-gray-50 dark:hover:bg-[#1D2938] hover:text-gray-900 dark:hover:text-[#E5EAF1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
               >
                 <Bell className="h-5 w-5" />
                 {pendingCount > 0 && (
-                  <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold text-white ring-2 ring-slate-50">
+                  <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold text-white ring-2 ring-slate-50 dark:ring-[#0E141D]">
                     {pendingCount > 99 ? "99+" : pendingCount}
                   </span>
                 )}
               </button>
 
               {notificationsOpen && (
-                <div className="absolute right-0 top-14 z-30 w-[min(21rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-gray-200 bg-white p-4 shadow-xl">
+                <div className="absolute right-0 top-14 z-30 w-[min(21rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-gray-200 dark:border-[#263345] bg-white dark:bg-[#172130] p-4 shadow-xl">
                   <div className="flex items-center justify-between gap-3">
-                    <h2 className="font-semibold text-gray-900">Notifications</h2>
+                    <h2 className="font-semibold text-gray-900 dark:text-[#E5EAF1]">Notifications</h2>
                     {pendingCount > 0 && (
-                      <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
+                      <span className="rounded-full bg-blue-50 dark:bg-blue-950/40 px-2.5 py-1 text-xs font-semibold text-blue-700 dark:text-blue-300">
                         {pendingCount} pending
                       </span>
                     )}
@@ -451,18 +451,18 @@ export default function AdminPage() {
                     <button
                       type="button"
                       onClick={() => router.push("/admin/submissions")}
-                      className="mt-3 w-full rounded-xl bg-slate-50 p-3 text-left transition hover:bg-blue-50"
+                      className="mt-3 w-full rounded-xl bg-slate-50 dark:bg-[#0E141D] p-3 text-left transition hover:bg-blue-50 dark:hover:bg-blue-950/40"
                     >
-                      <p className="text-sm font-semibold text-gray-900">
+                      <p className="text-sm font-semibold text-gray-900 dark:text-[#E5EAF1]">
                         Student submissions need review
                       </p>
-                      <p className="mt-1 text-xs leading-5 text-gray-500">
+                      <p className="mt-1 text-xs leading-5 text-gray-500 dark:text-[#8B98AA]">
                         {pendingCount} {pendingCount === 1 ? "resource is" : "resources are"} waiting for approval.
                       </p>
-                      <span className="mt-2 inline-block text-xs font-semibold text-blue-700">Review submissions</span>
+                      <span className="mt-2 inline-block text-xs font-semibold text-blue-700 dark:text-blue-300">Review submissions</span>
                     </button>
                   ) : (
-                    <p className="mt-3 rounded-xl bg-slate-50 p-3 text-sm text-gray-500">
+                    <p className="mt-3 rounded-xl bg-slate-50 dark:bg-[#0E141D] p-3 text-sm text-gray-500 dark:text-[#8B98AA]">
                       You’re all caught up. No pending submissions to review.
                     </p>
                   )}
@@ -474,12 +474,12 @@ export default function AdminPage() {
 
           {/* Programme */}
           {!isSuperAdmin && (
-            <div className="mb-6 rounded-2xl border border-gray-200 bg-white px-5 py-4 shadow-sm">
-              <p className="text-xs font-medium uppercase tracking-wide text-gray-400">
+            <div className="mb-6 rounded-2xl border border-gray-200 dark:border-[#263345] bg-white dark:bg-[#172130] px-5 py-4 shadow-sm">
+              <p className="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-[#6B788A]">
                 Programme
               </p>
 
-              <p className="mt-1 text-base font-semibold text-gray-900">
+              <p className="mt-1 text-base font-semibold text-gray-900 dark:text-[#E5EAF1]">
                 {programmeName}
               </p>
             </div>
@@ -490,22 +490,22 @@ export default function AdminPage() {
             {/* Total Resources */}
             <button
               onClick={() => router.push("/admin/all-resources")}
-              className="group rounded-2xl border border-gray-200 bg-white p-6 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-md"
+              className="group rounded-2xl border border-gray-200 dark:border-[#263345] bg-white dark:bg-[#172130] p-6 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-gray-300 dark:hover:border-[#33445A] hover:shadow-md"
             >
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-500">
+                  <p className="text-sm font-medium text-gray-500 dark:text-[#8B98AA]">
                     Total Resources
                   </p>
-                  <p className="mt-4 text-4xl font-bold tracking-tight text-gray-900">
+                  <p className="mt-4 text-4xl font-bold tracking-tight text-gray-900 dark:text-[#E5EAF1]">
                     {totalResourcesCount}
                   </p>
-                  <p className="mt-2 text-xs text-gray-400">
+                  <p className="mt-2 text-xs text-gray-400 dark:text-[#6B788A]">
                     All resource records
                   </p>
                 </div>
 
-                <div className="rounded-xl bg-gray-100 p-3 text-gray-700">
+                <div className="rounded-xl bg-gray-100 dark:bg-[#1D2938] p-3 text-gray-700 dark:text-[#B4BFCD]">
                   <Database className="h-5 w-5" />
                 </div>
               </div>
@@ -514,20 +514,20 @@ export default function AdminPage() {
             {/* Pending Submissions */}
             <button
               onClick={() => router.push("/admin/submissions")}
-              className="group rounded-2xl border border-gray-200 bg-white p-6 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-md"
+              className="group rounded-2xl border border-gray-200 dark:border-[#263345] bg-white dark:bg-[#172130] p-6 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-gray-300 dark:hover:border-[#33445A] hover:shadow-md"
             >
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-500">
+                  <p className="text-sm font-medium text-gray-500 dark:text-[#8B98AA]">
                     Pending Submissions
                   </p>
-                  <p className="mt-4 text-4xl font-bold tracking-tight text-gray-900">
+                  <p className="mt-4 text-4xl font-bold tracking-tight text-gray-900 dark:text-[#E5EAF1]">
                     {pendingCount}
                   </p>
-                  <p className="mt-2 text-xs text-gray-400">Need review</p>
+                  <p className="mt-2 text-xs text-gray-400 dark:text-[#6B788A]">Need review</p>
                 </div>
 
-                <div className="rounded-xl bg-gray-100 p-3 text-gray-700">
+                <div className="rounded-xl bg-gray-100 dark:bg-[#1D2938] p-3 text-gray-700 dark:text-[#B4BFCD]">
                   <ClipboardCheck className="h-5 w-5" />
                 </div>
               </div>
@@ -536,22 +536,22 @@ export default function AdminPage() {
             {/* Total Notes */}
             <button
               onClick={() => router.push("/admin/all-resources?type=note")}
-              className="group rounded-2xl border border-gray-200 bg-white p-6 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-md"
+              className="group rounded-2xl border border-gray-200 dark:border-[#263345] bg-white dark:bg-[#172130] p-6 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-gray-300 dark:hover:border-[#33445A] hover:shadow-md"
             >
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-500">
+                  <p className="text-sm font-medium text-gray-500 dark:text-[#8B98AA]">
                     Total Notes
                   </p>
-                  <p className="mt-4 text-4xl font-bold tracking-tight text-gray-900">
+                  <p className="mt-4 text-4xl font-bold tracking-tight text-gray-900 dark:text-[#E5EAF1]">
                     {notesCount}
                   </p>
-                  <p className="mt-2 text-xs text-gray-400">
+                  <p className="mt-2 text-xs text-gray-400 dark:text-[#6B788A]">
                     Published notes
                   </p>
                 </div>
 
-                <div className="rounded-xl bg-gray-100 p-3 text-gray-700">
+                <div className="rounded-xl bg-gray-100 dark:bg-[#1D2938] p-3 text-gray-700 dark:text-[#B4BFCD]">
                   <FileText className="h-5 w-5" />
                 </div>
               </div>
@@ -560,22 +560,22 @@ export default function AdminPage() {
             {/* Total Question Papers */}
             <button
               onClick={() => router.push("/admin/all-resources?type=question_paper")}
-              className="group rounded-2xl border border-gray-200 bg-white p-6 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-md"
+              className="group rounded-2xl border border-gray-200 dark:border-[#263345] bg-white dark:bg-[#172130] p-6 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-gray-300 dark:hover:border-[#33445A] hover:shadow-md"
             >
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-500">
+                  <p className="text-sm font-medium text-gray-500 dark:text-[#8B98AA]">
                     Total Question Papers
                   </p>
-                  <p className="mt-4 text-4xl font-bold tracking-tight text-gray-900">
+                  <p className="mt-4 text-4xl font-bold tracking-tight text-gray-900 dark:text-[#E5EAF1]">
                     {papersCount}
                   </p>
-                  <p className="mt-2 text-xs text-gray-400">
+                  <p className="mt-2 text-xs text-gray-400 dark:text-[#6B788A]">
                     Published papers
                   </p>
                 </div>
 
-                <div className="rounded-xl bg-gray-100 p-3 text-gray-700">
+                <div className="rounded-xl bg-gray-100 dark:bg-[#1D2938] p-3 text-gray-700 dark:text-[#B4BFCD]">
                   <FileQuestion className="h-5 w-5" />
                 </div>
               </div>
@@ -584,22 +584,22 @@ export default function AdminPage() {
             {/* Total Assignments */}
             <button
               onClick={() => router.push("/admin/all-resources?type=assignment")}
-              className="group rounded-2xl border border-gray-200 bg-white p-6 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-md"
+              className="group rounded-2xl border border-gray-200 dark:border-[#263345] bg-white dark:bg-[#172130] p-6 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-gray-300 dark:hover:border-[#33445A] hover:shadow-md"
             >
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-500">
+                  <p className="text-sm font-medium text-gray-500 dark:text-[#8B98AA]">
                     Total Assignments
                   </p>
-                  <p className="mt-4 text-4xl font-bold tracking-tight text-gray-900">
+                  <p className="mt-4 text-4xl font-bold tracking-tight text-gray-900 dark:text-[#E5EAF1]">
                     {assignmentsCount}
                   </p>
-                  <p className="mt-2 text-xs text-gray-400">
+                  <p className="mt-2 text-xs text-gray-400 dark:text-[#6B788A]">
                     Published assignments
                   </p>
                 </div>
 
-                <div className="rounded-xl bg-gray-100 p-3 text-gray-700">
+                <div className="rounded-xl bg-gray-100 dark:bg-[#1D2938] p-3 text-gray-700 dark:text-[#B4BFCD]">
                   <ClipboardList className="h-5 w-5" />
                 </div>
               </div>
@@ -609,22 +609,22 @@ export default function AdminPage() {
             <button
               type="button"
               onClick={() => router.push("/admin/all-resources?type=video")}
-              className="group rounded-2xl border border-gray-200 bg-white p-6 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-md"
+              className="group rounded-2xl border border-gray-200 dark:border-[#263345] bg-white dark:bg-[#172130] p-6 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-gray-300 dark:hover:border-[#33445A] hover:shadow-md"
             >
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-500">
+                  <p className="text-sm font-medium text-gray-500 dark:text-[#8B98AA]">
                     Total Videos
                   </p>
-                  <p className="mt-4 text-4xl font-bold tracking-tight text-gray-900">
+                  <p className="mt-4 text-4xl font-bold tracking-tight text-gray-900 dark:text-[#E5EAF1]">
                     {videosCount}
                   </p>
-                  <p className="mt-2 text-xs text-gray-400">
+                  <p className="mt-2 text-xs text-gray-400 dark:text-[#6B788A]">
                     YouTube links uploaded by admins
                   </p>
                 </div>
 
-                <div className="rounded-xl bg-gray-100 p-3 text-gray-700">
+                <div className="rounded-xl bg-gray-100 dark:bg-[#1D2938] p-3 text-gray-700 dark:text-[#B4BFCD]">
                   <Video className="h-5 w-5" />
                 </div>
               </div>
@@ -634,7 +634,7 @@ export default function AdminPage() {
           {/* Super admin overview */}
           {isSuperAdmin && userCounts && (
             <>
-              <h2 className="mb-4 mt-10 text-lg font-semibold text-gray-900">
+              <h2 className="mb-4 mt-10 text-lg font-semibold text-gray-900 dark:text-[#E5EAF1]">
                 Users
               </h2>
 
@@ -659,22 +659,22 @@ export default function AdminPage() {
                   <button
                     key={card.label}
                     onClick={() => router.push("/admin/users")}
-                    className="group rounded-2xl border border-gray-200 bg-white p-6 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-md"
+                    className="group rounded-2xl border border-gray-200 dark:border-[#263345] bg-white dark:bg-[#172130] p-6 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-gray-300 dark:hover:border-[#33445A] hover:shadow-md"
                   >
                     <div className="flex items-start justify-between">
                       <div>
-                        <p className="text-sm font-medium text-gray-500">
+                        <p className="text-sm font-medium text-gray-500 dark:text-[#8B98AA]">
                           {card.label}
                         </p>
-                        <p className="mt-4 text-4xl font-bold tracking-tight text-gray-900">
+                        <p className="mt-4 text-4xl font-bold tracking-tight text-gray-900 dark:text-[#E5EAF1]">
                           {card.value}
                         </p>
-                        <p className="mt-2 text-xs text-gray-400">
+                        <p className="mt-2 text-xs text-gray-400 dark:text-[#6B788A]">
                           {card.note}
                         </p>
                       </div>
 
-                      <div className="rounded-xl bg-gray-100 p-3 text-gray-700">
+                      <div className="rounded-xl bg-gray-100 dark:bg-[#1D2938] p-3 text-gray-700 dark:text-[#B4BFCD]">
                         <Users className="h-5 w-5" />
                       </div>
                     </div>
@@ -684,7 +684,7 @@ export default function AdminPage() {
 
               {reviewCounts && (
                 <>
-                  <h2 className="mb-4 mt-10 text-lg font-semibold text-gray-900">
+                  <h2 className="mb-4 mt-10 text-lg font-semibold text-gray-900 dark:text-[#E5EAF1]">
                     Review history
                   </h2>
 
@@ -720,22 +720,22 @@ export default function AdminPage() {
                     ].map(({ label, value, note, icon: Icon }) => (
                       <div
                         key={label}
-                        className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"
+                        className="rounded-2xl border border-gray-200 dark:border-[#263345] bg-white dark:bg-[#172130] p-6 shadow-sm"
                       >
                         <div className="flex items-start justify-between">
                           <div>
-                            <p className="text-sm font-medium text-gray-500">
+                            <p className="text-sm font-medium text-gray-500 dark:text-[#8B98AA]">
                               {label}
                             </p>
-                            <p className="mt-4 text-4xl font-bold tracking-tight text-gray-900">
+                            <p className="mt-4 text-4xl font-bold tracking-tight text-gray-900 dark:text-[#E5EAF1]">
                               {value}
                             </p>
-                            <p className="mt-2 text-xs text-gray-400">
+                            <p className="mt-2 text-xs text-gray-400 dark:text-[#6B788A]">
                               {note}
                             </p>
                           </div>
 
-                          <div className="rounded-xl bg-gray-100 p-3 text-gray-700">
+                          <div className="rounded-xl bg-gray-100 dark:bg-[#1D2938] p-3 text-gray-700 dark:text-[#B4BFCD]">
                             <Icon className="h-5 w-5" />
                           </div>
                         </div>
@@ -745,13 +745,13 @@ export default function AdminPage() {
                 </>
               )}
 
-              <h2 className="mb-4 mt-10 text-lg font-semibold text-gray-900">
+              <h2 className="mb-4 mt-10 text-lg font-semibold text-gray-900 dark:text-[#E5EAF1]">
                 Programmes
               </h2>
 
-              <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-sm">
+              <div className="overflow-x-auto rounded-2xl border border-gray-200 dark:border-[#263345] bg-white dark:bg-[#172130] shadow-sm">
                 <table className="w-full text-left text-sm">
-                  <thead className="border-b border-gray-200 text-xs uppercase tracking-wide text-gray-400">
+                  <thead className="border-b border-gray-200 dark:border-[#263345] text-xs uppercase tracking-wide text-gray-400 dark:text-[#6B788A]">
                     <tr>
                       <th className="px-5 py-3 font-medium">Programme</th>
                       <th className="px-5 py-3 font-medium">Resources</th>
@@ -764,20 +764,20 @@ export default function AdminPage() {
                     </tr>
                   </thead>
 
-                  <tbody className="divide-y divide-gray-100">
+                  <tbody className="divide-y divide-gray-100 dark:divide-[#263345]">
                     {programmeOverview.map((programme) => (
                       <tr key={programme.id}>
-                        <td className="px-5 py-3 font-medium text-gray-900">
+                        <td className="px-5 py-3 font-medium text-gray-900 dark:text-[#E5EAF1]">
                           {programme.name}
                         </td>
 
                         <td className="px-5 py-3">
                           {programme.resources > 0 ? (
-                            <span className="font-medium text-gray-900">
+                            <span className="font-medium text-gray-900 dark:text-[#E5EAF1]">
                               {programme.resources}
                             </span>
                           ) : (
-                            <span className="text-gray-400">0</span>
+                            <span className="text-gray-400 dark:text-[#6B788A]">0</span>
                           )}
                         </td>
 
@@ -787,24 +787,24 @@ export default function AdminPage() {
                               onClick={() =>
                                 router.push("/admin/submissions")
                               }
-                              className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-700 hover:bg-amber-200"
+                              className="rounded-full bg-amber-100 dark:bg-amber-900/40 px-2.5 py-1 text-xs font-medium text-amber-700 dark:text-amber-400 hover:bg-amber-200 dark:hover:bg-amber-900/40"
                             >
                               {programme.pending} pending
                             </button>
                           ) : (
-                            <span className="text-gray-400">0</span>
+                            <span className="text-gray-400 dark:text-[#6B788A]">0</span>
                           )}
                         </td>
 
                         <td className="px-5 py-3">
                           {programme.admins.length > 0 ? (
-                            <span className="text-gray-700">
+                            <span className="text-gray-700 dark:text-[#B4BFCD]">
                               {programme.admins.join(", ")}
                             </span>
                           ) : (
                             <button
                               onClick={() => router.push("/admin/users")}
-                              className="text-sm text-blue-600 hover:underline"
+                              className="text-sm text-blue-600 dark:text-blue-300 hover:underline"
                             >
                               None — assign one
                             </button>

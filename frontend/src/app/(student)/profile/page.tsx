@@ -28,60 +28,57 @@ export default function ProfilePage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
+    async function loadProfile() {
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError || !user) {
+        router.replace("/login");
+        return;
+      }
+
+      setEmail(user.email ?? "");
+
+      const { data, error: profileError } = await supabase
+        .from("profiles")
+        .select("full_name, programme_id, programmes(name)")
+        .eq("id", user.id)
+        .single();
+
+      if (profileError) {
+        console.error("Load profile error:", profileError);
+        setError("Could not load your profile details.");
+      } else {
+        const programme = data.programmes as unknown as {
+          name: string;
+        } | null;
+
+        setProfile({
+          full_name: data.full_name,
+          programme_id: data.programme_id,
+          programmes: programme,
+        });
+      }
+
+      setLoading(false);
+    }
+
     loadProfile();
-  }, []);
-
-  async function loadProfile() {
-    setLoading(true);
-    setError("");
-
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-
-    if (userError || !user) {
-      router.replace("/login");
-      return;
-    }
-
-    setEmail(user.email ?? "");
-
-    const { data, error: profileError } = await supabase
-      .from("profiles")
-      .select("full_name, programme_id, programmes(name)")
-      .eq("id", user.id)
-      .single();
-
-    if (profileError) {
-      console.error("Load profile error:", profileError);
-      setError("Could not load your profile details.");
-    } else {
-      const programme = data.programmes as unknown as {
-        name: string;
-      } | null;
-
-      setProfile({
-        full_name: data.full_name,
-        programme_id: data.programme_id,
-        programmes: programme,
-      });
-    }
-
-    setLoading(false);
-  }
+  }, [router]);
 
   const fullName = profile?.full_name?.trim() || "Student";
 
   return (
-    <main className="min-h-full bg-[#FCFBF8] px-5 py-7 text-[#24344D] md:px-10 md:py-9 lg:px-12">
+    <main className="min-h-full bg-[#FCFBF8] dark:bg-[#0E141D] px-5 py-7 text-[#24344D] dark:text-[#E5EAF1] md:px-10 md:py-9 lg:px-12">
       <div className="mx-auto max-w-5xl">
         <header className="mb-8">
-          <p className="text-sm font-semibold text-[#456FAD]">My Account</p>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight text-[#24344D] md:text-4xl">
+          <p className="text-sm font-semibold text-[#456FAD] dark:text-[#86A8DA]">My Account</p>
+          <h1 className="mt-2 text-3xl font-bold tracking-tight text-[#24344D] dark:text-[#E5EAF1] md:text-4xl">
             Profile
           </h1>
-          <p className="mt-2 text-sm leading-6 text-slate-500">
+          <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-[#8B98AA]">
             View your account details and find your personal learning library.
           </p>
         </header>
@@ -89,15 +86,15 @@ export default function ProfilePage() {
         {error && (
           <div
             role="alert"
-            className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700"
+            className="mb-6 rounded-xl border border-red-200 dark:border-red-900/60 bg-red-50 dark:bg-red-950/40 px-4 py-3 text-sm font-medium text-red-700 dark:text-red-300"
           >
             {error}
           </div>
         )}
 
-        <section className="rounded-2xl border border-[#E7E5DF] bg-white p-6 shadow-sm sm:p-8">
+        <section className="rounded-2xl border border-[#E7E5DF] dark:border-[#263345] bg-white dark:bg-[#172130] p-6 shadow-sm sm:p-8">
           {loading ? (
-            <p className="text-sm text-slate-500">Loading your profile...</p>
+            <p className="text-sm text-slate-500 dark:text-[#8B98AA]">Loading your profile...</p>
           ) : (
             <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
               <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-[#294C78] text-xl font-semibold text-white">
@@ -105,13 +102,13 @@ export default function ProfilePage() {
               </div>
 
               <div className="min-w-0">
-                <h2 className="text-xl font-semibold text-[#24344D]">
+                <h2 className="text-xl font-semibold text-[#24344D] dark:text-[#E5EAF1]">
                   {fullName}
                 </h2>
-                <p className="mt-1 break-all text-sm text-slate-500">
+                <p className="mt-1 break-all text-sm text-slate-500 dark:text-[#8B98AA]">
                   {email || "No email available"}
                 </p>
-                <p className="mt-2 inline-flex rounded-full bg-[#E7EEF8] px-3 py-1 text-xs font-medium text-[#294C78]">
+                <p className="mt-2 inline-flex rounded-full bg-[#E7EEF8] dark:bg-[#1E3150] px-3 py-1 text-xs font-medium text-[#294C78] dark:text-[#9CB9E3]">
                   {profile?.programmes?.name || "Programme not assigned"}
                 </p>
               </div>
@@ -121,10 +118,10 @@ export default function ProfilePage() {
 
         <section className="mt-10">
           <div className="mb-5">
-            <h2 className="text-xl font-semibold tracking-tight text-[#24344D]">
+            <h2 className="text-xl font-semibold tracking-tight text-[#24344D] dark:text-[#E5EAF1]">
               Your library
             </h2>
-            <p className="mt-1 text-sm text-slate-500">
+            <p className="mt-1 text-sm text-slate-500 dark:text-[#8B98AA]">
               Review uploads and return to resources you have liked.
             </p>
           </div>
@@ -132,9 +129,9 @@ export default function ProfilePage() {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Link
               href="/my-submissions"
-              className="group flex min-h-44 items-start gap-4 rounded-2xl border border-[#E7E5DF] bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:border-[#C8D5E7] hover:shadow-md focus:outline-none focus:ring-2 focus:ring-[#294C78]/30"
+              className="group flex min-h-44 items-start gap-4 rounded-2xl border border-[#E7E5DF] dark:border-[#263345] bg-white dark:bg-[#172130] p-6 shadow-sm transition hover:-translate-y-0.5 hover:border-[#C8D5E7] dark:hover:border-[#33445A] hover:shadow-md focus:outline-none focus:ring-2 focus:ring-[#294C78]/30"
             >
-              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#E7EEF8] text-[#294C78]">
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#E7EEF8] dark:bg-[#1E3150] text-[#294C78] dark:text-[#9CB9E3]">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   viewBox="0 0 24 24"
@@ -159,17 +156,17 @@ export default function ProfilePage() {
 
               <span className="min-w-0 flex-1">
                 <span className="flex items-center justify-between gap-3">
-                  <span className="font-semibold text-[#24344D]">
+                  <span className="font-semibold text-[#24344D] dark:text-[#E5EAF1]">
                     My Submissions
                   </span>
                   <span
                     aria-hidden="true"
-                    className="text-lg text-[#456FAD] transition-transform group-hover:translate-x-1"
+                    className="text-lg text-[#456FAD] dark:text-[#86A8DA] transition-transform group-hover:translate-x-1"
                   >
                     →
                   </span>
                 </span>
-                <span className="mt-2 block text-sm leading-6 text-slate-500">
+                <span className="mt-2 block text-sm leading-6 text-slate-500 dark:text-[#8B98AA]">
                   Check the review status of notes and other resources you have
                   uploaded.
                 </span>
@@ -178,9 +175,9 @@ export default function ProfilePage() {
 
             <Link
               href="/liked"
-              className="group flex min-h-44 items-start gap-4 rounded-2xl border border-[#E7E5DF] bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:border-[#C8D5E7] hover:shadow-md focus:outline-none focus:ring-2 focus:ring-[#294C78]/30"
+              className="group flex min-h-44 items-start gap-4 rounded-2xl border border-[#E7E5DF] dark:border-[#263345] bg-white dark:bg-[#172130] p-6 shadow-sm transition hover:-translate-y-0.5 hover:border-[#C8D5E7] dark:hover:border-[#33445A] hover:shadow-md focus:outline-none focus:ring-2 focus:ring-[#294C78]/30"
             >
-              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#E7EEF8] text-[#294C78]">
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#E7EEF8] dark:bg-[#1E3150] text-[#294C78] dark:text-[#9CB9E3]">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   viewBox="0 0 24 24"
@@ -200,17 +197,17 @@ export default function ProfilePage() {
 
               <span className="min-w-0 flex-1">
                 <span className="flex items-center justify-between gap-3">
-                  <span className="font-semibold text-[#24344D]">
+                  <span className="font-semibold text-[#24344D] dark:text-[#E5EAF1]">
                     Liked Resources
                   </span>
                   <span
                     aria-hidden="true"
-                    className="text-lg text-[#456FAD] transition-transform group-hover:translate-x-1"
+                    className="text-lg text-[#456FAD] dark:text-[#86A8DA] transition-transform group-hover:translate-x-1"
                   >
                     →
                   </span>
                 </span>
-                <span className="mt-2 block text-sm leading-6 text-slate-500">
+                <span className="mt-2 block text-sm leading-6 text-slate-500 dark:text-[#8B98AA]">
                   Find your saved notes, question papers, assignments, and
                   videos.
                 </span>

@@ -24,9 +24,9 @@ type StatusFilter = "all" | "pending" | "approved" | "rejected";
 
 // Colours and wording for each status, kept in one place.
 const STATUS_STYLES = {
-  pending: { label: "Pending review", className: "bg-yellow-100 text-yellow-800" },
-  approved: { label: "Approved", className: "bg-green-100 text-green-800" },
-  rejected: { label: "Rejected", className: "bg-red-100 text-red-700" },
+  pending: { label: "Pending review", className: "bg-yellow-100 dark:bg-amber-900/40 text-yellow-800 dark:text-yellow-300" },
+  approved: { label: "Approved", className: "bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-300" },
+  rejected: { label: "Rejected", className: "bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300" },
 };
 
 // "2026-10-07T16:20:00Z" -> "7 Oct 2026"
@@ -48,57 +48,59 @@ export default function MySubmissionsPage() {
   const [filter, setFilter] = useState<StatusFilter>("all");
 
   useEffect(() => {
+    async function loadSubmissions() {
+      // Not logged in -> send to login (same guard as /home).
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        router.replace("/login");
+        return;
+      }
+
+      // programmes(name) follows the programme_id foreign key and
+      // brings back the programme's name in the same request.
+      //
+      // .eq("submitted_by", user.id) is needed even with the new RLS policy:
+      // policies are OR-ed, so an ADMIN would also see other students'
+      // submissions here. This keeps the page "mine only" for everyone.
+      const { data, error } = await supabase
+        .from("resource_submissions")
+        .select(
+          "id, title, type, status, rejection_reason, file_path, created_at, reviewed_at, programmes(name)"
+        )
+        .eq("submitted_by", user.id)
+        .order("created_at", { ascending: false }); // newest first
+
+      if (error) {
+        console.error("Load submissions error:", error);
+        setError("Could not load your submissions.");
+      } else {
+        setSubmissions((data ?? []) as unknown as Submission[]);
+      }
+
+      setLoading(false);
+    }
+
+    // A "your upload was received" message left by the Submit page.
+    // It is shown once the list has loaded, then hides after 8 seconds.
     const savedNotice = sessionStorage.getItem("novelle:upload-notice");
+    let active = true;
+    let hideTimer: number | undefined;
 
-    if (savedNotice) {
-      setNotice(savedNotice);
+    loadSubmissions().then(() => {
+      if (!savedNotice || !active) return;
       sessionStorage.removeItem("novelle:upload-notice");
+      setNotice(savedNotice);
+      hideTimer = window.setTimeout(() => setNotice(""), 8000);
+    });
 
-      const timeout = window.setTimeout(() => setNotice(""), 8000);
-      loadSubmissions();
-      return () => window.clearTimeout(timeout);
-    }
-
-    loadSubmissions();
-  }, []);
-
-  async function loadSubmissions() {
-    setLoading(true);
-    setError("");
-
-    // Not logged in -> send to login (same guard as /home).
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      router.replace("/login");
-      return;
-    }
-
-    // programmes(name) follows the programme_id foreign key and
-    // brings back the programme's name in the same request.
-    //
-    // .eq("submitted_by", user.id) is needed even with the new RLS policy:
-    // policies are OR-ed, so an ADMIN would also see other students'
-    // submissions here. This keeps the page "mine only" for everyone.
-    const { data, error } = await supabase
-      .from("resource_submissions")
-      .select(
-        "id, title, type, status, rejection_reason, file_path, created_at, reviewed_at, programmes(name)"
-      )
-      .eq("submitted_by", user.id)
-      .order("created_at", { ascending: false }); // newest first
-
-    if (error) {
-      console.error("Load submissions error:", error);
-      setError("Could not load your submissions.");
-    } else {
-      setSubmissions((data ?? []) as unknown as Submission[]);
-    }
-
-    setLoading(false);
-  }
+    return () => {
+      active = false;
+      window.clearTimeout(hideTimer);
+    };
+  }, [router]);
 
   // Open the student's own PDF. Allowed by the storage policy from
   // migration 002 (files in submissions/<their-id>/).
@@ -131,13 +133,13 @@ export default function MySubmissionsPage() {
 
   return (
     
-<main className="min-h-full bg-[#FCFBF8] px-5 py-7 text-[#24344D] md:px-10 md:py-9 lg:px-12">
+<main className="min-h-full bg-[#FCFBF8] dark:bg-[#0E141D] px-5 py-7 text-[#24344D] dark:text-[#E5EAF1] md:px-10 md:py-9 lg:px-12">
 
       {notice && (
         <div
           role="status"
           aria-live="polite"
-          className="fixed right-5 top-5 z-50 flex max-w-[calc(100vw-2.5rem)] items-start gap-3 rounded-xl border border-green-200 bg-white px-4 py-3 text-sm text-green-800 shadow-lg sm:max-w-md"
+          className="fixed right-5 top-5 z-50 flex max-w-[calc(100vw-2.5rem)] items-start gap-3 rounded-xl border border-green-200 dark:border-green-900/60 bg-white dark:bg-[#172130] px-4 py-3 text-sm text-green-800 dark:text-green-300 shadow-lg sm:max-w-md"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -145,7 +147,7 @@ export default function MySubmissionsPage() {
             fill="none"
             stroke="currentColor"
             strokeWidth={1.8}
-            className="mt-0.5 h-5 w-5 shrink-0 text-green-600"
+            className="mt-0.5 h-5 w-5 shrink-0 text-green-600 dark:text-green-400"
             aria-hidden="true"
           >
             <path
@@ -160,7 +162,7 @@ export default function MySubmissionsPage() {
             type="button"
             onClick={() => setNotice("")}
             aria-label="Dismiss notification"
-            className="rounded-md px-1 text-lg leading-5 text-slate-400 transition hover:bg-green-50 hover:text-slate-700 focus:outline-none focus:ring-2 focus:ring-green-300"
+            className="rounded-md px-1 text-lg leading-5 text-slate-400 dark:text-[#6B788A] transition hover:bg-green-50 dark:hover:bg-green-950/40 hover:text-slate-700 dark:hover:text-[#B4BFCD] focus:outline-none focus:ring-2 focus:ring-green-300 dark:focus:ring-green-800"
           >
             ×
           </button>
@@ -169,7 +171,7 @@ export default function MySubmissionsPage() {
 
       <Link
         href="/profile"
-        className="mb-7 inline-flex items-center gap-2 rounded-xl border border-[#E7E5DF] bg-white px-4 py-2.5 text-sm font-medium text-[#294C78] shadow-sm transition hover:border-[#C8D5E7] hover:bg-[#E7EEF8] focus:outline-none focus:ring-2 focus:ring-[#294C78]/30"
+        className="mb-7 inline-flex items-center gap-2 rounded-xl border border-[#E7E5DF] dark:border-[#263345] bg-white dark:bg-[#172130] px-4 py-2.5 text-sm font-medium text-[#294C78] dark:text-[#9CB9E3] shadow-sm transition hover:border-[#C8D5E7] dark:hover:border-[#33445A] hover:bg-[#E7EEF8] dark:hover:bg-[#1E3150] focus:outline-none focus:ring-2 focus:ring-[#294C78]/30"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -192,10 +194,10 @@ export default function MySubmissionsPage() {
       {/* Header */}
       <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-[#24344D] md:text-4xl">
+          <h1 className="text-3xl font-bold tracking-tight text-[#24344D] dark:text-[#E5EAF1] md:text-4xl">
             My Submissions
           </h1>
-          <p className="mt-2 text-sm leading-6 text-slate-500">
+          <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-[#8B98AA]">
             Everything you have uploaded and where it is in the review.
           </p>
         </div>
@@ -214,7 +216,7 @@ export default function MySubmissionsPage() {
               className={
                 filter === option
                   ? "rounded-full bg-[#294C78] px-4 py-2 text-sm font-semibold text-white shadow-sm"
-                  : "rounded-full border border-[#E7E5DF] bg-white px-4 py-2 text-sm font-medium text-slate-600 transition hover:border-[#C8D5E7] hover:bg-[#F0F4FA]"
+                  : "rounded-full border border-[#E7E5DF] dark:border-[#263345] bg-white dark:bg-[#172130] px-4 py-2 text-sm font-medium text-slate-600 dark:text-[#B4BFCD] transition hover:border-[#C8D5E7] dark:hover:border-[#33445A] hover:bg-[#F0F4FA] dark:hover:bg-[#1D2938]"
               }
             >
               {option === "all"
@@ -227,24 +229,24 @@ export default function MySubmissionsPage() {
       </div>
 
       {error && (
-        <div role="alert" className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+        <div role="alert" className="mb-6 rounded-xl border border-red-200 dark:border-red-900/60 bg-red-50 dark:bg-red-950/40 px-4 py-3 text-sm font-medium text-red-700 dark:text-red-300">
           {error}
         </div>
       )}
 
       {loading ? (
-        <div className="rounded-2xl border border-[#E7E5DF] bg-white p-10 text-center text-sm text-slate-500 shadow-sm">
+        <div className="rounded-2xl border border-[#E7E5DF] dark:border-[#263345] bg-white dark:bg-[#172130] p-10 text-center text-sm text-slate-500 dark:text-[#8B98AA] shadow-sm">
           Loading your submissions...
         </div>
       ) : visible.length === 0 ? (
         // Empty state
-        <div className="rounded-2xl border border-[#E7E5DF] bg-white p-12 text-center shadow-sm">
-          <h3 className="text-lg font-semibold text-[#24344D]">
+        <div className="rounded-2xl border border-[#E7E5DF] dark:border-[#263345] bg-white dark:bg-[#172130] p-12 text-center shadow-sm">
+          <h3 className="text-lg font-semibold text-[#24344D] dark:text-[#E5EAF1]">
             {submissions.length === 0
               ? "You haven't uploaded anything yet"
               : "Nothing with this status"}
           </h3>
-          <p className="mt-2 text-sm text-slate-500">
+          <p className="mt-2 text-sm text-slate-500 dark:text-[#8B98AA]">
             Uploaded notes appear here while they are reviewed.
           </p>
           {submissions.length === 0 && (
@@ -265,11 +267,11 @@ export default function MySubmissionsPage() {
             return (
               <div
                 key={submission.id}
-                className="flex flex-col gap-4 rounded-2xl border border-[#E7E5DF] bg-white p-5 shadow-sm transition hover:border-[#C8D5E7] sm:flex-row sm:items-center sm:justify-between"
+                className="flex flex-col gap-4 rounded-2xl border border-[#E7E5DF] dark:border-[#263345] bg-white dark:bg-[#172130] p-5 shadow-sm transition hover:border-[#C8D5E7] dark:hover:border-[#33445A] sm:flex-row sm:items-center sm:justify-between"
               >
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="font-semibold text-[#24344D]">{submission.title}</h3>
+                    <h3 className="font-semibold text-[#24344D] dark:text-[#E5EAF1]">{submission.title}</h3>
                     <span
                       className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${status.className}`}
                     >
@@ -277,7 +279,7 @@ export default function MySubmissionsPage() {
                     </span>
                   </div>
 
-                  <p className="mt-1 text-sm leading-6 text-slate-500">
+                  <p className="mt-1 text-sm leading-6 text-slate-500 dark:text-[#8B98AA]">
                     {resourceTypeLabel(submission.type)}
                     {" · "}
                     {submission.programmes?.name ?? "Unknown programme"}
@@ -289,7 +291,7 @@ export default function MySubmissionsPage() {
 
                   {/* Only rejected submissions have a reason */}
                   {submission.status === "rejected" && (
-                    <p className="mt-2 text-sm text-red-700">
+                    <p className="mt-2 text-sm text-red-700 dark:text-red-300">
                       Reason:{" "}
                       {rejectionReasonLabel(submission.rejection_reason) ||
                         "No reason given"}
@@ -299,7 +301,7 @@ export default function MySubmissionsPage() {
 
                 <button
                   onClick={() => viewFile(submission.file_path)}
-                  className="shrink-0 rounded-lg border border-[#D9DEE7] px-4 py-2 text-sm font-semibold text-[#294C78] transition hover:bg-[#F0F4FA] focus:outline-none focus:ring-2 focus:ring-[#294C78]/30"
+                  className="shrink-0 rounded-lg border border-[#D9DEE7] dark:border-[#263345] px-4 py-2 text-sm font-semibold text-[#294C78] dark:text-[#9CB9E3] transition hover:bg-[#F0F4FA] dark:hover:bg-[#1D2938] focus:outline-none focus:ring-2 focus:ring-[#294C78]/30"
                 >
                   View
                 </button>

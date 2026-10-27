@@ -35,7 +35,7 @@ type Result = {
 export default function SearchPage() {
   return (
     <Suspense
-      fallback={<p className="p-10 text-sm text-gray-500">Loading search...</p>}
+      fallback={<p className="p-10 text-sm text-gray-500 dark:text-[#8B98AA]">Loading search...</p>}
     >
       <SearchResults />
     </Suspense>
@@ -52,9 +52,19 @@ function SearchResults() {
   const [error, setError] = useState("");
   const [fullName, setFullName] = useState("");
 
-  useEffect(() => {
-    runSearch();
-  }, [query]);
+  // These characters have special meaning inside Supabase's .or() filter
+  // text (and % / * are wildcards), so replace them with spaces.
+  const safeQuery = query.replace(/[%*,()"\\]/g, " ").trim();
+
+  // New search text: reset the page while rendering (React's recommended
+  // alternative to setting state inside the effect below).
+  const [searchedQuery, setSearchedQuery] = useState<string | null>(null);
+  if (searchedQuery !== safeQuery) {
+    setSearchedQuery(safeQuery);
+    setError("");
+    setLoading(safeQuery !== "");
+    if (!safeQuery) setResults([]);
+  }
 
   // The student's name for the welcome heading (same as /home).
   // Runs once; a missing name just leaves the heading without ", name".
@@ -77,46 +87,46 @@ function SearchResults() {
     loadName();
   }, []);
 
-  async function runSearch() {
-    setError("");
+  // Search again whenever the ?q= text changes.
+  useEffect(() => {
+    if (!safeQuery) return;
+    let cancelled = false;
 
-    // These characters have special meaning inside Supabase's .or() filter
-    // text (and % / * are wildcards), so replace them with spaces.
-    const safe = query.replace(/[%*,()"\\]/g, " ").trim();
+    async function runSearch() {
+      // ilike = case-insensitive "like"; %word% = "contains word".
+      // .or("a,b,c") = match if ANY of the three is true.
+      // The value is in double quotes so spaces in it are kept.
+      const pattern = `"%${safeQuery}%"`;
 
-    if (!safe) {
-      setResults([]);
-      return;
+      const { data, error: searchError } = await supabase
+        .from("resources")
+        .select(
+          "id, title, topic, type, module_name, year, semester, file_path, video_id, programmes(name)"
+        )
+        .or(
+          `title.ilike.${pattern},topic.ilike.${pattern},module_name.ilike.${pattern}`
+        )
+        .order("created_at", { ascending: false })
+        .limit(SEARCH_LIMIT);
+
+      if (cancelled) return; // a newer search has started
+
+      if (searchError) {
+        console.error("Search error:", searchError);
+        setError("Search failed. Please try again.");
+        setResults([]);
+      } else {
+        setResults((data ?? []) as unknown as Result[]);
+      }
+
+      setLoading(false);
     }
 
-    setLoading(true);
-
-    // ilike = case-insensitive "like"; %word% = "contains word".
-    // .or("a,b,c") = match if ANY of the three is true.
-    // The value is in double quotes so spaces in it are kept.
-    const pattern = `"%${safe}%"`;
-
-    const { data, error: searchError } = await supabase
-      .from("resources")
-      .select(
-        "id, title, topic, type, module_name, year, semester, file_path, video_id, programmes(name)"
-      )
-      .or(
-        `title.ilike.${pattern},topic.ilike.${pattern},module_name.ilike.${pattern}`
-      )
-      .order("created_at", { ascending: false })
-      .limit(SEARCH_LIMIT);
-
-    if (searchError) {
-      console.error("Search error:", searchError);
-      setError("Search failed. Please try again.");
-      setResults([]);
-    } else {
-      setResults((data ?? []) as unknown as Result[]);
-    }
-
-    setLoading(false);
-  }
+    runSearch();
+    return () => {
+      cancelled = true;
+    };
+  }, [safeQuery]);
 
   // Open (or download) a PDF through a short-lived signed link.
   async function openFile(filePath: string, download: boolean) {
@@ -135,30 +145,30 @@ function SearchResults() {
 
   return (
     // Same outer layout as /home: centred column, max width 7xl.
-    <main className="min-h-full bg-gray-200 px-8 py-10">
+    <main className="min-h-full bg-gray-200 dark:bg-[#263446] px-8 py-10">
       <div className="mx-auto max-w-7xl">
         {/* Welcome + search box, shared with /home so both look the same */}
         <WelcomeHeader name={fullName} initialQuery={query} />
 
         {error && (
-          <div className="mx-auto mt-6 max-w-2xl rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
+          <div className="mx-auto mt-6 max-w-2xl rounded-xl border border-red-200 dark:border-red-900/60 bg-red-50 dark:bg-red-950/40 px-4 py-3 text-sm font-medium text-red-600 dark:text-red-400">
             {error}
           </div>
         )}
 
         <div className="mt-12">
           {!query ? (
-            <p className="text-center text-sm text-gray-500">
+            <p className="text-center text-sm text-gray-500 dark:text-[#8B98AA]">
               Type a word above — a topic, title or module name.
             </p>
           ) : loading ? (
-            <p className="text-center text-sm text-gray-500">Searching...</p>
+            <p className="text-center text-sm text-gray-500 dark:text-[#8B98AA]">Searching...</p>
           ) : results.length === 0 ? (
-            <div className="rounded-xl border border-gray-200 bg-white py-12 text-center">
-              <p className="text-sm font-medium text-gray-700">
+            <div className="rounded-xl border border-gray-200 dark:border-[#263345] bg-white dark:bg-[#172130] py-12 text-center">
+              <p className="text-sm font-medium text-gray-700 dark:text-[#B4BFCD]">
                 No results for &ldquo;{query}&rdquo;
               </p>
-              <p className="mt-1 text-xs text-gray-500">
+              <p className="mt-1 text-xs text-gray-500 dark:text-[#8B98AA]">
                 Try a shorter word or a module name.
               </p>
             </div>
@@ -166,10 +176,10 @@ function SearchResults() {
             <>
               {/* Section heading, same style as "Available Notes" on /home */}
               <div className="mb-5">
-                <h2 className="text-xl font-semibold text-gray-900">
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-[#E5EAF1]">
                   Results for &ldquo;{query}&rdquo;
                 </h2>
-                <p className="mt-1 text-sm text-gray-500">
+                <p className="mt-1 text-sm text-gray-500 dark:text-[#8B98AA]">
                   {results.length === SEARCH_LIMIT
                     ? `Showing the first ${SEARCH_LIMIT} results.`
                     : `${results.length} ${results.length === 1 ? "result" : "results"} found.`}
@@ -181,7 +191,7 @@ function SearchResults() {
                 {results.map((r) => (
                   <div
                     key={r.id}
-                    className="flex flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
+                    className="flex flex-col overflow-hidden rounded-xl border border-gray-200 dark:border-[#263345] bg-white dark:bg-[#172130] shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
                   >
                     {/* Videos get their YouTube thumbnail */}
                     {r.type === "video" && r.video_id && (
@@ -190,20 +200,20 @@ function SearchResults() {
                         src={youTubeThumbnail(r.video_id)}
                         alt={r.title || r.topic}
                         loading="lazy"
-                        className="aspect-video w-full bg-gray-100 object-cover"
+                        className="aspect-video w-full bg-gray-100 dark:bg-[#1D2938] object-cover"
                       />
                     )}
 
                     <div className="flex min-h-[210px] flex-1 flex-col p-4">
-                      <span className="w-fit rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700">
+                      <span className="w-fit rounded-full bg-blue-50 dark:bg-blue-950/40 px-2 py-0.5 text-[10px] font-semibold text-blue-700 dark:text-blue-300">
                         {resourceTypeLabel(r.type)}
                       </span>
 
-                      <h3 className="mt-2 text-sm font-semibold text-gray-900">
+                      <h3 className="mt-2 text-sm font-semibold text-gray-900 dark:text-[#E5EAF1]">
                         {r.title || r.topic}
                       </h3>
 
-                      <p className="mt-2 text-xs leading-5 text-gray-500">
+                      <p className="mt-2 text-xs leading-5 text-gray-500 dark:text-[#8B98AA]">
                         {r.module_name || "Unknown Module"}
                       </p>
 
@@ -211,14 +221,14 @@ function SearchResults() {
                       {r.programmes && (
                         <Link
                           href={programmeHref(r.programmes.name)}
-                          className="text-xs text-blue-600 hover:underline"
+                          className="text-xs text-blue-600 dark:text-blue-300 hover:underline"
                         >
                           {r.programmes.name}
                         </Link>
                       )}
 
                       {/* Year / Semester, spread like the /home cards */}
-                      <div className="mt-3 flex items-center justify-between text-[10px] text-gray-400">
+                      <div className="mt-3 flex items-center justify-between text-[10px] text-gray-400 dark:text-[#6B788A]">
                         <span>Year {r.year}</span>
                         <span>Semester {r.semester}</span>
                       </div>
@@ -229,7 +239,7 @@ function SearchResults() {
                             href={youTubeWatchUrl(r.video_id)}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex-1 rounded-md bg-black px-2 py-2 text-center text-xs font-medium text-white hover:bg-gray-700"
+                            className="flex-1 rounded-md bg-black dark:bg-[#3A649C] px-2 py-2 text-center text-xs font-medium text-white hover:bg-gray-700 dark:hover:bg-[#33598C]"
                           >
                             Watch on YouTube
                           </a>
@@ -237,13 +247,13 @@ function SearchResults() {
                           <>
                             <button
                               onClick={() => openFile(r.file_path!, false)}
-                              className="flex-1 rounded-md bg-black px-2 py-2 text-xs font-medium text-white hover:bg-gray-700"
+                              className="flex-1 rounded-md bg-black dark:bg-[#3A649C] px-2 py-2 text-xs font-medium text-white hover:bg-gray-700 dark:hover:bg-[#33598C]"
                             >
                               View
                             </button>
                             <button
                               onClick={() => openFile(r.file_path!, true)}
-                              className="flex-1 rounded-md border border-gray-200 px-2 py-2 text-xs font-medium text-gray-600 hover:bg-gray-50"
+                              className="flex-1 rounded-md border border-gray-200 dark:border-[#263345] px-2 py-2 text-xs font-medium text-gray-600 dark:text-[#B4BFCD] hover:bg-gray-50 dark:hover:bg-[#1D2938]"
                             >
                               Download
                             </button>

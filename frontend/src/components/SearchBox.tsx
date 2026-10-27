@@ -36,7 +36,7 @@ export default function SearchBox({ initialQuery = "" }: SearchBoxProps) {
         onChange={(event) => setQuery(event.target.value)}
         placeholder="Search notes, papers, videos, modules..."
         aria-label="Search resources"
-        className="w-full rounded-2xl border border-black bg-white px-5 py-4 text-sm !text-black placeholder:!text-gray-500 shadow-md outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+        className="w-full rounded-2xl border border-black dark:border-slate-400 bg-white dark:bg-[#172130] px-5 py-4 text-sm !text-black dark:!text-[#E5EAF1] placeholder:!text-gray-500 dark:placeholder:!text-[#8B98AA] shadow-md outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100 dark:focus:ring-blue-900/60"
       />
 
 

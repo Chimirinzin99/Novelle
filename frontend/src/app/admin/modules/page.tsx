@@ -211,6 +211,8 @@ export default function ModulesPage() {
     };
 
     loadPage();
+    // Runs once per page visit; the load functions are recreated every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]);
 
   // ------------------------------------
@@ -504,16 +506,16 @@ export default function ModulesPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-gray-50 px-5 py-8 text-gray-900 md:px-8">
+      <main className="min-h-screen bg-gray-50 dark:bg-[#0E141D] px-5 py-8 text-gray-900 dark:text-[#E5EAF1] md:px-8">
         <div className="mx-auto max-w-6xl">
           <button
             type="button"
             onClick={() => router.push("/admin")}
-            className="mb-8 inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            className="mb-8 inline-flex items-center gap-2 rounded-xl border border-gray-200 dark:border-[#263345] bg-white dark:bg-[#172130] px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-[#B4BFCD] shadow-sm transition hover:bg-gray-100 dark:hover:bg-[#263446] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           >
             <ArrowLeft className="h-4 w-4" /> Back to Dashboard
           </button>
-          <p className="text-gray-500">Loading modules...</p>
+          <p className="text-gray-500 dark:text-[#8B98AA]">Loading modules...</p>
         </div>
       </main>
     );
@@ -535,7 +537,7 @@ export default function ModulesPage() {
   return (
     // text-gray-900: without it the text (and the form boxes, which inherit
     // it) takes the near-white dark-mode colour from globals.css.
-    <main className="min-h-screen bg-gray-50 px-8 py-8 text-gray-900">
+    <main className="min-h-screen bg-gray-50 dark:bg-[#0E141D] px-8 py-8 text-gray-900 dark:text-[#E5EAF1]">
       <div className="mx-auto max-w-6xl">
 
         {/* Header */}
@@ -544,29 +546,29 @@ export default function ModulesPage() {
             <button
               type="button"
               onClick={() => router.push("/admin")}
-              className="mb-5 inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              className="mb-5 inline-flex items-center gap-2 rounded-xl border border-gray-200 dark:border-[#263345] bg-white dark:bg-[#172130] px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-[#B4BFCD] shadow-sm transition hover:bg-gray-100 dark:hover:bg-[#263446] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
             >
               <ArrowLeft className="h-4 w-4" /> Back to Dashboard
             </button>
 
-            <p className="text-sm font-medium text-blue-600">
+            <p className="text-sm font-medium text-blue-600 dark:text-blue-300">
               Module Management
             </p>
 
-            <h1 className="mt-1 text-3xl font-bold text-gray-900">
+            <h1 className="mt-1 text-3xl font-bold text-gray-900 dark:text-[#E5EAF1]">
               Modules
             </h1>
 
             {/* Heading depends on the role (helpers in lib/roles.ts) */}
             {isProgrammeAdminRole(profile?.role) && (
-              <p className="mt-2 text-gray-500">
+              <p className="mt-2 text-gray-500 dark:text-[#8B98AA]">
                 Modules for {programmeName}. Only the super admin can add
                 or change modules.
               </p>
             )}
 
             {isSuperAdminRole(profile?.role) && (
-              <p className="mt-2 text-gray-500">
+              <p className="mt-2 text-gray-500 dark:text-[#8B98AA]">
                 Managing modules across all
                 programmes
               </p>
@@ -576,29 +578,29 @@ export default function ModulesPage() {
 
         {/* Error */}
         {error && (
-          <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <div className="mb-6 rounded-lg border border-red-200 dark:border-red-900/60 bg-red-50 dark:bg-red-950/40 px-4 py-3 text-sm text-red-700 dark:text-red-300">
             {error}
           </div>
         )}
 
         {/* Success */}
         {success && (
-          <div className="mb-6 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+          <div className="mb-6 rounded-lg border border-green-200 dark:border-green-900/60 bg-green-50 dark:bg-green-950/40 px-4 py-3 text-sm text-green-700 dark:text-green-400">
             {success}
           </div>
         )}
 
         {/* Add / Edit Form (super admin only) */}
         {canManage && (
-        <div className="mb-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+        <div className="mb-8 rounded-xl border border-gray-200 dark:border-[#263345] bg-white dark:bg-[#172130] p-6 shadow-sm">
           <div className="mb-5">
-            <h2 className="text-lg font-semibold text-gray-900">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-[#E5EAF1]">
               {editingId !== null
                 ? "Edit Module"
                 : "Add Module"}
             </h2>
 
-            <p className="mt-1 text-sm text-gray-500">
+            <p className="mt-1 text-sm text-gray-500 dark:text-[#8B98AA]">
               Enter the module information below.
             </p>
           </div>
@@ -609,7 +611,7 @@ export default function ModulesPage() {
           >
             {/* Programme: chosen when adding; locked when editing */}
             <div className="md:col-span-2">
-              <label className="mb-2 block text-sm font-medium text-gray-700">
+              <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-[#B4BFCD]">
                 Programme
               </label>
 
@@ -617,7 +619,7 @@ export default function ModulesPage() {
                 value={formProgrammeId}
                 onChange={(e) => setFormProgrammeId(e.target.value)}
                 disabled={editingId !== null}
-                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-gray-50 disabled:text-gray-500"
+                className="w-full rounded-lg border border-gray-300 dark:border-[#33445A] bg-white dark:bg-[#172130] px-4 py-2.5 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/60 disabled:bg-gray-50 dark:disabled:bg-[#0E141D] disabled:text-gray-500 dark:disabled:text-[#8B98AA]"
               >
                 <option value="">Select programme</option>
                 {programmes.map((p) => (
@@ -630,7 +632,7 @@ export default function ModulesPage() {
 
             {/* Module Code */}
             <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700">
+              <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-[#B4BFCD]">
                 Module Code
               </label>
 
@@ -641,13 +643,13 @@ export default function ModulesPage() {
                   setModuleCode(e.target.value)
                 }
                 placeholder="e.g. CSF101"
-                className="w-full rounded-lg border border-gray-300 px-4 py-2.5 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                className="w-full rounded-lg border border-gray-300 dark:border-[#33445A] px-4 py-2.5 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/60"
               />
             </div>
 
             {/* Module Name */}
             <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700">
+              <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-[#B4BFCD]">
                 Module Name
               </label>
 
@@ -658,13 +660,13 @@ export default function ModulesPage() {
                   setModuleName(e.target.value)
                 }
                 placeholder="e.g. Programming Fundamentals"
-                className="w-full rounded-lg border border-gray-300 px-4 py-2.5 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                className="w-full rounded-lg border border-gray-300 dark:border-[#33445A] px-4 py-2.5 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/60"
               />
             </div>
 
             {/* Year */}
             <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700">
+              <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-[#B4BFCD]">
                 Year
               </label>
 
@@ -673,7 +675,7 @@ export default function ModulesPage() {
                 onChange={(e) =>
                   setYear(e.target.value)
                 }
-                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                className="w-full rounded-lg border border-gray-300 dark:border-[#33445A] bg-white dark:bg-[#172130] px-4 py-2.5 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/60"
               >
                 <option value="">
                   Select year
@@ -695,7 +697,7 @@ export default function ModulesPage() {
 
             {/* Semester */}
             <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700">
+              <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-[#B4BFCD]">
                 Semester
               </label>
 
@@ -704,7 +706,7 @@ export default function ModulesPage() {
                 onChange={(e) =>
                   setSemester(e.target.value)
                 }
-                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                className="w-full rounded-lg border border-gray-300 dark:border-[#33445A] bg-white dark:bg-[#172130] px-4 py-2.5 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/60"
               >
                 <option value="">
                   Select semester
@@ -737,7 +739,7 @@ export default function ModulesPage() {
                   type="button"
                   onClick={clearForm}
                   disabled={saving}
-                  className="rounded-lg border border-gray-300 bg-white px-5 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                  className="rounded-lg border border-gray-300 dark:border-[#33445A] bg-white dark:bg-[#172130] px-5 py-2.5 text-sm font-medium text-gray-700 dark:text-[#B4BFCD] hover:bg-gray-50 dark:hover:bg-[#1D2938] disabled:opacity-50"
                 >
                   Cancel
                 </button>
@@ -748,13 +750,13 @@ export default function ModulesPage() {
         )}
 
         {/* Module List */}
-        <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
-          <div className="border-b border-gray-200 px-6 py-5">
-            <h2 className="text-lg font-semibold text-gray-900">
+        <div className="rounded-xl border border-gray-200 dark:border-[#263345] bg-white dark:bg-[#172130] shadow-sm">
+          <div className="border-b border-gray-200 dark:border-[#263345] px-6 py-5">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-[#E5EAF1]">
               Module List
             </h2>
 
-            <p className="mt-1 text-sm text-gray-500">
+            <p className="mt-1 text-sm text-gray-500 dark:text-[#8B98AA]">
               {visibleModules.length} module
               {visibleModules.length !== 1
                 ? "s"
@@ -766,7 +768,7 @@ export default function ModulesPage() {
               <select
                 value={listProgrammeId}
                 onChange={(e) => setListProgrammeId(e.target.value)}
-                className="mt-3 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500"
+                className="mt-3 rounded-lg border border-gray-300 dark:border-[#33445A] bg-white dark:bg-[#172130] px-3 py-2 text-sm outline-none focus:border-blue-500"
               >
                 <option value="">All programmes</option>
                 {programmes.map((p) => (
@@ -780,12 +782,12 @@ export default function ModulesPage() {
 
           {visibleModules.length === 0 ? (
             <div className="px-6 py-12 text-center">
-              <p className="text-gray-500">
+              <p className="text-gray-500 dark:text-[#8B98AA]">
                 No modules have been added yet.
               </p>
             </div>
           ) : (
-            <div className="divide-y divide-gray-100">
+            <div className="divide-y divide-gray-100 dark:divide-[#263345]">
               {visibleModules.map((module) => (
                 <div
                   key={module.id}
@@ -794,15 +796,15 @@ export default function ModulesPage() {
                   {/* Module Information */}
                   <div>
                     <div className="flex items-center gap-3">
-                      <h3 className="font-semibold text-gray-900">
+                      <h3 className="font-semibold text-gray-900 dark:text-[#E5EAF1]">
                         {module.module_code}
                       </h3>
 
                       <span
                         className={`rounded-full px-2.5 py-1 text-xs font-medium ${
                           module.active
-                            ? "bg-green-100 text-green-700"
-                            : "bg-gray-100 text-gray-500"
+                            ? "bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400"
+                            : "bg-gray-100 dark:bg-[#1D2938] text-gray-500 dark:text-[#8B98AA]"
                         }`}
                       >
                         {module.active
@@ -811,11 +813,11 @@ export default function ModulesPage() {
                       </span>
                     </div>
 
-                    <p className="mt-1 text-sm text-gray-600">
+                    <p className="mt-1 text-sm text-gray-600 dark:text-[#B4BFCD]">
                       {module.module_name}
                     </p>
 
-                    <p className="mt-1 text-xs text-gray-400">
+                    <p className="mt-1 text-xs text-gray-400 dark:text-[#6B788A]">
                       Year {module.year} ·
                       Semester{" "}
                       {module.semester}
@@ -832,7 +834,7 @@ export default function ModulesPage() {
                       onClick={() =>
                         handleEdit(module)
                       }
-                      className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                      className="rounded-lg border border-gray-300 dark:border-[#33445A] px-4 py-2 text-sm font-medium text-gray-700 dark:text-[#B4BFCD] hover:bg-gray-50 dark:hover:bg-[#1D2938]"
                     >
                       Edit
                     </button>
@@ -844,7 +846,7 @@ export default function ModulesPage() {
                             module
                           )
                         }
-                        className="rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
+                        className="rounded-lg border border-red-200 dark:border-red-900/60 px-4 py-2 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40"
                       >
                         Deactivate
                       </button>
@@ -855,7 +857,7 @@ export default function ModulesPage() {
                             module
                           )
                         }
-                        className="rounded-lg border border-green-200 px-4 py-2 text-sm font-medium text-green-600 hover:bg-green-50"
+                        className="rounded-lg border border-green-200 dark:border-green-900/60 px-4 py-2 text-sm font-medium text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-950/40"
                       >
                         Reactivate
                       </button>

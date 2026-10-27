@@ -215,12 +215,12 @@ export default function SubmitNotePage() {
   };
 
   return (
-    <main className="min-h-full bg-[#FCFBF8] px-4 py-4 sm:px-6 sm:py-5 xl:h-full xl:min-h-0 xl:overflow-hidden">
+    <main className="min-h-full bg-[#FCFBF8] dark:bg-[#0E141D] px-4 py-4 sm:px-6 sm:py-5 xl:h-full xl:min-h-0 xl:overflow-hidden">
       <div className="mx-auto flex min-h-full max-w-none flex-col xl:h-full xl:min-h-0">
         {/* Page introduction */}
         <div className="mb-4 flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
           <div>
-            <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-[#D9E3F1] bg-[#E7EEF8] px-3 py-1.5 text-xs font-semibold text-[#294C78]">
+            <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-[#D9E3F1] dark:border-[#263345] bg-[#E7EEF8] dark:bg-[#1E3150] px-3 py-1.5 text-xs font-semibold text-[#294C78] dark:text-[#9CB9E3]">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               viewBox="0 0 24 24"
@@ -238,11 +238,11 @@ export default function SubmitNotePage() {
             Contribute to your programme
             </div>
 
-            <h1 className="text-2xl font-bold tracking-tight text-[#24344D] sm:text-3xl">
+            <h1 className="text-2xl font-bold tracking-tight text-[#24344D] dark:text-[#E5EAF1] sm:text-3xl">
               Submit a Resource
             </h1>
 
-            <p className="mt-1 max-w-xl text-sm leading-5 text-slate-500">
+            <p className="mt-1 max-w-xl text-sm leading-5 text-slate-500 dark:text-[#8B98AA]">
               Share study materials with your programme. An admin will review
               your submission before it appears on Novelle.
             </p>
@@ -250,12 +250,12 @@ export default function SubmitNotePage() {
         </div>
 
         {/* Upload form card */}
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-[#E7E5DF] bg-white shadow-sm">
-          <div className="shrink-0 border-b border-[#E7E5DF] bg-[#FAFAF7] px-5 py-3 sm:px-7">
-            <h2 className="text-base font-semibold text-[#24344D]">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-[#E7E5DF] dark:border-[#263345] bg-white dark:bg-[#172130] shadow-sm">
+          <div className="shrink-0 border-b border-[#E7E5DF] dark:border-[#263345] bg-[#FAFAF7] dark:bg-[#0E141D] px-5 py-3 sm:px-7">
+            <h2 className="text-base font-semibold text-[#24344D] dark:text-[#E5EAF1]">
               Resource details
             </h2>
-            <p className="mt-1 text-sm text-slate-500">
+            <p className="mt-1 text-sm text-slate-500 dark:text-[#8B98AA]">
               Add a title, choose the resource type, and attach your PDF.
             </p>
           </div>
@@ -268,10 +268,10 @@ export default function SubmitNotePage() {
             <div className="xl:col-span-2">
               <label
                 htmlFor="note-title"
-                className="mb-2 block text-sm font-semibold text-[#24344D]"
+                className="mb-2 block text-sm font-semibold text-[#24344D] dark:text-[#E5EAF1]"
               >
                 Resource title
-                <span className="ml-1 text-red-500">*</span>
+                <span className="ml-1 text-red-500 dark:text-red-400">*</span>
               </label>
 
               <input
@@ -284,16 +284,16 @@ export default function SubmitNotePage() {
                 required
                 maxLength={120}
                 aria-describedby="title-help title-count"
-                className="w-full rounded-xl border border-[#DCDDD8] bg-white px-4 py-3 text-sm text-[#24344D] outline-none transition placeholder:text-slate-400 hover:border-[#C8D5E7] focus:border-[#456FAD] focus:ring-4 focus:ring-[#E7EEF8] disabled:cursor-not-allowed disabled:bg-gray-100"
+                className="w-full rounded-xl border border-[#DCDDD8] dark:border-[#263345] bg-white dark:bg-[#172130] px-4 py-3 text-sm text-[#24344D] dark:text-[#E5EAF1] outline-none transition placeholder:text-slate-400 dark:placeholder:text-[#6B788A] hover:border-[#C8D5E7] dark:hover:border-[#33445A] focus:border-[#456FAD] focus:ring-4 focus:ring-[#E7EEF8] dark:focus:ring-[#1E3150] disabled:cursor-not-allowed disabled:bg-gray-100 dark:disabled:bg-[#1D2938]"
               />
 
               <div className="mt-2 flex items-start justify-between gap-3">
-                <p id="title-help" className="text-xs text-slate-500">
+                <p id="title-help" className="text-xs text-slate-500 dark:text-[#8B98AA]">
                   Use a clear title so students can find your resource easily.
                 </p>
                 <span
                   id="title-count"
-                  className="shrink-0 text-xs tabular-nums text-slate-400"
+                  className="shrink-0 text-xs tabular-nums text-slate-400 dark:text-[#6B788A]"
                 >
                   {title.length}/120
                 </span>
@@ -304,10 +304,10 @@ export default function SubmitNotePage() {
             <div>
               <label
                 htmlFor="resource-type"
-                className="mb-2 block text-sm font-semibold text-[#24344D]"
+                className="mb-2 block text-sm font-semibold text-[#24344D] dark:text-[#E5EAF1]"
               >
                 Resource type
-                <span className="ml-1 text-red-500">*</span>
+                <span className="ml-1 text-red-500 dark:text-red-400">*</span>
               </label>
 
               <div className="relative">
@@ -318,7 +318,7 @@ export default function SubmitNotePage() {
                     setType(e.target.value as ResourceTypeCode)
                   }
                   disabled={loading}
-                  className="w-full appearance-none rounded-xl border border-[#DCDDD8] bg-white px-4 py-3 pr-11 text-sm text-[#24344D] outline-none transition hover:border-[#C8D5E7] focus:border-[#456FAD] focus:ring-4 focus:ring-[#E7EEF8] disabled:cursor-not-allowed disabled:bg-gray-100"
+                  className="w-full appearance-none rounded-xl border border-[#DCDDD8] dark:border-[#263345] bg-white dark:bg-[#172130] px-4 py-3 pr-11 text-sm text-[#24344D] dark:text-[#E5EAF1] outline-none transition hover:border-[#C8D5E7] dark:hover:border-[#33445A] focus:border-[#456FAD] focus:ring-4 focus:ring-[#E7EEF8] dark:focus:ring-[#1E3150] disabled:cursor-not-allowed disabled:bg-gray-100 dark:disabled:bg-[#1D2938]"
                 >
                   {STUDENT_SUBMIT_TYPES.map((t) => (
                     <option key={t.code} value={t.code}>
@@ -333,7 +333,7 @@ export default function SubmitNotePage() {
                   fill="none"
                   stroke="currentColor"
                   strokeWidth={2}
-                  className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+                  className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-[#6B788A]"
                 >
                   <path
                     strokeLinecap="round"
@@ -343,7 +343,7 @@ export default function SubmitNotePage() {
                 </svg>
               </div>
 
-              <p className="mt-2 text-xs text-slate-400">
+              <p className="mt-2 text-xs text-slate-400 dark:text-[#6B788A]">
                 Choose whether you are submitting notes, a question paper,
                 or an assignment.
               </p>
@@ -353,20 +353,20 @@ export default function SubmitNotePage() {
             <div className="xl:row-span-2">
               <label
                 htmlFor="pdf-file"
-                className="mb-2 block text-sm font-semibold text-[#24344D]"
+                className="mb-2 block text-sm font-semibold text-[#24344D] dark:text-[#E5EAF1]"
               >
                 PDF document
-                <span className="ml-1 text-red-500">*</span>
+                <span className="ml-1 text-red-500 dark:text-red-400">*</span>
               </label>
 
               <label
                 htmlFor="pdf-file"
                 className={`flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed px-5 py-8 text-center transition ${
                   file
-                    ? "border-[#A9C2E2] bg-[#F5F8FD]"
+                    ? "border-[#A9C2E2] dark:border-[#33445A] bg-[#F5F8FD] dark:bg-[#1D2938]"
                     : isDragging
-                      ? "border-[#456FAD] bg-[#E7EEF8]"
-                      : "border-[#D9DEE7] bg-[#FAFBFD] hover:border-[#A9C2E2] hover:bg-[#F5F8FD]"
+                      ? "border-[#456FAD] bg-[#E7EEF8] dark:bg-[#1E3150]"
+                      : "border-[#D9DEE7] dark:border-[#263345] bg-[#FAFBFD] dark:bg-[#0E141D] hover:border-[#A9C2E2] dark:hover:border-[#33445A] hover:bg-[#F5F8FD] dark:hover:bg-[#1D2938]"
                 } ${loading ? "pointer-events-none opacity-60" : ""}`}
                 onDragOver={(e) => {
                   e.preventDefault();
@@ -382,7 +382,7 @@ export default function SubmitNotePage() {
                   if (!loading) selectFile(e.dataTransfer.files?.[0] || null);
                 }}
               >
-                <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-[#E7EEF8] text-[#294C78]">
+                <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-[#E7EEF8] dark:bg-[#1E3150] text-[#294C78] dark:text-[#9CB9E3]">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     viewBox="0 0 24 24"
@@ -401,26 +401,26 @@ export default function SubmitNotePage() {
 
                 {file ? (
                   <>
-                    <span className="max-w-full break-all text-sm font-semibold text-[#294C78]">
+                    <span className="max-w-full break-all text-sm font-semibold text-[#294C78] dark:text-[#9CB9E3]">
                       {file.name}
                     </span>
-                    <span className="mt-1 text-xs text-slate-500">
+                    <span className="mt-1 text-xs text-slate-500 dark:text-[#8B98AA]">
                       {(file.size / (1024 * 1024)).toFixed(2)} MB ·
                       Selected successfully
                     </span>
-                    <span className="mt-3 text-xs font-semibold text-[#456FAD]">
+                    <span className="mt-3 text-xs font-semibold text-[#456FAD] dark:text-[#86A8DA]">
                       Choose a different file
                     </span>
                   </>
                 ) : (
                   <>
-                    <span className="text-sm font-semibold text-[#24344D]">
+                    <span className="text-sm font-semibold text-[#24344D] dark:text-[#E5EAF1]">
                       Drop your PDF here or click to browse
                     </span>
-                    <span className="mt-1 text-xs text-slate-500">
+                    <span className="mt-1 text-xs text-slate-500 dark:text-[#8B98AA]">
                       Choose a file from your computer
                     </span>
-                    <span className="mt-3 rounded-lg border border-[#D9DEE7] bg-white px-3 py-1.5 text-xs font-medium text-[#294C78]">
+                    <span className="mt-3 rounded-lg border border-[#D9DEE7] dark:border-[#263345] bg-white dark:bg-[#172130] px-3 py-1.5 text-xs font-medium text-[#294C78] dark:text-[#9CB9E3]">
                       Browse files
                     </span>
                   </>
@@ -439,7 +439,7 @@ export default function SubmitNotePage() {
                 />
               </label>
 
-              <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500 dark:text-[#8B98AA]">
                 <span>PDF format</span>
                 <span>5 MB maximum</span>
               </div>
@@ -449,7 +449,7 @@ export default function SubmitNotePage() {
                   type="button"
                   onClick={removeFile}
                   disabled={loading}
-                  className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 transition hover:text-red-600 focus:outline-none focus:ring-2 focus:ring-red-300 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 dark:text-[#8B98AA] transition hover:text-red-600 dark:hover:text-red-400 focus:outline-none focus:ring-2 focus:ring-red-300 dark:focus:ring-red-800 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -472,14 +472,14 @@ export default function SubmitNotePage() {
             </div>
 
             {/* Review notice */}
-            <div className="flex gap-3 rounded-xl border border-[#D9E3F1] bg-[#F5F8FD] p-4">
+            <div className="flex gap-3 rounded-xl border border-[#D9E3F1] dark:border-[#263345] bg-[#F5F8FD] dark:bg-[#1D2938] p-4">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
                 strokeWidth={1.8}
-                className="mt-0.5 h-5 w-5 shrink-0 text-[#456FAD]"
+                className="mt-0.5 h-5 w-5 shrink-0 text-[#456FAD] dark:text-[#86A8DA]"
               >
                 <circle cx="12" cy="12" r="9" />
                 <path
@@ -490,10 +490,10 @@ export default function SubmitNotePage() {
               </svg>
 
               <div>
-                <p className="text-sm font-semibold text-[#294C78]">
+                <p className="text-sm font-semibold text-[#294C78] dark:text-[#9CB9E3]">
                   Admin review required
                 </p>
-                <p className="mt-1 text-xs leading-5 text-slate-600">
+                <p className="mt-1 text-xs leading-5 text-slate-600 dark:text-[#B4BFCD]">
                   Your resource will remain pending until an admin reviews
                   it. Once approved, it can become available to students
                   in your programme.
@@ -505,7 +505,7 @@ export default function SubmitNotePage() {
             {error && (
               <div
                 role="alert"
-                className="flex gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 xl:col-span-2"
+                className="flex gap-3 rounded-xl border border-red-200 dark:border-red-900/60 bg-red-50 dark:bg-red-950/40 px-4 py-3 text-sm text-red-700 dark:text-red-300 xl:col-span-2"
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -530,7 +530,7 @@ export default function SubmitNotePage() {
             {message && (
               <div
                 role="status"
-                className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700 xl:col-span-2"
+                className="rounded-xl border border-green-200 dark:border-green-900/60 bg-green-50 dark:bg-green-950/40 px-4 py-3 text-sm text-green-700 dark:text-green-400 xl:col-span-2"
               >
                 {message}
               </div>
@@ -541,7 +541,7 @@ export default function SubmitNotePage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="flex w-full flex-1 items-center justify-center gap-2 rounded-xl bg-[#294C78] px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#203B60] focus:outline-none focus:ring-4 focus:ring-[#E7EEF8] disabled:cursor-not-allowed disabled:opacity-60"
+                className="flex w-full flex-1 items-center justify-center gap-2 rounded-xl bg-[#294C78] px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#203B60] focus:outline-none focus:ring-4 focus:ring-[#E7EEF8] dark:focus:ring-[#1E3150] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {loading ? (
                   <>
@@ -592,13 +592,13 @@ export default function SubmitNotePage() {
                 type="button"
                 onClick={clearForm}
                 disabled={loading}
-                className="rounded-xl border border-[#D9DEE7] bg-white px-5 py-3 text-sm font-semibold text-[#294C78] transition hover:bg-[#F0F4FA] focus:outline-none focus:ring-2 focus:ring-[#294C78]/30 disabled:cursor-not-allowed disabled:opacity-60"
+                className="rounded-xl border border-[#D9DEE7] dark:border-[#263345] bg-white dark:bg-[#172130] px-5 py-3 text-sm font-semibold text-[#294C78] dark:text-[#9CB9E3] transition hover:bg-[#F0F4FA] dark:hover:bg-[#1D2938] focus:outline-none focus:ring-2 focus:ring-[#294C78]/30 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 Clear form
               </button>
             </div>
 
-            <p className="text-center text-xs text-slate-400 xl:col-span-2">
+            <p className="text-center text-xs text-slate-400 dark:text-[#6B788A] xl:col-span-2">
               By submitting, you confirm that this resource is suitable
               for sharing with students.
             </p>

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import ThemeToggle from "@/components/ThemeToggle";
 
 // /reset-password does two jobs:
 //
@@ -150,26 +151,30 @@ export default function ResetPasswordPage() {
   };
 
   const inputClass =
-    "w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder:text-gray-400 outline-none focus:border-black focus:ring-1 focus:ring-black";
+    "w-full rounded-lg border border-gray-300 dark:border-[#33445A] bg-white dark:bg-[#172130] px-4 py-3 text-gray-900 dark:text-[#E5EAF1] placeholder:text-gray-400 dark:placeholder:text-[#6B788A] outline-none focus:border-black dark:focus:border-slate-400 focus:ring-1 focus:ring-black dark:focus:ring-slate-400";
 
   const buttonClass =
-    "w-full rounded-lg bg-black py-3 font-medium text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50";
+    "w-full rounded-lg bg-black dark:bg-[#3A649C] py-3 font-medium text-white transition hover:bg-gray-800 dark:hover:bg-[#33598C] disabled:cursor-not-allowed disabled:opacity-50";
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-gray-50 px-6">
-      <div className="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
+    <main className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-[#0E141D] px-6">
+      <div className="fixed right-4 top-4 z-50">
+        <ThemeToggle variant="icon" />
+      </div>
+
+      <div className="w-full max-w-md rounded-2xl border border-gray-200 dark:border-[#263345] bg-white dark:bg-[#172130] p-8 shadow-sm">
         {mode === "checking" && (
-          <p className="text-center text-sm text-gray-500">Checking link...</p>
+          <p className="text-center text-sm text-gray-500 dark:text-[#8B98AA]">Checking link...</p>
         )}
 
         {/* Forgot password: ask for the email */}
         {mode === "request" && (
           <>
             <div className="mb-8 text-center">
-              <h1 className="text-3xl font-bold text-gray-900">
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-[#E5EAF1]">
                 Reset your password
               </h1>
-              <p className="mt-2 text-sm text-gray-500">
+              <p className="mt-2 text-sm text-gray-500 dark:text-[#8B98AA]">
                 Enter your RUB email and we&apos;ll send you a link to choose a
                 new password.
               </p>
@@ -179,7 +184,7 @@ export default function ResetPasswordPage() {
               <div>
                 <label
                   htmlFor="email"
-                  className="mb-2 block text-sm font-medium text-gray-700"
+                  className="mb-2 block text-sm font-medium text-gray-700 dark:text-[#B4BFCD]"
                 >
                   RUB Email
                 </label>
@@ -195,7 +200,7 @@ export default function ResetPasswordPage() {
               </div>
 
               {error && (
-                <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">
+                <div className="rounded-lg bg-red-50 dark:bg-red-950/40 px-4 py-3 text-sm text-red-600 dark:text-red-400">
                   {error}
                 </div>
               )}
@@ -210,12 +215,12 @@ export default function ResetPasswordPage() {
         {/* Email sent */}
         {mode === "sent" && (
           <div className="text-center">
-            <h1 className="text-2xl font-bold text-gray-900">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-[#E5EAF1]">
               Check your email
             </h1>
-            <p className="mt-3 text-sm leading-6 text-gray-500">
+            <p className="mt-3 text-sm leading-6 text-gray-500 dark:text-[#8B98AA]">
               If an account exists for{" "}
-              <span className="font-medium text-gray-900">
+              <span className="font-medium text-gray-900 dark:text-[#E5EAF1]">
                 {email.trim().toLowerCase()}
               </span>
               , you&apos;ll get an email with a reset link. Open it on this
@@ -228,10 +233,10 @@ export default function ResetPasswordPage() {
         {mode === "update" && (
           <>
             <div className="mb-8 text-center">
-              <h1 className="text-3xl font-bold text-gray-900">
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-[#E5EAF1]">
                 Choose a new password
               </h1>
-              <p className="mt-2 text-sm text-gray-500">
+              <p className="mt-2 text-sm text-gray-500 dark:text-[#8B98AA]">
                 Use at least {MIN_PASSWORD_LENGTH} characters.
               </p>
             </div>
@@ -240,7 +245,7 @@ export default function ResetPasswordPage() {
               <div>
                 <label
                   htmlFor="password"
-                  className="mb-2 block text-sm font-medium text-gray-700"
+                  className="mb-2 block text-sm font-medium text-gray-700 dark:text-[#B4BFCD]"
                 >
                   New password
                 </label>
@@ -258,7 +263,7 @@ export default function ResetPasswordPage() {
               <div>
                 <label
                   htmlFor="confirmPassword"
-                  className="mb-2 block text-sm font-medium text-gray-700"
+                  className="mb-2 block text-sm font-medium text-gray-700 dark:text-[#B4BFCD]"
                 >
                   Confirm new password
                 </label>
@@ -274,7 +279,7 @@ export default function ResetPasswordPage() {
               </div>
 
               {error && (
-                <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">
+                <div className="rounded-lg bg-red-50 dark:bg-red-950/40 px-4 py-3 text-sm text-red-600 dark:text-red-400">
                   {error}
                 </div>
               )}
@@ -289,10 +294,10 @@ export default function ResetPasswordPage() {
         {/* Password changed */}
         {mode === "done" && (
           <div className="text-center">
-            <h1 className="text-2xl font-bold text-gray-900">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-[#E5EAF1]">
               Password updated
             </h1>
-            <p className="mt-3 text-sm text-gray-500">
+            <p className="mt-3 text-sm text-gray-500 dark:text-[#8B98AA]">
               You can now log in with your new password.
             </p>
             <button
@@ -306,11 +311,11 @@ export default function ResetPasswordPage() {
         )}
 
         {mode !== "done" && mode !== "checking" && (
-          <p className="mt-6 text-center text-sm text-gray-500">
+          <p className="mt-6 text-center text-sm text-gray-500 dark:text-[#8B98AA]">
             Remembered it?{" "}
             <a
               href="/login"
-              className="font-medium text-black hover:underline"
+              className="font-medium text-black dark:text-[#E5EAF1] hover:underline"
             >
               Back to login
             </a>

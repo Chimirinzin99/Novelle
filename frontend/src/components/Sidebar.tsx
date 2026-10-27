@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
+import ThemeToggle from "@/components/ThemeToggle";
 import { supabase } from "@/lib/supabase";
 import { programmeHref } from "@/lib/programmes";
 import {
@@ -155,8 +156,8 @@ function navClass(active: boolean) {
     "group flex w-full items-center gap-3 rounded-xl px-3 py-2.5",
     "text-sm transition-colors duration-150",
     active
-      ? "bg-[#E7EEF8] font-semibold text-[#294C78]"
-      : "text-slate-600 hover:bg-[#F0F2F5] hover:text-slate-900",
+      ? "bg-[#E7EEF8] dark:bg-[#1E3150] font-semibold text-[#294C78] dark:text-[#9CB9E3]"
+      : "text-slate-600 dark:text-[#B4BFCD] hover:bg-[#F0F2F5] dark:hover:bg-[#1D2938] hover:text-slate-900 dark:hover:text-[#E5EAF1]",
   ].join(" ");
 }
 
@@ -302,13 +303,13 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="sticky top-0 z-40 flex h-screen w-64 shrink-0 flex-col border-r border-[#E7E5DF] bg-[#FCFBF8] px-4 py-5">
+    <aside className="sticky top-0 z-40 flex h-screen w-64 shrink-0 flex-col border-r border-[#E7E5DF] dark:border-[#263345] bg-[#FCFBF8] dark:bg-[#0E141D] px-4 py-5">
       {/* Brand */}
       <Link
         href="/home"
         className="mb-8 flex shrink-0 items-center gap-3 rounded-xl px-2 py-1"
       >
-        <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[#E7E5DF] bg-[#FFFCF6] shadow-sm">
+        <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[#E7E5DF] dark:border-[#263345] bg-[#FFFCF6] shadow-sm">
           <Image
             src="/novelle-logo.jpeg"
             alt="Novelle logo"
@@ -320,10 +321,10 @@ export default function Sidebar() {
         </span>
 
         <span>
-          <span className="block text-xl font-bold tracking-tight text-[#24344D]">
+          <span className="block text-xl font-bold tracking-tight text-[#24344D] dark:text-[#E5EAF1]">
             Novelle
           </span>
-          <span className="mt-0.5 block text-[11px] text-slate-500">
+          <span className="mt-0.5 block text-[11px] text-slate-500 dark:text-[#8B98AA]">
             CST Learning Hub
           </span>
         </span>
@@ -341,7 +342,7 @@ export default function Sidebar() {
           className={
             pathname === "/submit-note"
               ? navClass(true)
-              : "group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-blue-600 transition-colors hover:bg-blue-50"
+              : "group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-blue-600 dark:text-blue-300 transition-colors hover:bg-blue-50 dark:hover:bg-blue-950/40"
           }
         >
           <span className="text-xl font-semibold leading-none">+</span>
@@ -352,7 +353,7 @@ export default function Sidebar() {
       {/* My Account */}
       <section className="mt-8 shrink-0">
         <div className="mb-3 flex items-center justify-between px-3">
-          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-600">
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-600 dark:text-[#B4BFCD]">
             My Account
           </p>
 
@@ -364,7 +365,7 @@ export default function Sidebar() {
                 unreadCount ? `, ${unreadCount} unread` : ""
               }`}
               aria-expanded={notificationsOpen}
-              className="relative rounded-lg p-1.5 text-slate-500 transition hover:bg-[#F0F2F5] hover:text-[#294C78] focus:outline-none focus:ring-2 focus:ring-[#294C78]/30"
+              className="relative rounded-lg p-1.5 text-slate-500 dark:text-[#8B98AA] transition hover:bg-[#F0F2F5] dark:hover:bg-[#1D2938] hover:text-[#294C78] dark:hover:text-[#9CB9E3] focus:outline-none focus:ring-2 focus:ring-[#294C78]/30"
             >
               <Icon name="bell" className="h-5 w-5" />
 
@@ -379,10 +380,10 @@ export default function Sidebar() {
               <div
                 role="dialog"
                 aria-label="Notifications"
-                className="absolute left-[calc(100%+0.75rem)] top-0 z-[60] w-80 max-w-[calc(100vw-18rem)] overflow-hidden rounded-2xl border border-[#E7E5DF] bg-white shadow-xl"
+                className="absolute left-[calc(100%+0.75rem)] top-0 z-[60] w-80 max-w-[calc(100vw-18rem)] overflow-hidden rounded-2xl border border-[#E7E5DF] dark:border-[#263345] bg-white dark:bg-[#172130] shadow-xl"
               >
-                <div className="flex items-center justify-between border-b border-[#F0EEE8] px-4 py-3">
-                  <h2 className="text-sm font-semibold text-[#24344D]">
+                <div className="flex items-center justify-between border-b border-[#F0EEE8] dark:border-[#263345] px-4 py-3">
+                  <h2 className="text-sm font-semibold text-[#24344D] dark:text-[#E5EAF1]">
                     Notifications
                   </h2>
 
@@ -393,7 +394,7 @@ export default function Sidebar() {
                         markAllNotificationsRead();
                         setNotifications(getNotifications());
                       }}
-                      className="text-xs font-medium text-[#456FAD] hover:text-[#294C78]"
+                      className="text-xs font-medium text-[#456FAD] dark:text-[#86A8DA] hover:text-[#294C78] dark:hover:text-[#9CB9E3]"
                     >
                       Mark all read
                     </button>
@@ -401,18 +402,18 @@ export default function Sidebar() {
                 </div>
 
                 {notifications.length === 0 ? (
-                  <p className="px-4 py-8 text-center text-sm text-slate-500">
+                  <p className="px-4 py-8 text-center text-sm text-slate-500 dark:text-[#8B98AA]">
                     You’re all caught up.
                   </p>
                 ) : (
-                  <ul className="max-h-72 divide-y divide-[#F0EEE8] overflow-y-auto">
+                  <ul className="max-h-72 divide-y divide-[#F0EEE8] dark:divide-[#263345] overflow-y-auto">
                     {notifications.map((notification) => (
                       <li key={notification.id}>
                         <button
                           type="button"
                           onClick={() => openNotification(notification)}
-                          className={`flex w-full items-start gap-3 px-4 py-3 text-left transition hover:bg-[#F5F8FD] ${
-                            notification.read ? "bg-white" : "bg-[#F5F8FD]"
+                          className={`flex w-full items-start gap-3 px-4 py-3 text-left transition hover:bg-[#F5F8FD] dark:hover:bg-[#1D2938] ${
+                            notification.read ? "bg-white dark:bg-[#172130]" : "bg-[#F5F8FD] dark:bg-[#1D2938]"
                           }`}
                         >
                           <span
@@ -425,13 +426,13 @@ export default function Sidebar() {
                           />
 
                           <span className="min-w-0">
-                            <span className="block text-sm leading-5 text-[#24344D]">
+                            <span className="block text-sm leading-5 text-[#24344D] dark:text-[#E5EAF1]">
                               {notification.message}
                             </span>
 
                             <time
                               dateTime={notification.createdAt}
-                              className="mt-1 block text-xs text-slate-400"
+                              className="mt-1 block text-xs text-slate-400 dark:text-[#6B788A]"
                             >
                               {new Date(
                                 notification.createdAt
@@ -462,20 +463,20 @@ export default function Sidebar() {
       {/* Scrollable programmes with zoom-on-scroll */}
       <section className="mt-8 flex min-h-0 flex-1 flex-col">
         <div className="mb-3 flex shrink-0 items-center justify-between px-3">
-          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-600">
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-600 dark:text-[#B4BFCD]">
             Programmes
           </p>
 
           <Icon
             name="graduation"
-            className="h-4 w-4 text-slate-600"
+            className="h-4 w-4 text-slate-600 dark:text-[#B4BFCD]"
           />
         </div>
 
         <nav
           ref={programmeListRef}
           onScroll={updateProgrammeZoom}
-          className="min-h-0 flex-1 space-y-0 overflow-y-auto overflow-x-hidden pr-1 [scrollbar-color:#D5D9E0_transparent] [scrollbar-width:thin]"
+          className="min-h-0 flex-1 space-y-0 overflow-y-auto overflow-x-hidden pr-1 [scrollbar-color:#D5D9E0_transparent] dark:[scrollbar-color:#33445A_transparent] [scrollbar-width:thin]"
           aria-label="Programmes"
         >
           {PROGRAMMES.map((programme, index) => {
@@ -500,8 +501,8 @@ export default function Sidebar() {
                     ? "scale-[1.04] opacity-100"
                     : "scale-[0.96] opacity-75",
                   active
-                    ? "bg-[#E7EEF8] font-semibold text-[#294C78]"
-                    : "text-slate-600 hover:bg-[#F0F2F5] hover:text-slate-900",
+                    ? "bg-[#E7EEF8] dark:bg-[#1E3150] font-semibold text-[#294C78] dark:text-[#9CB9E3]"
+                    : "text-slate-600 dark:text-[#B4BFCD] hover:bg-[#F0F2F5] dark:hover:bg-[#1D2938] hover:text-slate-900 dark:hover:text-[#E5EAF1]",
                 ].join(" ")}
               >
                 <span
@@ -509,7 +510,7 @@ export default function Sidebar() {
                     "h-1.5 w-1.5 shrink-0 rounded-full transition-colors",
                     active
                       ? "bg-[#456FAD]"
-                      : "bg-slate-300 group-hover:bg-slate-500",
+                      : "bg-slate-300 dark:bg-slate-600 group-hover:bg-slate-500",
                   ].join(" ")}
                 />
 
@@ -520,11 +521,11 @@ export default function Sidebar() {
                 {active && (
                   <Icon
                     name="chevron"
-                    className="h-4 w-4 shrink-0 text-[#456FAD]"
+                    className="h-4 w-4 shrink-0 text-[#456FAD] dark:text-[#86A8DA]"
                   />
                 )}
 
-                <span className="pointer-events-none absolute bottom-0 left-3 right-3 border-b border-[#E7E5DF]" />
+                <span className="pointer-events-none absolute bottom-0 left-3 right-3 border-b border-[#E7E5DF] dark:border-[#263345]" />
               </Link>
             );
           })}
@@ -532,7 +533,7 @@ export default function Sidebar() {
       </section>
 
       {/* Bottom actions */}
-      <div className="mt-4 shrink-0 border-t border-[#E7E5DF] pt-4">
+      <div className="mt-4 shrink-0 border-t border-[#E7E5DF] dark:border-[#263345] pt-4">
         <Link
           href="/settings"
           className={navClass(pathname === "/settings")}
@@ -541,11 +542,13 @@ export default function Sidebar() {
           <span>Settings</span>
         </Link>
 
+        <ThemeToggle className={`mt-1 ${navClass(false)}`} />
+
         {loggedIn ? (
           <button
             type="button"
             onClick={handleLogout}
-            className="mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-slate-600 transition-colors hover:bg-red-50 hover:text-red-600"
+            className="mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-slate-600 dark:text-[#B4BFCD] transition-colors hover:bg-red-50 dark:hover:bg-red-950/40 hover:text-red-600 dark:hover:text-red-400"
           >
             <Icon name="logout" />
             <span>Logout</span>

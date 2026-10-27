@@ -1,3 +1,5 @@
+import { writeStoredPreference } from "@/lib/storedPreference";
+
 export type AppNotification = {
   id: string;
   message: string;
@@ -8,7 +10,8 @@ export type AppNotification = {
 
 const STORAGE_KEY = "novelle:notifications";
 const NOTIFICATIONS_EVENT = "novelle:notifications-updated";
-const PREFERENCES_KEY = "novelle:notification-preferences";
+export const NOTIFICATION_PREFERENCES_KEY = "novelle:notification-preferences";
+const PREFERENCES_KEY = NOTIFICATION_PREFERENCES_KEY;
 
 export type NotificationPreferences = {
   inApp: boolean;
@@ -20,10 +23,11 @@ const DEFAULT_PREFERENCES: NotificationPreferences = {
   uploadUpdates: true,
 };
 
-export function getNotificationPreferences(): NotificationPreferences {
-  if (typeof window === "undefined") return DEFAULT_PREFERENCES;
+// Turns the saved JSON text into preferences (missing values default to on).
+export function parseNotificationPreferences(
+  stored: string | null
+): NotificationPreferences {
   try {
-    const stored = window.localStorage.getItem(PREFERENCES_KEY);
     const value = stored ? JSON.parse(stored) : {};
     return {
       inApp: typeof value.inApp === "boolean" ? value.inApp : true,
@@ -35,11 +39,20 @@ export function getNotificationPreferences(): NotificationPreferences {
   }
 }
 
+export function getNotificationPreferences(): NotificationPreferences {
+  if (typeof window === "undefined") return DEFAULT_PREFERENCES;
+  try {
+    return parseNotificationPreferences(window.localStorage.getItem(PREFERENCES_KEY));
+  } catch {
+    return DEFAULT_PREFERENCES;
+  }
+}
+
 export function saveNotificationPreferences(
   preferences: NotificationPreferences
 ) {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(PREFERENCES_KEY, JSON.stringify(preferences));
+  writeStoredPreference(PREFERENCES_KEY, JSON.stringify(preferences));
 }
 
 function isAppNotification(value: unknown): value is AppNotification {

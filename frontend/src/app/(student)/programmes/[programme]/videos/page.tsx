@@ -35,88 +35,94 @@ export default function VideosPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  // Show the loading state again when the page switches to another
+  // programme (Next.js keeps this component mounted between them).
+  const [loadedSlug, setLoadedSlug] = useState(programmeSlug);
+  if (loadedSlug !== programmeSlug) {
+    setLoadedSlug(programmeSlug);
+    setLoading(true);
+    setError("");
+  }
+
   const [selectedYear, setSelectedYear] = useState("All Years");
   const [selectedSemester, setSelectedSemester] = useState("All Semesters");
   const [selectedModule, setSelectedModule] = useState("All Modules");
 
   useEffect(() => {
+    async function fetchVideos() {
+      // 1. Find the programme whose slugified name matches the URL slug.
+      const programmeData = await findProgrammeBySlug(programmeSlug);
+
+      if (!programmeData) {
+        setError(`Unable to find programme "${programmeSlug}".`);
+        setLoading(false);
+        return;
+      }
+
+      setProgramme(programmeData.name);
+
+      // 2. This programme's videos, newest first.
+      const { data, error: videosError } = await supabase
+        .from("resources")
+        .select("id, topic, year, semester, module_name, video_id")
+        .eq("programme_id", programmeData.id)
+        .eq("type", "video")
+        .order("created_at", { ascending: false });
+
+      if (videosError) {
+        console.error("Videos error:", videosError);
+        setError("Unable to load videos.");
+        setLoading(false);
+        return;
+      }
+
+      const loadedVideos: Video[] = (data || []).map((item) => ({
+        id: item.id,
+        topic: item.topic,
+        year: item.year,
+        semester: item.semester,
+        module_name: item.module_name || "Unknown Module",
+        video_id: item.video_id,
+      }));
+
+      setVideos(loadedVideos);
+
+      // 3. Which of these the logged-in student has liked.
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (user) {
+        const { data: favouriteData, error: favouriteError } = await supabase
+          .from("favourites")
+          .select("resource_id")
+          .eq("user_id", user.id);
+
+        if (favouriteError) {
+          console.error("Favourite loading error:", favouriteError);
+        } else {
+          setFavourites((favouriteData || []).map((f) => f.resource_id));
+        }
+      }
+
+      // 4. Total likes per video (same database function as the Notes page).
+      const counts: Record<number, number> = {};
+
+      for (const video of loadedVideos) {
+        const { data: likeCount, error: likeError } = await supabase.rpc(
+          "get_like_count",
+          { p_resource_id: video.id }
+        );
+
+        counts[video.id] = likeError ? 0 : Number(likeCount) || 0;
+      }
+
+      setLikeCounts(counts);
+      setLoading(false);
+    }
+
     fetchVideos();
   }, [programmeSlug]);
-
-  async function fetchVideos() {
-    setLoading(true);
-    setError("");
-
-    // 1. Find the programme whose slugified name matches the URL slug.
-    const programmeData = await findProgrammeBySlug(programmeSlug);
-
-    if (!programmeData) {
-      setError(`Unable to find programme "${programmeSlug}".`);
-      setLoading(false);
-      return;
-    }
-
-    setProgramme(programmeData.name);
-
-    // 2. This programme's videos, newest first.
-    const { data, error: videosError } = await supabase
-      .from("resources")
-      .select("id, topic, year, semester, module_name, video_id")
-      .eq("programme_id", programmeData.id)
-      .eq("type", "video")
-      .order("created_at", { ascending: false });
-
-    if (videosError) {
-      console.error("Videos error:", videosError);
-      setError("Unable to load videos.");
-      setLoading(false);
-      return;
-    }
-
-    const loadedVideos: Video[] = (data || []).map((item) => ({
-      id: item.id,
-      topic: item.topic,
-      year: item.year,
-      semester: item.semester,
-      module_name: item.module_name || "Unknown Module",
-      video_id: item.video_id,
-    }));
-
-    setVideos(loadedVideos);
-
-    // 3. Which of these the logged-in student has liked.
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (user) {
-      const { data: favouriteData, error: favouriteError } = await supabase
-        .from("favourites")
-        .select("resource_id")
-        .eq("user_id", user.id);
-
-      if (favouriteError) {
-        console.error("Favourite loading error:", favouriteError);
-      } else {
-        setFavourites((favouriteData || []).map((f) => f.resource_id));
-      }
-    }
-
-    // 4. Total likes per video (same database function as the Notes page).
-    const counts: Record<number, number> = {};
-
-    for (const video of loadedVideos) {
-      const { data: likeCount, error: likeError } = await supabase.rpc(
-        "get_like_count",
-        { p_resource_id: video.id }
-      );
-
-      counts[video.id] = likeError ? 0 : Number(likeCount) || 0;
-    }
-
-    setLikeCounts(counts);
-    setLoading(false);
-  }
 
   // Like / unlike (same as the Notes page).
   async function handleFavourite(resourceId: number) {
@@ -192,12 +198,12 @@ export default function VideosPage() {
   }
 
   return (
-    <main className="min-h-full bg-[#FCFBF8] text-[#24344D]">
-      <section className="min-w-0 flex-1 bg-[#FCFBF8] px-5 py-7 text-[#24344D] md:px-10 md:py-9 lg:px-12">
+    <main className="min-h-full bg-[#FCFBF8] dark:bg-[#0E141D] text-[#24344D] dark:text-[#E5EAF1]">
+      <section className="min-w-0 flex-1 bg-[#FCFBF8] dark:bg-[#0E141D] px-5 py-7 text-[#24344D] dark:text-[#E5EAF1] md:px-10 md:py-9 lg:px-12">
         {/* Back */}
         <Link
           href={`/programmes/${encodeURIComponent(programmeSlug)}`}
-          className="mb-7 inline-flex items-center gap-2 rounded-xl border border-[#E7E5DF] bg-white px-4 py-2.5 text-sm font-medium text-[#294C78] shadow-sm transition hover:border-[#C8D5E7] hover:bg-[#E7EEF8] focus:outline-none focus:ring-2 focus:ring-[#294C78]/30"
+          className="mb-7 inline-flex items-center gap-2 rounded-xl border border-[#E7E5DF] dark:border-[#263345] bg-white dark:bg-[#172130] px-4 py-2.5 text-sm font-medium text-[#294C78] dark:text-[#9CB9E3] shadow-sm transition hover:border-[#C8D5E7] dark:hover:border-[#33445A] hover:bg-[#E7EEF8] dark:hover:bg-[#1E3150] focus:outline-none focus:ring-2 focus:ring-[#294C78]/30"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -218,22 +224,22 @@ export default function VideosPage() {
 
         {/* Header */}
         <div className="mb-8">
-          <p className="text-sm font-medium text-[#456FAD]">{programme}</p>
+          <p className="text-sm font-medium text-[#456FAD] dark:text-[#86A8DA]">{programme}</p>
 
           <div className="mt-2 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
             <div>
-              <h1 className="text-3xl font-semibold tracking-tight text-[#24344D] md:text-4xl">
+              <h1 className="text-3xl font-semibold tracking-tight text-[#24344D] dark:text-[#E5EAF1] md:text-4xl">
                 Videos
               </h1>
 
-              <p className="mt-2 text-sm text-slate-500">
+              <p className="mt-2 text-sm text-slate-500 dark:text-[#8B98AA]">
                 Video lessons added by your programme admins. They open on
                 YouTube.
               </p>
             </div>
 
             {!loading && (
-              <div className="text-sm font-medium text-slate-500">
+              <div className="text-sm font-medium text-slate-500 dark:text-[#8B98AA]">
                 {filteredVideos.length}{" "}
                 {filteredVideos.length === 1 ? "video" : "videos"}
               </div>
@@ -255,23 +261,23 @@ export default function VideosPage() {
 
         {/* Error */}
         {error && (
-          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
+          <div className="mb-6 rounded-xl border border-red-200 dark:border-red-900/60 bg-red-50 dark:bg-red-950/40 px-4 py-3 text-sm font-medium text-red-600 dark:text-red-400">
             {error}
           </div>
         )}
 
         {/* Loading / empty / list */}
         {loading ? (
-          <div className="rounded-2xl border border-[#E7E5DF] bg-white p-10 text-center shadow-sm">
-            <p className="text-sm text-slate-500">Loading videos...</p>
+          <div className="rounded-2xl border border-[#E7E5DF] dark:border-[#263345] bg-white dark:bg-[#172130] p-10 text-center shadow-sm">
+            <p className="text-sm text-slate-500 dark:text-[#8B98AA]">Loading videos...</p>
           </div>
         ) : filteredVideos.length === 0 ? (
-          <div className="rounded-2xl border border-[#E7E5DF] bg-white p-12 text-center shadow-sm">
-            <h2 className="text-lg font-semibold text-[#24344D]">
+          <div className="rounded-2xl border border-[#E7E5DF] dark:border-[#263345] bg-white dark:bg-[#172130] p-12 text-center shadow-sm">
+            <h2 className="text-lg font-semibold text-[#24344D] dark:text-[#E5EAF1]">
               No videos found
             </h2>
 
-            <p className="mt-2 text-sm text-slate-500">
+            <p className="mt-2 text-sm text-slate-500 dark:text-[#8B98AA]">
               Try changing your filters or check back later.
             </p>
 
@@ -291,7 +297,7 @@ export default function VideosPage() {
               return (
                 <div
                   key={video.id}
-                  className="flex flex-col overflow-hidden rounded-2xl border border-[#E7E5DF] bg-white shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-[#C8D5E7] hover:shadow-md"
+                  className="flex flex-col overflow-hidden rounded-2xl border border-[#E7E5DF] dark:border-[#263345] bg-white dark:bg-[#172130] shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-[#C8D5E7] dark:hover:border-[#33445A] hover:shadow-md"
                 >
                   {/* Thumbnail: opens YouTube in a new tab */}
                   <a
@@ -306,12 +312,12 @@ export default function VideosPage() {
                       src={youTubeThumbnail(video.video_id)}
                       alt={video.topic}
                       loading="lazy"
-                      className="aspect-video w-full bg-[#F0F2F5] object-cover"
+                      className="aspect-video w-full bg-[#F0F2F5] dark:bg-[#1D2938] object-cover"
                     />
 
                     {/* Play button on the thumbnail */}
-                    <span className="absolute inset-0 flex items-center justify-center bg-black/0 transition group-hover:bg-black/20 group-focus-visible:bg-black/20">
-                      <span className="flex h-11 w-11 items-center justify-center rounded-full bg-black/70 text-white">
+                    <span className="absolute inset-0 flex items-center justify-center bg-black/0 dark:bg-[#3A649C]/0 transition group-hover:bg-black/20 dark:group-hover:bg-[#3A649C]/20 group-focus-visible:bg-black/20 dark:group-focus-visible:bg-[#3A649C]/20">
+                      <span className="flex h-11 w-11 items-center justify-center rounded-full bg-black/70 dark:bg-[#3A649C]/70 text-white">
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
                           viewBox="0 0 24 24"
@@ -327,25 +333,25 @@ export default function VideosPage() {
 
                   <div className="flex flex-1 flex-col p-5">
                     <div className="flex items-start justify-between gap-3">
-                      <h3 className="line-clamp-2 min-h-10 text-sm font-semibold leading-5 text-[#24344D]">
+                      <h3 className="line-clamp-2 min-h-10 text-sm font-semibold leading-5 text-[#24344D] dark:text-[#E5EAF1]">
                         {video.topic}
                       </h3>
 
-                      <span className="shrink-0 rounded-full bg-[#E7EEF8] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-[#294C78]">
+                      <span className="shrink-0 rounded-full bg-[#E7EEF8] dark:bg-[#1E3150] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-[#294C78] dark:text-[#9CB9E3]">
                         Video
                       </span>
                     </div>
 
-                    <p className="mt-2 line-clamp-2 min-h-5 text-xs leading-5 text-slate-500">
+                    <p className="mt-2 line-clamp-2 min-h-5 text-xs leading-5 text-slate-500 dark:text-[#8B98AA]">
                       {video.module_name}
                     </p>
 
-                    <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
+                    <div className="mt-3 flex items-center justify-between text-xs text-slate-500 dark:text-[#8B98AA]">
                       <span>Year {video.year}</span>
                       <span>Semester {video.semester}</span>
                     </div>
 
-                    <div className="mt-auto flex items-center gap-2 border-t border-[#F0EEE8] pt-4">
+                    <div className="mt-auto flex items-center gap-2 border-t border-[#F0EEE8] dark:border-[#263345] pt-4">
                       <a
                         href={youTubeWatchUrl(video.video_id)}
                         target="_blank"
@@ -365,8 +371,8 @@ export default function VideosPage() {
                         aria-pressed={isFavourite}
                         className={`flex h-9 w-14 items-center justify-center gap-1 rounded-md border transition ${
                           isFavourite
-                            ? "border-red-200 bg-red-50 text-red-500"
-                            : "border-[#D9DEE7] text-slate-500 hover:bg-red-50 hover:text-red-500"
+                            ? "border-red-200 dark:border-red-900/60 bg-red-50 dark:bg-red-950/40 text-red-500 dark:text-red-400"
+                            : "border-[#D9DEE7] dark:border-[#263345] text-slate-500 dark:text-[#8B98AA] hover:bg-red-50 dark:hover:bg-red-950/40 hover:text-red-500 dark:hover:text-red-400"
                         }`}
                       >
                         <svg

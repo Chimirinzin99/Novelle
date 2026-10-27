@@ -43,7 +43,7 @@ type Module = {
 };
 
 const selectClass =
-  "w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm font-medium text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-gray-100 disabled:text-gray-500";
+  "w-full rounded-lg border border-gray-300 dark:border-[#33445A] bg-white dark:bg-[#172130] px-3 py-2.5 text-sm font-medium text-gray-900 dark:text-[#E5EAF1] outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/60 disabled:bg-gray-100 dark:disabled:bg-[#1D2938] disabled:text-gray-500 dark:disabled:text-[#8B98AA]";
 
 export default function AdminSubmissionsPage() {
   const router = useRouter();
@@ -94,69 +94,67 @@ export default function AdminSubmissionsPage() {
     return data;
   };
 
-  const loadData = async () => {
-    setLoading(true);
-    setError("");
+  useEffect(() => {
+    async function loadData() {
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
-    if (!user) {
-      router.push("/login");
-      return;
-    }
+      if (!user) {
+        router.push("/login");
+        return;
+      }
 
-    const { data: profileData, error: profileError } = await supabase
-      .from("profiles")
-      .select("id, programme_id, role")
-      .eq("id", user.id)
-      .maybeSingle();
-
-    if (profileError || !profileData) {
-      setError(profileError?.message || "Your profile could not be found.");
-      setLoading(false);
-      return;
-    }
-
-    // lib/roles.ts decides who counts as an admin.
-    if (!isAdminRole(profileData.role)) {
-      router.push("/home");
-      return;
-    }
-
-    setProfile(profileData);
-
-    if (profileData.programme_id) {
-      const { data: programmeData } = await supabase
-        .from("programmes")
-        .select("name")
-        .eq("id", profileData.programme_id)
+      const { data: profileData, error: profileError } = await supabase
+        .from("profiles")
+        .select("id, programme_id, role")
+        .eq("id", user.id)
         .maybeSingle();
 
-      if (programmeData) {
-        setProgrammeName(programmeData.name);
+      if (profileError || !profileData) {
+        setError(profileError?.message || "Your profile could not be found.");
+        setLoading(false);
+        return;
       }
+
+      // lib/roles.ts decides who counts as an admin.
+      if (!isAdminRole(profileData.role)) {
+        router.push("/home");
+        return;
+      }
+
+      setProfile(profileData);
+
+      if (profileData.programme_id) {
+        const { data: programmeData } = await supabase
+          .from("programmes")
+          .select("name")
+          .eq("id", profileData.programme_id)
+          .maybeSingle();
+
+        if (programmeData) {
+          setProgrammeName(programmeData.name);
+        }
+      }
+
+      try {
+        const [submissionsData, modulesData] = await Promise.all([
+          backendFetch("/api/submissions?status=pending"),
+          backendFetch("/api/modules"),
+        ]);
+
+        setSubmissions(submissionsData.submissions || []);
+        setModules(modulesData.modules || []);
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : "Could not connect to the backend."
+        );
+      }
+
+      setLoading(false);
     }
 
-    try {
-      const [submissionsData, modulesData] = await Promise.all([
-        backendFetch("/api/submissions?status=pending"),
-        backendFetch("/api/modules"),
-      ]);
-
-      setSubmissions(submissionsData.submissions || []);
-      setModules(modulesData.modules || []);
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Could not connect to the backend."
-      );
-    }
-
-    setLoading(false);
-  };
-
-  useEffect(() => {
     loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -257,43 +255,43 @@ export default function AdminSubmissionsPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-gray-50 px-5 py-8 text-gray-900 md:px-8">
+      <main className="min-h-screen bg-gray-50 dark:bg-[#0E141D] px-5 py-8 text-gray-900 dark:text-[#E5EAF1] md:px-8">
         <div className="mx-auto max-w-6xl">
           <button
             type="button"
             onClick={() => router.push("/admin")}
-            className="mb-8 inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-100"
+            className="mb-8 inline-flex items-center gap-2 rounded-xl border border-gray-200 dark:border-[#263345] bg-white dark:bg-[#172130] px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-[#B4BFCD] shadow-sm transition hover:bg-gray-100 dark:hover:bg-[#263446]"
           >
             <ArrowLeft className="h-4 w-4" /> Back to Dashboard
           </button>
-          <p className="text-base font-medium text-gray-700">Loading submissions...</p>
+          <p className="text-base font-medium text-gray-700 dark:text-[#B4BFCD]">Loading submissions...</p>
         </div>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-gray-50 px-8 py-8 text-gray-900">
+    <main className="min-h-screen bg-gray-50 dark:bg-[#0E141D] px-8 py-8 text-gray-900 dark:text-[#E5EAF1]">
       <div className="mx-auto max-w-6xl">
         {/* Header */}
         <div className="mb-8">
           <button
             type="button"
             onClick={() => router.push("/admin")}
-            className="mb-5 inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-100"
+            className="mb-5 inline-flex items-center gap-2 rounded-xl border border-gray-200 dark:border-[#263345] bg-white dark:bg-[#172130] px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-[#B4BFCD] shadow-sm transition hover:bg-gray-100 dark:hover:bg-[#263446]"
           >
             <ArrowLeft className="h-4 w-4" /> Back to Dashboard
           </button>
 
-          <p className="text-sm font-semibold text-blue-600">
+          <p className="text-sm font-semibold text-blue-600 dark:text-blue-300">
             Student Submissions
           </p>
 
-          <h1 className="mt-1 text-3xl font-bold text-gray-900">
+          <h1 className="mt-1 text-3xl font-bold text-gray-900 dark:text-[#E5EAF1]">
             Pending Submissions
           </h1>
 
-          <p className="mt-2 text-sm text-gray-600">
+          <p className="mt-2 text-sm text-gray-600 dark:text-[#B4BFCD]">
             {/* Programme admins see their programme name; super admins see all of CST (lib/roles.ts) */}
             {isProgrammeAdminRole(profile?.role)
               ? `Review submissions for ${programmeName}.`
@@ -302,24 +300,24 @@ export default function AdminSubmissionsPage() {
         </div>
 
         {error && (
-          <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+          <div className="mb-6 rounded-lg border border-red-200 dark:border-red-900/60 bg-red-50 dark:bg-red-950/40 px-4 py-3 text-sm font-medium text-red-700 dark:text-red-300">
             {error}
           </div>
         )}
 
         {success && (
-          <div className="mb-6 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm font-medium text-green-700">
+          <div className="mb-6 rounded-lg border border-green-200 dark:border-green-900/60 bg-green-50 dark:bg-green-950/40 px-4 py-3 text-sm font-medium text-green-700 dark:text-green-400">
             {success}
           </div>
         )}
 
         {submissions.length === 0 ? (
-          <div className="rounded-xl border border-gray-200 bg-white p-10 text-center shadow-sm">
-            <h2 className="text-lg font-semibold text-gray-900">
+          <div className="rounded-xl border border-gray-200 dark:border-[#263345] bg-white dark:bg-[#172130] p-10 text-center shadow-sm">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-[#E5EAF1]">
               No pending submissions
             </h2>
 
-            <p className="mt-2 text-sm text-gray-600">
+            <p className="mt-2 text-sm text-gray-600 dark:text-[#B4BFCD]">
               There are currently no student submissions waiting for review.
             </p>
           </div>
@@ -335,22 +333,22 @@ export default function AdminSubmissionsPage() {
               return (
                 <div
                   key={submission.id}
-                  className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm"
+                  className="rounded-xl border border-gray-200 dark:border-[#263345] bg-white dark:bg-[#172130] p-6 shadow-sm"
                 >
                   {/* Submission information */}
                   <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
                     <div>
                       <div className="flex items-center gap-3">
-                        <h2 className="text-xl font-semibold text-gray-900">
+                        <h2 className="text-xl font-semibold text-gray-900 dark:text-[#E5EAF1]">
                           {submission.title}
                         </h2>
 
-                        <span className="rounded-full bg-yellow-100 px-3 py-1 text-xs font-semibold text-yellow-700">
+                        <span className="rounded-full bg-yellow-100 dark:bg-amber-900/40 px-3 py-1 text-xs font-semibold text-yellow-700 dark:text-yellow-300">
                           Pending
                         </span>
                       </div>
 
-                      <p className="mt-2 text-sm text-gray-600">
+                      <p className="mt-2 text-sm text-gray-600 dark:text-[#B4BFCD]">
                         Type: {resourceTypeLabel(submission.type)}
                         {/* Only super admins need the programme name (lib/roles.ts) */}
                         {isSuperAdminRole(profile?.role) &&
@@ -358,7 +356,7 @@ export default function AdminSubmissionsPage() {
                           ` · ${submission.programme.name}`}
                       </p>
 
-                      <p className="mt-1 text-xs text-gray-500">
+                      <p className="mt-1 text-xs text-gray-500 dark:text-[#8B98AA]">
                         Submitted
                         {submission.submitter?.full_name
                           ? ` by ${submission.submitter.full_name}`
@@ -369,19 +367,19 @@ export default function AdminSubmissionsPage() {
 
                     <button
                       onClick={() => handleViewFile(submission.file_path)}
-                      className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                      className="rounded-lg border border-gray-300 dark:border-[#33445A] bg-white dark:bg-[#172130] px-4 py-2 text-sm font-semibold text-gray-700 dark:text-[#B4BFCD] hover:bg-gray-50 dark:hover:bg-[#1D2938]"
                     >
                       View PDF
                     </button>
                   </div>
 
                   {/* Classification */}
-                  <div className="mt-6 rounded-lg bg-gray-50 p-4">
-                    <p className="text-sm font-semibold text-gray-800">
+                  <div className="mt-6 rounded-lg bg-gray-50 dark:bg-[#0E141D] p-4">
+                    <p className="text-sm font-semibold text-gray-800 dark:text-[#E5EAF1]">
                       Submission classification
                     </p>
 
-                    <p className="mt-1 text-xs text-gray-600">
+                    <p className="mt-1 text-xs text-gray-600 dark:text-[#B4BFCD]">
                       Choose the year and semester, then the module, before
                       approving.
                     </p>
@@ -389,7 +387,7 @@ export default function AdminSubmissionsPage() {
                     <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
                       {/* Year */}
                       <div>
-                        <label className="mb-2 block text-sm font-semibold text-gray-800">
+                        <label className="mb-2 block text-sm font-semibold text-gray-800 dark:text-[#E5EAF1]">
                           Year
                         </label>
 
@@ -418,7 +416,7 @@ export default function AdminSubmissionsPage() {
 
                       {/* Semester */}
                       <div>
-                        <label className="mb-2 block text-sm font-semibold text-gray-800">
+                        <label className="mb-2 block text-sm font-semibold text-gray-800 dark:text-[#E5EAF1]">
                           Semester
                         </label>
 
@@ -444,7 +442,7 @@ export default function AdminSubmissionsPage() {
 
                       {/* Module */}
                       <div>
-                        <label className="mb-2 block text-sm font-semibold text-gray-800">
+                        <label className="mb-2 block text-sm font-semibold text-gray-800 dark:text-[#E5EAF1]">
                           Module
                         </label>
 
@@ -481,8 +479,8 @@ export default function AdminSubmissionsPage() {
 
                   {/* Reject reason (shown after clicking Reject) */}
                   {showRejectFor === submission.id && (
-                    <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-4">
-                      <label className="mb-2 block text-sm font-semibold text-red-800">
+                    <div className="mt-4 rounded-lg border border-red-200 dark:border-red-900/60 bg-red-50 dark:bg-red-950/40 p-4">
+                      <label className="mb-2 block text-sm font-semibold text-red-800 dark:text-red-300">
                         Reason for rejecting
                       </label>
 
@@ -504,7 +502,7 @@ export default function AdminSubmissionsPage() {
                         ))}
                       </select>
 
-                      <p className="mt-2 text-xs text-red-700">
+                      <p className="mt-2 text-xs text-red-700 dark:text-red-300">
                         The student will see this reason.
                       </p>
                     </div>
@@ -517,7 +515,7 @@ export default function AdminSubmissionsPage() {
                         <button
                           onClick={() => setShowRejectFor(null)}
                           disabled={busy}
-                          className="rounded-lg border border-gray-300 bg-white px-5 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                          className="rounded-lg border border-gray-300 dark:border-[#33445A] bg-white dark:bg-[#172130] px-5 py-2.5 text-sm font-semibold text-gray-700 dark:text-[#B4BFCD] hover:bg-gray-50 dark:hover:bg-[#1D2938] disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           Cancel
                         </button>
@@ -538,7 +536,7 @@ export default function AdminSubmissionsPage() {
                             setShowRejectFor(submission.id);
                           }}
                           disabled={busy}
-                          className="rounded-lg border border-red-200 bg-white px-5 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                          className="rounded-lg border border-red-200 dark:border-red-900/60 bg-white dark:bg-[#172130] px-5 py-2.5 text-sm font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           Reject
                         </button>

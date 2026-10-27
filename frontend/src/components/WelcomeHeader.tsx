@@ -15,13 +15,13 @@ export default function WelcomeHeader({
 }: WelcomeHeaderProps) {
   return (
     <div className="text-center">
-      <h1 className="text-4xl font-bold text-gray-900">
+      <h1 className="text-4xl font-bold text-gray-900 dark:text-[#E5EAF1]">
         
-        Welcome to <span className="text-blue-600">Novelle</span>
+        Welcome to <span className="text-blue-600 dark:text-blue-300">Novelle</span>
         {name && `, ${name}`}
       </h1>
 
-      <p className="mt-2 text-gray-500">
+      <p className="mt-2 text-gray-500 dark:text-[#8B98AA]">
         Find notes, videos and learning resources from Cstians.
       </p>
 

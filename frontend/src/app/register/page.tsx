@@ -3,6 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import ThemeToggle from "@/components/ThemeToggle";
 
 type Programme = {
   id: number;
@@ -117,15 +118,19 @@ if (!cleanEmail.endsWith("@rub.edu.bt")) {
   };
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-gray-50 px-6 py-10">
-      <div className="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
+    <main className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-[#0E141D] px-6 py-10">
+      <div className="fixed right-4 top-4 z-50">
+        <ThemeToggle variant="icon" />
+      </div>
+
+      <div className="w-full max-w-md rounded-2xl border border-gray-200 dark:border-[#263345] bg-white dark:bg-[#172130] p-8 shadow-sm">
         {/* Header */}
         <div className="mb-8 text-center">
-          <h1 className="text-3xl font-bold text-gray-900">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-[#E5EAF1]">
             Create your Novelle account
           </h1>
 
-          <p className="mt-2 text-sm text-gray-500">
+          <p className="mt-2 text-sm text-gray-500 dark:text-[#8B98AA]">
             Register using your CST email
           </p>
         </div>
@@ -133,7 +138,7 @@ if (!cleanEmail.endsWith("@rub.edu.bt")) {
         <form onSubmit={handleRegister} className="space-y-5">
           {/* Full Name */}
           <div>
-            <label className="mb-2 block text-sm font-medium text-gray-700">
+            <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-[#B4BFCD]">
               Full Name
             </label>
 
@@ -143,13 +148,13 @@ if (!cleanEmail.endsWith("@rub.edu.bt")) {
               onChange={(e) => setFullName(e.target.value)}
               placeholder="Enter your full name"
               required
-              className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder:text-gray-400 outline-none focus:border-black focus:ring-1 focus:ring-black"
+              className="w-full rounded-lg border border-gray-300 dark:border-[#33445A] bg-white dark:bg-[#172130] px-4 py-3 text-gray-900 dark:text-[#E5EAF1] placeholder:text-gray-400 dark:placeholder:text-[#6B788A] outline-none focus:border-black dark:focus:border-slate-400 focus:ring-1 focus:ring-black dark:focus:ring-slate-400"
             />
           </div>
 
           {/* Email */}
           <div>
-            <label className="mb-2 block text-sm font-medium text-gray-700">
+            <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-[#B4BFCD]">
               CST Email
             </label>
 
@@ -159,13 +164,13 @@ if (!cleanEmail.endsWith("@rub.edu.bt")) {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="yourname@cst.edu.bt"
               required
-              className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder:text-gray-400 outline-none focus:border-black focus:ring-1 focus:ring-black"
+              className="w-full rounded-lg border border-gray-300 dark:border-[#33445A] bg-white dark:bg-[#172130] px-4 py-3 text-gray-900 dark:text-[#E5EAF1] placeholder:text-gray-400 dark:placeholder:text-[#6B788A] outline-none focus:border-black dark:focus:border-slate-400 focus:ring-1 focus:ring-black dark:focus:ring-slate-400"
             />
           </div>
 
           {/* Password */}
           <div>
-            <label className="mb-2 block text-sm font-medium text-gray-700">
+            <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-[#B4BFCD]">
               Password
             </label>
 
@@ -175,17 +180,17 @@ if (!cleanEmail.endsWith("@rub.edu.bt")) {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Create a password"
               required
-              className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder:text-gray-400 outline-none focus:border-black focus:ring-1 focus:ring-black"
+              className="w-full rounded-lg border border-gray-300 dark:border-[#33445A] bg-white dark:bg-[#172130] px-4 py-3 text-gray-900 dark:text-[#E5EAF1] placeholder:text-gray-400 dark:placeholder:text-[#6B788A] outline-none focus:border-black dark:focus:border-slate-400 focus:ring-1 focus:ring-black dark:focus:ring-slate-400"
             />
 
-            <p className="mt-1 text-xs text-gray-400">
+            <p className="mt-1 text-xs text-gray-400 dark:text-[#6B788A]">
               Minimum 6 characters
             </p>
           </div>
 
           {/* Programme */}
           <div>
-            <label className="mb-2 block text-sm font-medium text-gray-700">
+            <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-[#B4BFCD]">
               Programme
             </label>
 
@@ -194,9 +199,9 @@ if (!cleanEmail.endsWith("@rub.edu.bt")) {
               onChange={(e) => setProgrammeId(e.target.value)}
               required
               disabled={loadingProgrammes}
-              className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none focus:border-black focus:ring-1 focus:ring-black disabled:cursor-not-allowed disabled:bg-gray-100"
+              className="w-full rounded-lg border border-gray-300 dark:border-[#33445A] bg-white dark:bg-[#172130] px-4 py-3 text-gray-900 dark:text-[#E5EAF1] outline-none focus:border-black dark:focus:border-slate-400 focus:ring-1 focus:ring-black dark:focus:ring-slate-400 disabled:cursor-not-allowed disabled:bg-gray-100 dark:disabled:bg-[#1D2938]"
             >
-              <option value="" className="text-gray-500">
+              <option value="" className="text-gray-500 dark:text-[#8B98AA]">
                 {loadingProgrammes
                   ? "Loading programmes..."
                   : "Select your programme"}
@@ -206,7 +211,7 @@ if (!cleanEmail.endsWith("@rub.edu.bt")) {
                 <option
                   key={programme.id}
                   value={programme.id}
-                  className="text-gray-900"
+                  className="text-gray-900 dark:text-[#E5EAF1]"
                 >
                   {programme.name}
                 </option>
@@ -217,7 +222,7 @@ if (!cleanEmail.endsWith("@rub.edu.bt")) {
             {!loadingProgrammes &&
               programmes.length === 0 &&
               !error && (
-                <p className="mt-2 text-xs text-red-500">
+                <p className="mt-2 text-xs text-red-500 dark:text-red-400">
                   No programmes found in the database.
                 </p>
               )}
@@ -225,14 +230,14 @@ if (!cleanEmail.endsWith("@rub.edu.bt")) {
 
           {/* Error */}
           {error && (
-            <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">
+            <div className="rounded-lg bg-red-50 dark:bg-red-950/40 px-4 py-3 text-sm text-red-600 dark:text-red-400">
               {error}
             </div>
           )}
 
           {/* Success */}
           {success && (
-            <div className="rounded-lg bg-green-50 px-4 py-3 text-sm text-green-700">
+            <div className="rounded-lg bg-green-50 dark:bg-green-950/40 px-4 py-3 text-sm text-green-700 dark:text-green-400">
               {success}
             </div>
           )}
@@ -241,18 +246,18 @@ if (!cleanEmail.endsWith("@rub.edu.bt")) {
           <button
             type="submit"
             disabled={loading || loadingProgrammes}
-            className="w-full rounded-lg bg-black py-3 font-medium text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
+            className="w-full rounded-lg bg-black dark:bg-[#3A649C] py-3 font-medium text-white transition hover:bg-gray-800 dark:hover:bg-[#33598C] disabled:cursor-not-allowed disabled:opacity-50"
           >
             {loading ? "Creating account..." : "Create Account"}
           </button>
         </form>
 
         {/* Login Link */}
-        <p className="mt-6 text-center text-sm text-gray-500">
+        <p className="mt-6 text-center text-sm text-gray-500 dark:text-[#8B98AA]">
           Already have an account?{" "}
           <a
             href="/login"
-            className="font-medium text-black hover:underline"
+            className="font-medium text-black dark:text-[#E5EAF1] hover:underline"
           >
             Login
           </a>

@@ -33,44 +33,41 @@ export default function LikedPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
+    async function loadLiked() {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        router.replace("/login");
+        return;
+      }
+
+      // Start from favourites and pull in the resource it points to,
+      // and that resource's programme name — all in one request.
+      const { data, error } = await supabase
+        .from("favourites")
+        .select(
+          "id, created_at, resources(id, title, topic, type, module_name, year, semester, file_path, video_id, programmes(name))"
+        )
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false }); // most recently liked first
+
+      if (error) {
+        console.error("Load liked error:", error);
+        setError("Could not load your liked resources.");
+      } else {
+        // If a resource was deleted or is not visible to this student,
+        // "resources" comes back null — skip those.
+        const rows = (data ?? []) as unknown as LikedItem[];
+        setItems(rows.filter((row) => row.resources !== null));
+      }
+
+      setLoading(false);
+    }
+
     loadLiked();
-  }, []);
-
-  async function loadLiked() {
-    setLoading(true);
-    setError("");
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      router.replace("/login");
-      return;
-    }
-
-    // Start from favourites and pull in the resource it points to,
-    // and that resource's programme name — all in one request.
-    const { data, error } = await supabase
-      .from("favourites")
-      .select(
-        "id, created_at, resources(id, title, topic, type, module_name, year, semester, file_path, video_id, programmes(name))"
-      )
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false }); // most recently liked first
-
-    if (error) {
-      console.error("Load liked error:", error);
-      setError("Could not load your liked resources.");
-    } else {
-      // If a resource was deleted or is not visible to this student,
-      // "resources" comes back null — skip those.
-      const rows = (data ?? []) as unknown as LikedItem[];
-      setItems(rows.filter((row) => row.resources !== null));
-    }
-
-    setLoading(false);
-  }
+  }, [router]);
 
   async function openFile(filePath: string, download: boolean) {
     const { data, error } = await supabase.storage
@@ -106,11 +103,11 @@ export default function LikedPage() {
 
   return (
     
-<main className="min-h-full bg-[#FCFBF8] px-5 py-7 text-[#24344D] md:px-10 md:py-9 lg:px-12">
+<main className="min-h-full bg-[#FCFBF8] dark:bg-[#0E141D] px-5 py-7 text-[#24344D] dark:text-[#E5EAF1] md:px-10 md:py-9 lg:px-12">
 
       <Link
         href="/profile"
-        className="mb-7 inline-flex items-center gap-2 rounded-xl border border-[#E7E5DF] bg-white px-4 py-2.5 text-sm font-medium text-[#294C78] shadow-sm transition hover:border-[#C8D5E7] hover:bg-[#E7EEF8] focus:outline-none focus:ring-2 focus:ring-[#294C78]/30"
+        className="mb-7 inline-flex items-center gap-2 rounded-xl border border-[#E7E5DF] dark:border-[#263345] bg-white dark:bg-[#172130] px-4 py-2.5 text-sm font-medium text-[#294C78] dark:text-[#9CB9E3] shadow-sm transition hover:border-[#C8D5E7] dark:hover:border-[#33445A] hover:bg-[#E7EEF8] dark:hover:bg-[#1E3150] focus:outline-none focus:ring-2 focus:ring-[#294C78]/30"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -131,28 +128,28 @@ export default function LikedPage() {
       </Link>
 
       <div className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight text-[#24344D] md:text-4xl">
+        <h1 className="text-3xl font-bold tracking-tight text-[#24344D] dark:text-[#E5EAF1] md:text-4xl">
           Liked
         </h1>
-        <p className="mt-2 text-sm leading-6 text-slate-500">
+        <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-[#8B98AA]">
           Notes, papers and videos you have liked, from every programme, in one place.
         </p>
       </div>
 
       {error && (
-        <div role="alert" className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+        <div role="alert" className="mb-6 rounded-xl border border-red-200 dark:border-red-900/60 bg-red-50 dark:bg-red-950/40 px-4 py-3 text-sm font-medium text-red-700 dark:text-red-300">
           {error}
         </div>
       )}
 
       {loading ? (
-        <div className="rounded-2xl border border-[#E7E5DF] bg-white p-10 text-center text-sm text-slate-500 shadow-sm">
+        <div className="rounded-2xl border border-[#E7E5DF] dark:border-[#263345] bg-white dark:bg-[#172130] p-10 text-center text-sm text-slate-500 dark:text-[#8B98AA] shadow-sm">
           Loading your liked resources...
         </div>
       ) : items.length === 0 ? (
-        <div className="rounded-2xl border border-[#E7E5DF] bg-white p-12 text-center shadow-sm">
-          <h3 className="text-lg font-semibold text-[#24344D]">Nothing liked yet</h3>
-          <p className="mt-2 text-sm text-slate-500">
+        <div className="rounded-2xl border border-[#E7E5DF] dark:border-[#263345] bg-white dark:bg-[#172130] p-12 text-center shadow-sm">
+          <h3 className="text-lg font-semibold text-[#24344D] dark:text-[#E5EAF1]">Nothing liked yet</h3>
+          <p className="mt-2 text-sm text-slate-500 dark:text-[#8B98AA]">
             Tap the heart on any note or video and it will show up here.
           </p>
         </div>
@@ -165,7 +162,7 @@ export default function LikedPage() {
             return (
               <div
                 key={item.id}
-                className="flex flex-col rounded-2xl border border-[#E7E5DF] bg-white p-5 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-[#C8D5E7] hover:shadow-md"
+                className="flex flex-col rounded-2xl border border-[#E7E5DF] dark:border-[#263345] bg-white dark:bg-[#172130] p-5 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-[#C8D5E7] dark:hover:border-[#33445A] hover:shadow-md"
               >
                 {/* Videos show their YouTube thumbnail */}
                 {resource.video_id && (
@@ -174,30 +171,30 @@ export default function LikedPage() {
                     src={youTubeThumbnail(resource.video_id)}
                     alt=""
                     loading="lazy"
-                    className="mb-4 aspect-video w-full rounded-xl bg-[#F0F2F5] object-cover"
+                    className="mb-4 aspect-video w-full rounded-xl bg-[#F0F2F5] dark:bg-[#1D2938] object-cover"
                   />
                 )}
 
-                <p className="text-xs font-semibold text-[#456FAD]">
+                <p className="text-xs font-semibold text-[#456FAD] dark:text-[#86A8DA]">
                   {resource.programmes?.name ?? "Unknown programme"}
                 </p>
 
                 {/* Admin uploads fill "topic"; approved submissions fill "title". */}
-                <h3 className="mt-1 line-clamp-2 font-semibold text-[#24344D]">
+                <h3 className="mt-1 line-clamp-2 font-semibold text-[#24344D] dark:text-[#E5EAF1]">
                   {resource.title || resource.topic}
                 </h3>
 
-                <p className="mt-2 text-sm text-slate-500">
+                <p className="mt-2 text-sm text-slate-500 dark:text-[#8B98AA]">
                   {resource.module_name ?? "Unknown module"}
                 </p>
 
-                <p className="mt-1 text-xs text-slate-500">
+                <p className="mt-1 text-xs text-slate-500 dark:text-[#8B98AA]">
                   {resource.year ? `Year ${resource.year}` : ""}
                   {resource.year && resource.semester ? " · " : ""}
                   {resource.semester ? `Semester ${resource.semester}` : ""}
                 </p>
 
-                <div className="mt-auto flex gap-2 border-t border-[#F0EEE8] pt-4">
+                <div className="mt-auto flex gap-2 border-t border-[#F0EEE8] dark:border-[#263345] pt-4">
                   {resource.video_id ? (
                     // Video: open it on YouTube (nothing to download).
                     <a
@@ -219,7 +216,7 @@ export default function LikedPage() {
                       </button>
                       <button
                         onClick={() => openFile(resource.file_path!, true)}
-                        className="rounded-lg border border-[#D9DEE7] px-3 py-2.5 text-sm font-semibold text-[#294C78] transition hover:bg-[#F0F4FA] focus:outline-none focus:ring-2 focus:ring-[#294C78]/30"
+                        className="rounded-lg border border-[#D9DEE7] dark:border-[#263345] px-3 py-2.5 text-sm font-semibold text-[#294C78] dark:text-[#9CB9E3] transition hover:bg-[#F0F4FA] dark:hover:bg-[#1D2938] focus:outline-none focus:ring-2 focus:ring-[#294C78]/30"
                       >
                         Download
                       </button>
@@ -231,7 +228,7 @@ export default function LikedPage() {
                     onClick={() => unlike(item.id)}
                     title="Unlike"
                     aria-label={`Unlike ${resource.title || resource.topic}`}
-                    className="flex w-12 items-center justify-center rounded-lg border border-red-200 bg-red-50 text-red-500 transition hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-300"
+                    className="flex w-12 items-center justify-center rounded-lg border border-red-200 dark:border-red-900/60 bg-red-50 dark:bg-red-950/40 text-red-500 dark:text-red-400 transition hover:bg-red-100 dark:hover:bg-red-900/40 focus:outline-none focus:ring-2 focus:ring-red-300 dark:focus:ring-red-800"
                   >
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
