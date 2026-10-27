@@ -10,8 +10,12 @@
 // papers and assignments (components/AuthorFields.tsx, lib/author.ts).
 // Part 13c: the "pending" notification is now saved by the backend
 // (POST /api/submissions/upload), so this page no longer writes one.
+// Feedback (27 Oct): new step 3 "Where does it belong?" — Year + Semester
+// (required) and an optional Module from the student's own programme
+// (active modules only; readable since migration 015). "Not sure / not
+// listed" is always allowed; admins place it when approving.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { BACKEND_URL } from "@/lib/config";
@@ -31,6 +35,18 @@ import {
   type ResourceTypeCode,
 } from "@/lib/resourceTypes";
 import PageHeader from "@/components/PageHeader";
+
+// A module the student can choose (own programme, active — RLS, 015).
+type ModuleOption = {
+  id: number;
+  module_code: string;
+  module_name: string;
+  year: number;
+  semester: number;
+};
+
+// Same range as the backend (Architecture is 5 years).
+const YEARS = [1, 2, 3, 4, 5];
 
 // Longest title the backend accepts.
 const TITLE_MAX = 120;
@@ -58,10 +74,36 @@ export default function SubmitNotePage() {
   // Part 13d: who made it + Solved
   const [author, setAuthor] = useState<AuthorForm>(EMPTY_AUTHOR_FORM);
   const [isSolved, setIsSolved] = useState(false);
+  // Feedback (27 Oct): where it belongs ("" = not chosen / not listed)
+  const [year, setYear] = useState("");
+  const [semester, setSemester] = useState("");
+  const [moduleId, setModuleId] = useState("");
+  const [modules, setModules] = useState<ModuleOption[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+
+  // Load the modules once. RLS returns only this student's programme's
+  // active modules; if it fails, the list is just empty ("Not listed").
+  useEffect(() => {
+    async function loadModules() {
+      const { data, error: modulesError } = await supabase
+        .from("modules")
+        .select("id, module_code, module_name, year, semester")
+        .eq("active", true)
+        .order("module_code");
+      if (modulesError) console.error("Load modules error:", modulesError);
+      setModules((data ?? []) as ModuleOption[]);
+    }
+    void loadModules();
+  }, []);
+
+  // Modules for the chosen year + semester.
+  const moduleOptions =
+    year && semester
+      ? modules.filter((m) => m.year === Number(year) && m.semester === Number(semester))
+      : [];
 
   function selectFile(selectedFile: File | null) {
     setError("");
@@ -116,6 +158,9 @@ export default function SubmitNotePage() {
     setFile(null);
     setAuthor(EMPTY_AUTHOR_FORM);
     setIsSolved(false);
+    setYear("");
+    setSemester("");
+    setModuleId("");
     setError("");
     setMessage("");
     clearFileInput();
@@ -142,6 +187,12 @@ export default function SubmitNotePage() {
 
     if (file.size > 5 * 1024 * 1024) {
       setError("The PDF must be 5 MB or smaller.");
+      return;
+    }
+
+    // Feedback (27 Oct): year + semester are required
+    if (!year || !semester) {
+      setError("Please choose the year and semester it belongs to.");
       return;
     }
 
@@ -206,6 +257,10 @@ export default function SubmitNotePage() {
       formData.append("file", file);
       appendAuthorFields(formData, author); // Part 13d
       appendSolvedField(formData, isSolvableType(type) && isSolved);
+      // Feedback (27 Oct): where it belongs (no module_id = not listed)
+      formData.append("year", year);
+      formData.append("semester", semester);
+      if (moduleId) formData.append("module_id", moduleId);
 
       const response = await callBackend(`${BACKEND_URL}/api/submissions/upload`, {
         method: "POST",
@@ -223,6 +278,9 @@ export default function SubmitNotePage() {
       setFile(null);
       setAuthor(EMPTY_AUTHOR_FORM);
       setIsSolved(false);
+      setYear("");
+      setSemester("");
+      setModuleId("");
 
       const fileInput = document.getElementById(
         "pdf-file"
@@ -348,10 +406,86 @@ export default function SubmitNotePage() {
             </p>
           </div>
 
-          {/* 3. PDF — drop zone until a file is chosen, then a file row */}
+          {/* 3. Where does it belong? (feedback, 27 Oct) */}
+          <fieldset disabled={loading}>
+            <legend className={stepLabel}>3. Where does it belong?</legend>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label htmlFor="placement-year" className="mb-1.5 block text-sm font-medium text-ink-nav">
+                  Year
+                </label>
+                <select
+                  id="placement-year"
+                  value={year}
+                  onChange={(e) => {
+                    setYear(e.target.value);
+                    setModuleId(""); // modules depend on year + semester
+                  }}
+                  required
+                  className={inputClass}
+                >
+                  <option value="">Choose year</option>
+                  {YEARS.map((y) => (
+                    <option key={y} value={y}>
+                      Year {y}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="placement-semester" className="mb-1.5 block text-sm font-medium text-ink-nav">
+                  Semester
+                </label>
+                <select
+                  id="placement-semester"
+                  value={semester}
+                  onChange={(e) => {
+                    setSemester(e.target.value);
+                    setModuleId("");
+                  }}
+                  required
+                  className={inputClass}
+                >
+                  <option value="">Choose semester</option>
+                  <option value="1">Semester 1</option>
+                  <option value="2">Semester 2</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Module: optional; only once year + semester are chosen */}
+            {year && semester && (
+              <div className="mt-3">
+                <label htmlFor="placement-module" className="mb-1.5 block text-sm font-medium text-ink-nav">
+                  Module <span className="font-normal text-ink-soft">(optional)</span>
+                </label>
+                {moduleOptions.length > 0 ? (
+                  <select
+                    id="placement-module"
+                    value={moduleId}
+                    onChange={(e) => setModuleId(e.target.value)}
+                    className={inputClass}
+                  >
+                    <option value="">Not sure / not listed</option>
+                    {moduleOptions.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.module_code} – {m.module_name}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <p className="rounded-xl border border-sky-line bg-sky-wash px-4 py-3 text-sm text-ink-soft">
+                    No modules are set up for Year {year} · Sem {semester} yet. That&apos;s fine: an admin will place it.
+                  </p>
+                )}
+              </div>
+            )}
+          </fieldset>
+
+          {/* 4. PDF — drop zone until a file is chosen, then a file row */}
           <div>
             <p id="pdf-label" className={stepLabel}>
-              3. PDF file
+              4. PDF file
             </p>
 
             {/* The real file input, hidden; the drop zone below is its label. */}
@@ -416,9 +550,9 @@ export default function SubmitNotePage() {
             )}
           </div>
 
-          {/* 4. Who made it? (Part 13d) — credit for the original author */}
+          {/* 5. Who made it? (Part 13d) — credit for the original author */}
           <fieldset disabled={loading}>
-            <legend className={stepLabel}>4. Who made it?</legend>
+            <legend className={stepLabel}>5. Who made it?</legend>
             <AuthorFields
               idPrefix="submit"
               value={author}

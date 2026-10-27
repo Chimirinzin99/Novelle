@@ -1,4 +1,8 @@
 // controllers/submissions.controller.ts — student uploads and admin review.
+// Feedback (27 Oct): uploads now carry where the resource belongs — year and
+// semester (required) and optionally a module (checked: active, the
+// student's own programme, same year + semester). GET also returns the
+// module's code and name so the review page can show and filter by them.
 // Part 13d: uploads take author credit + Solved/Unsolved (utils/author.ts);
 // approve lets the admin correct them first; GET returns them.
 // Part 13c: each step now also saves a notification for the student
@@ -21,6 +25,10 @@ import { readAuthor, readBoolean } from "../utils/author";
 
 const RESOURCE_BUCKET = "resources";
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
+
+// Years a programme can have (Architecture is 5 years).
+const MIN_YEAR = 1;
+const MAX_YEAR = 5;
 
 export const uploadStudentSubmission = async (
   req: AuthenticatedRequest,
@@ -62,6 +70,48 @@ export const uploadStudentSubmission = async (
     // Only question papers and assignments can be "Solved".
     const isSolved = type !== "note" && readBoolean(req.body?.is_solved) === true;
 
+    // Feedback (27 Oct): where it belongs — year + semester required,
+    // module optional ("" or missing = "Not sure / not listed").
+    const year = Number(req.body?.year);
+    const semester = Number(req.body?.semester);
+    if (!Number.isInteger(year) || year < MIN_YEAR || year > MAX_YEAR) {
+      return res.status(400).json({ success: false, message: "Please choose the year." });
+    }
+    if (semester !== 1 && semester !== 2) {
+      return res.status(400).json({ success: false, message: "Please choose the semester." });
+    }
+
+    let moduleId: number | null = null;
+    const rawModule = req.body?.module_id;
+    if (rawModule !== undefined && rawModule !== null && rawModule !== "") {
+      moduleId = Number(rawModule);
+      if (!Number.isInteger(moduleId) || moduleId < 1) {
+        return res.status(400).json({ success: false, message: "Invalid module." });
+      }
+
+      const { data: module, error: moduleError } = await supabase
+        .from("modules")
+        .select("id, programme_id, year, semester, active")
+        .eq("id", moduleId)
+        .maybeSingle();
+      if (moduleError) throw moduleError;
+
+      // Same rules a student sees in the dropdown: active, own programme,
+      // and the year + semester they chose.
+      if (
+        !module ||
+        !module.active ||
+        module.programme_id !== req.user.programme_id ||
+        module.year !== year ||
+        module.semester !== semester
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "That module isn't available for your programme in this year and semester. Choose another or \"Not sure / not listed\".",
+        });
+      }
+    }
+
     const safeFileName = req.file.originalname.replace(/[^a-zA-Z0-9._-]/g, "_");
     uploadedPath = `submissions/${req.user.id}/${crypto.randomUUID()}-${safeFileName}`;
 
@@ -86,6 +136,9 @@ export const uploadStudentSubmission = async (
         author_type: author.fields?.author_type ?? null, // Part 13d
         author_name: author.fields?.author_name ?? null,
         is_solved: isSolved,
+        year, // feedback (27 Oct)
+        semester,
+        module_id: moduleId, // null = "Not sure / not listed"
       })
       .select("id, status")
       .single();
@@ -213,6 +266,7 @@ export const getSubmissions = async (
         `id, title, type, programme_id, module_id, year, semester,
          file_path, status, rejection_reason, reviewed_at, created_at,
          author_type, author_name, is_solved,
+         module:modules ( module_code, module_name ),
          programme:programmes ( name, short_name ),
          submitter:profiles!resource_submissions_submitted_by_fkey ( full_name, email )`
       )

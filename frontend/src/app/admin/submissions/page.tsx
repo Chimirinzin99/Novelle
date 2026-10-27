@@ -6,6 +6,14 @@
 // module_id to POST /api/submissions/:id/approve).
 // Part 12: hard-coded colours switched to the theme colours.
 // PDF preview part: View PDF opens the preview window instead of a new tab.
+// Feedback (27 Oct):
+//   - each card shows where the student placed it (Year · Sem · Module,
+//     "No module chosen" or "Not given" for older submissions)
+//   - filters: Programme (super admin only), Year & semester, Module (once a
+//     single programme is in view — always for programme admins). Options
+//     come from the pending list itself, with counts.
+//   - the approve form starts with the student's year, semester and module
+//     (module only if it is still active); the admin can change them.
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -47,6 +55,10 @@ type Submission = {
   author_type: string | null; // Part 13d
   author_name: string | null;
   is_solved: boolean;
+  year: number | null; // feedback (27 Oct): where the student placed it
+  semester: number | null;
+  module_id: number | null; // null = "Not sure / not listed"
+  module: { module_code: string; module_name: string } | null;
   programme: { name: string; short_name: string | null } | null;
   submitter: { full_name: string | null; email: string | null } | null;
 };
@@ -60,6 +72,39 @@ type Module = {
   semester: number;
   active: boolean;
 };
+
+// Feedback (27 Oct) helpers for the filters and the card line.
+// "2-1" for Year 2 Sem 1, "none" when the student gave no year/semester.
+function placementKey(s: Submission) {
+  return s.year && s.semester ? `${s.year}-${s.semester}` : "none";
+}
+
+// "Year 2 · Sem 1 · CSF101 – Programming Fundamentals" (or "No module chosen")
+function placementLabel(s: Submission) {
+  if (!s.year || !s.semester) return "Not given";
+  const moduleText = s.module
+    ? `${s.module.module_code} – ${s.module.module_name}`
+    : "No module chosen";
+  return `Year ${s.year} · Sem ${s.semester} · ${moduleText}`;
+}
+
+// Groups a list into dropdown options with counts, A–Z, "none" last.
+function countOptions(
+  list: Submission[],
+  key: (s: Submission) => string,
+  label: (s: Submission) => string
+) {
+  const groups = new Map<string, { value: string; label: string; count: number }>();
+  for (const item of list) {
+    const value = key(item);
+    const group = groups.get(value) ?? { value, label: label(item), count: 0 };
+    group.count += 1;
+    groups.set(value, group);
+  }
+  return [...groups.values()].sort((a, b) =>
+    a.value === "none" ? 1 : b.value === "none" ? -1 : a.label.localeCompare(b.label)
+  );
+}
 
 const selectClass =
   "w-full rounded-lg border border-sky-line bg-white px-3 py-2.5 text-sm font-medium text-ink outline-none focus:border-navy-soft focus:ring-2 focus:ring-sky-tint disabled:bg-sky-wash disabled:text-ink-soft";
@@ -78,6 +123,11 @@ export default function AdminSubmissionsPage() {
   const [selectedModule, setSelectedModule] = useState<Record<number, string>>({});
   const [selectedReason, setSelectedReason] = useState<Record<number, string>>({});
   const [showRejectFor, setShowRejectFor] = useState<number | null>(null);
+  // Super admin: "all" or a programme id (as text, from the dropdown)
+  const [programmeFilter, setProgrammeFilter] = useState("all");
+  // Feedback (27 Oct): "all", "<year>-<semester>" / module id, or "none"
+  const [yearSemFilter, setYearSemFilter] = useState("all");
+  const [moduleFilter, setModuleFilter] = useState("all");
   // Part 13d: author credit + Solved per submission (pre-filled from the student)
   const [authorForms, setAuthorForms] = useState<Record<number, AuthorForm>>({});
   const [solvedForms, setSolvedForms] = useState<Record<number, boolean>>({});
@@ -168,8 +218,31 @@ export default function AdminSubmissionsPage() {
       ]);
 
       const loaded: Submission[] = submissionsData.submissions || [];
+      const loadedModules: Module[] = modulesData.modules || [];
       setSubmissions(loaded);
-      setModules(modulesData.modules || []);
+      setModules(loadedModules);
+
+      // Feedback (27 Oct): start the approve form with the student's choice.
+      // The module only if it is still active and matches (else the admin picks).
+      const placed = loaded.filter((s) => s.year && s.semester);
+      setSelectedYear(Object.fromEntries(placed.map((s) => [s.id, String(s.year)])));
+      setSelectedSemester(Object.fromEntries(placed.map((s) => [s.id, String(s.semester)])));
+      setSelectedModule(
+        Object.fromEntries(
+          placed
+            .filter((s) =>
+              loadedModules.some(
+                (m) =>
+                  m.id === s.module_id &&
+                  m.active &&
+                  m.programme_id === s.programme_id &&
+                  m.year === s.year &&
+                  m.semester === s.semester
+              )
+            )
+            .map((s) => [s.id, String(s.module_id)])
+        )
+      );
 
       // Part 13d: start each form with what the student chose
       setAuthorForms(
@@ -292,6 +365,65 @@ export default function AdminSubmissionsPage() {
     }
   };
 
+  // ---- Filters (feedback, 27 Oct) ----
+  // Each step narrows the list; each dropdown's choices come from what is
+  // left after the steps before it, so no choice ever gives an empty list.
+  // If a chosen value disappears (its last item was approved/rejected), that
+  // filter falls back to "all".
+  const isSuperAdmin = isSuperAdminRole(profile?.role);
+
+  // 1. Programme (super admin only)
+  const programmeOptions = countOptions(
+    submissions,
+    (s) => String(s.programme_id),
+    (s) => s.programme?.name ?? `Programme ${s.programme_id}`
+  );
+  const activeProgramme =
+    isSuperAdmin && programmeOptions.some((o) => o.value === programmeFilter)
+      ? programmeFilter
+      : "all";
+  const byProgramme =
+    activeProgramme === "all"
+      ? submissions
+      : submissions.filter((s) => String(s.programme_id) === activeProgramme);
+
+  // 2. Year & semester
+  const yearSemOptions = countOptions(byProgramme, placementKey, (s) =>
+    s.year && s.semester ? `Year ${s.year} · Sem ${s.semester}` : "Not given"
+  );
+  const activeYearSem = yearSemOptions.some((o) => o.value === yearSemFilter)
+    ? yearSemFilter
+    : "all";
+  const byYearSem =
+    activeYearSem === "all"
+      ? byProgramme
+      : byProgramme.filter((s) => placementKey(s) === activeYearSem);
+
+  // 3. Module — only when one programme is in view, so module names from
+  // different programmes never mix.
+  const showModuleFilter = !isSuperAdmin || activeProgramme !== "all";
+  const moduleOptions = countOptions(
+    byYearSem,
+    (s) => (s.module_id ? String(s.module_id) : "none"),
+    (s) => (s.module ? `${s.module.module_code} – ${s.module.module_name}` : "No module chosen")
+  );
+  const activeModule =
+    showModuleFilter && moduleOptions.some((o) => o.value === moduleFilter)
+      ? moduleFilter
+      : "all";
+  const visibleSubmissions =
+    activeModule === "all"
+      ? byYearSem
+      : byYearSem.filter((s) => (s.module_id ? String(s.module_id) : "none") === activeModule);
+
+  const anyFilter = activeProgramme !== "all" || activeYearSem !== "all" || activeModule !== "all";
+
+  function clearFilters() {
+    setProgrammeFilter("all");
+    setYearSemFilter("all");
+    setModuleFilter("all");
+  }
+
   if (loading) {
     return (
       <main className="min-h-screen bg-cream px-5 py-8 text-ink md:px-8">
@@ -350,6 +482,89 @@ export default function AdminSubmissionsPage() {
           </div>
         )}
 
+        {/* Filters (feedback, 27 Oct) */}
+        {submissions.length > 0 && (
+          <div className="mb-6 flex flex-wrap items-end gap-4 rounded-xl border border-line bg-white p-4 shadow-sm">
+            {isSuperAdmin && (
+              <div>
+                <label htmlFor="programme-filter" className="mb-1.5 block text-xs font-semibold text-ink-nav">
+                  Programme
+                </label>
+                <select
+                  id="programme-filter"
+                  value={activeProgramme}
+                  onChange={(e) => setProgrammeFilter(e.target.value)}
+                  className={`${selectClass} w-auto min-w-56`}
+                >
+                  <option value="all">All programmes ({submissions.length})</option>
+                  {programmeOptions.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label} ({o.count})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <div>
+              <label htmlFor="year-sem-filter" className="mb-1.5 block text-xs font-semibold text-ink-nav">
+                Year &amp; semester
+              </label>
+              <select
+                id="year-sem-filter"
+                value={activeYearSem}
+                onChange={(e) => setYearSemFilter(e.target.value)}
+                className={`${selectClass} w-auto min-w-48`}
+              >
+                <option value="all">All ({byProgramme.length})</option>
+                {yearSemOptions.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label} ({o.count})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {showModuleFilter ? (
+              <div>
+                <label htmlFor="module-filter" className="mb-1.5 block text-xs font-semibold text-ink-nav">
+                  Module
+                </label>
+                <select
+                  id="module-filter"
+                  value={activeModule}
+                  onChange={(e) => setModuleFilter(e.target.value)}
+                  className={`${selectClass} w-auto min-w-64`}
+                >
+                  <option value="all">All modules ({byYearSem.length})</option>
+                  {moduleOptions.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label} ({o.count})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : (
+              <p className="pb-2.5 text-xs text-ink-soft">Choose a programme to filter by module.</p>
+            )}
+
+            <div className="ml-auto flex items-center gap-3 pb-2.5">
+              {anyFilter && (
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  className="text-sm font-semibold text-navy-soft hover:text-navy hover:underline"
+                >
+                  Clear filters
+                </button>
+              )}
+              <span className="text-sm text-ink-soft">
+                Showing {visibleSubmissions.length} of {submissions.length}
+              </span>
+            </div>
+          </div>
+        )}
+
         {submissions.length === 0 ? (
           <div className="rounded-xl border border-line bg-white p-10 text-center shadow-sm">
             <h2 className="text-lg font-semibold text-ink">
@@ -362,7 +577,7 @@ export default function AdminSubmissionsPage() {
           </div>
         ) : (
           <div className="space-y-5">
-            {submissions.map((submission) => {
+            {visibleSubmissions.map((submission) => {
               const busy = busyId === submission.id;
               const moduleOptions = modulesFor(submission);
               const yearAndSemesterChosen =
@@ -395,6 +610,12 @@ export default function AdminSubmissionsPage() {
                           ` · ${submission.programme.name}`}
                       </p>
 
+                      {/* Feedback (27 Oct): where the student placed it */}
+                      <p className="mt-1 text-sm text-ink-soft">
+                        Placed by student:{" "}
+                        <span className="font-medium text-ink">{placementLabel(submission)}</span>
+                      </p>
+
                       <p className="mt-1 text-xs text-ink-soft">
                         Submitted
                         {submission.submitter?.full_name
@@ -419,8 +640,9 @@ export default function AdminSubmissionsPage() {
                     </p>
 
                     <p className="mt-1 text-xs text-ink-soft">
-                      Choose the year and semester, then the module, before
-                      approving.
+                      {submission.year
+                        ? "Started with the student's choice — check it, or change the year, semester or module, before approving."
+                        : "Choose the year and semester, then the module, before approving."}
                     </p>
 
                     <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">

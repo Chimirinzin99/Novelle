@@ -13,6 +13,7 @@
 // a video stays a video.
 // Part 13d: also edits "Who made it?" (author credit) and, for question
 // papers and assignments, Solved — again sending only what changed.
+// Feedback (27 Oct): Year 5 added (Architecture is a 5-year programme).
 
 import { useEffect, useState } from "react";
 import { X } from "lucide-react";
@@ -320,7 +321,7 @@ export default function EditResourceDialog({
               }}
               className={inputClass}
             >
-              {[1, 2, 3, 4].map((y) => (
+              {[1, 2, 3, 4, 5].map((y) => (
                 <option key={y} value={y}>
                   Year {y}
                 </option>
