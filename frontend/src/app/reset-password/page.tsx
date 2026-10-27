@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { CST_EMAIL_ERROR, LECTURER_EMAIL_EXAMPLE, MIN_PASSWORD_LENGTH, STUDENT_EMAIL_EXAMPLE } from "@/lib/authRules";
+import PasswordStrengthMeter from "@/components/PasswordStrengthMeter";
 import ThemeToggle from "@/components/ThemeToggle";
 
 // /reset-password does two jobs:
@@ -19,7 +21,6 @@ import ThemeToggle from "@/components/ThemeToggle";
 
 type Mode = "checking" | "request" | "sent" | "update" | "done";
 
-const MIN_PASSWORD_LENGTH = 8; // same rule as the Settings page
 
 export default function ResetPasswordPage() {
   const router = useRouter();
@@ -78,7 +79,7 @@ export default function ResetPasswordPage() {
 
     if (!cleanEmail.endsWith("@rub.edu.bt")) {
       setError(
-        "Please use your RUB email address, for example: yourname@rub.edu.bt"
+        CST_EMAIL_ERROR
       );
       return;
     }
@@ -193,10 +194,13 @@ export default function ResetPasswordPage() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="yourname@rub.edu.bt"
+                  placeholder={STUDENT_EMAIL_EXAMPLE}
                   required
                   className={inputClass}
                 />
+                <p className="mt-1 text-xs text-gray-500 dark:text-[#8B98AA]">
+                  Lecturers: {LECTURER_EMAIL_EXAMPLE}
+                </p>
               </div>
 
               {error && (
@@ -255,9 +259,11 @@ export default function ResetPasswordPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   autoComplete="new-password"
+                  minLength={MIN_PASSWORD_LENGTH}
                   required
                   className={inputClass}
                 />
+                <PasswordStrengthMeter password={password} />
               </div>
 
               <div>

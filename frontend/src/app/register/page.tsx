@@ -4,6 +4,14 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import ThemeToggle from "@/components/ThemeToggle";
+import PasswordStrengthMeter from "@/components/PasswordStrengthMeter";
+import CstEmailHint from "@/components/CstEmailHint";
+import {
+  CST_EMAIL_ERROR,
+  isCstEmail,
+  MIN_PASSWORD_LENGTH,
+  STUDENT_EMAIL_EXAMPLE,
+} from "@/lib/authRules";
 
 type Programme = {
   id: number;
@@ -66,27 +74,25 @@ export default function RegisterPage() {
       return;
     }
 
-    // Check CST email
+    // CST email: student ID for students, name for lecturers
     const cleanEmail = email.trim().toLowerCase();
 
-if (!cleanEmail.endsWith("@rub.edu.bt")) {
-  setError(
-    "Please use your RUB email address, for example: yourname@rub.edu.bt"
-  );
-  setLoading(false);
-  return;
-}
+    if (!isCstEmail(cleanEmail)) {
+      setError(CST_EMAIL_ERROR);
+      setLoading(false);
+      return;
+    }
 
     // Check password
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters.");
+    if (password.length < MIN_PASSWORD_LENGTH) {
+      setError(`Password must be at least ${MIN_PASSWORD_LENGTH} characters.`);
       setLoading(false);
       return;
     }
 
     // Create Supabase account
     const { error } = await supabase.auth.signUp({
-      email: email.toLowerCase(),
+      email: cleanEmail,
       password: password,
       options: {
   emailRedirectTo: `${window.location.origin}/`,
@@ -162,10 +168,13 @@ if (!cleanEmail.endsWith("@rub.edu.bt")) {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="yourname@cst.edu.bt"
+              placeholder={STUDENT_EMAIL_EXAMPLE}
+              autoComplete="email"
               required
               className="w-full rounded-lg border border-gray-300 dark:border-[#33445A] bg-white dark:bg-[#172130] px-4 py-3 text-gray-900 dark:text-[#E5EAF1] placeholder:text-gray-400 dark:placeholder:text-[#6B788A] outline-none focus:border-black dark:focus:border-slate-400 focus:ring-1 focus:ring-black dark:focus:ring-slate-400"
             />
+
+            <CstEmailHint email={email} />
           </div>
 
           {/* Password */}
@@ -179,13 +188,13 @@ if (!cleanEmail.endsWith("@rub.edu.bt")) {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Create a password"
+              autoComplete="new-password"
+              minLength={MIN_PASSWORD_LENGTH}
               required
               className="w-full rounded-lg border border-gray-300 dark:border-[#33445A] bg-white dark:bg-[#172130] px-4 py-3 text-gray-900 dark:text-[#E5EAF1] placeholder:text-gray-400 dark:placeholder:text-[#6B788A] outline-none focus:border-black dark:focus:border-slate-400 focus:ring-1 focus:ring-black dark:focus:ring-slate-400"
             />
 
-            <p className="mt-1 text-xs text-gray-400 dark:text-[#6B788A]">
-              Minimum 6 characters
-            </p>
+            <PasswordStrengthMeter password={password} />
           </div>
 
           {/* Programme */}

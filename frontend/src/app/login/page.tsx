@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { CST_EMAIL_ERROR, LECTURER_EMAIL_EXAMPLE, STUDENT_EMAIL_EXAMPLE } from "@/lib/authRules";
 import ThemeToggle from "@/components/ThemeToggle";
 import { homePathForRole } from "@/lib/roles";
 
@@ -31,7 +32,7 @@ export default function LoginPage() {
     // Check RUB email
     if (!cleanEmail.endsWith("@rub.edu.bt")) {
       setError(
-        "Please use your RUB email address, for example: yourname@rub.edu.bt"
+        CST_EMAIL_ERROR
       );
       setLoading(false);
       return;
@@ -128,10 +129,13 @@ export default function LoginPage() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="yourname@rub.edu.bt"
+              placeholder={STUDENT_EMAIL_EXAMPLE}
               required
               className="w-full rounded-lg border border-gray-300 dark:border-[#33445A] bg-white dark:bg-[#172130] px-4 py-3 text-gray-900 dark:text-[#E5EAF1] placeholder:text-gray-400 dark:placeholder:text-[#6B788A] outline-none focus:border-black dark:focus:border-slate-400 focus:ring-1 focus:ring-black dark:focus:ring-slate-400"
             />
+            <p className="mt-1 text-xs text-gray-500 dark:text-[#8B98AA]">
+              Lecturers: {LECTURER_EMAIL_EXAMPLE}
+            </p>
           </div>
 
           {/* Password */}
