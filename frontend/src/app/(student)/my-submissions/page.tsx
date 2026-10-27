@@ -1,0 +1,315 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
+import { rejectionReasonLabel } from "@/lib/rejectionReasons";
+import { resourceTypeLabel } from "@/lib/resourceTypes";
+
+// One row from resource_submissions, plus the programme name joined in.
+type Submission = {
+  id: number;
+  title: string;
+  type: string;
+  status: "pending" | "approved" | "rejected";
+  rejection_reason: string | null;
+  file_path: string;
+  created_at: string;
+  reviewed_at: string | null;
+  programmes: { name: string } | null;
+};
+
+type StatusFilter = "all" | "pending" | "approved" | "rejected";
+
+// Colours and wording for each status, kept in one place.
+const STATUS_STYLES = {
+  pending: { label: "Pending review", className: "bg-yellow-100 dark:bg-amber-900/40 text-yellow-800 dark:text-yellow-300" },
+  approved: { label: "Approved", className: "bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-300" },
+  rejected: { label: "Rejected", className: "bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300" },
+};
+
+// "2026-10-07T16:20:00Z" -> "7 Oct 2026"
+function formatDate(value: string) {
+  return new Date(value).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+export default function MySubmissionsPage() {
+  const router = useRouter();
+
+  const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [filter, setFilter] = useState<StatusFilter>("all");
+
+  useEffect(() => {
+    async function loadSubmissions() {
+      // Not logged in -> send to login (same guard as /home).
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        router.replace("/login");
+        return;
+      }
+
+      // programmes(name) follows the programme_id foreign key and
+      // brings back the programme's name in the same request.
+      //
+      // .eq("submitted_by", user.id) is needed even with the new RLS policy:
+      // policies are OR-ed, so an ADMIN would also see other students'
+      // submissions here. This keeps the page "mine only" for everyone.
+      const { data, error } = await supabase
+        .from("resource_submissions")
+        .select(
+          "id, title, type, status, rejection_reason, file_path, created_at, reviewed_at, programmes(name)"
+        )
+        .eq("submitted_by", user.id)
+        .order("created_at", { ascending: false }); // newest first
+
+      if (error) {
+        console.error("Load submissions error:", error);
+        setError("Could not load your submissions.");
+      } else {
+        setSubmissions((data ?? []) as unknown as Submission[]);
+      }
+
+      setLoading(false);
+    }
+
+    // A "your upload was received" message left by the Submit page.
+    // It is shown once the list has loaded, then hides after 8 seconds.
+    const savedNotice = sessionStorage.getItem("novelle:upload-notice");
+    let active = true;
+    let hideTimer: number | undefined;
+
+    loadSubmissions().then(() => {
+      if (!savedNotice || !active) return;
+      sessionStorage.removeItem("novelle:upload-notice");
+      setNotice(savedNotice);
+      hideTimer = window.setTimeout(() => setNotice(""), 8000);
+    });
+
+    return () => {
+      active = false;
+      window.clearTimeout(hideTimer);
+    };
+  }, [router]);
+
+  // Open the student's own PDF. Allowed by the storage policy from
+  // migration 002 (files in submissions/<their-id>/).
+  async function viewFile(filePath: string) {
+    const { data, error } = await supabase.storage
+      .from("resources")
+      .createSignedUrl(filePath, 60); // link valid for 60 seconds
+
+    if (error || !data) {
+      console.error("View file error:", error);
+      alert("Could not open this file.");
+      return;
+    }
+
+    window.open(data.signedUrl, "_blank");
+  }
+
+  // How many submissions have each status (for the filter buttons).
+  const counts = {
+    all: submissions.length,
+    pending: submissions.filter((s) => s.status === "pending").length,
+    approved: submissions.filter((s) => s.status === "approved").length,
+    rejected: submissions.filter((s) => s.status === "rejected").length,
+  };
+
+  const visible =
+    filter === "all"
+      ? submissions
+      : submissions.filter((s) => s.status === filter);
+
+  return (
+    
+<main className="min-h-full bg-[#FCFBF8] dark:bg-[#0E141D] px-5 py-7 text-[#24344D] dark:text-[#E5EAF1] md:px-10 md:py-9 lg:px-12">
+
+      {notice && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed right-5 top-5 z-50 flex max-w-[calc(100vw-2.5rem)] items-start gap-3 rounded-xl border border-green-200 dark:border-green-900/60 bg-white dark:bg-[#172130] px-4 py-3 text-sm text-green-800 dark:text-green-300 shadow-lg sm:max-w-md"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={1.8}
+            className="mt-0.5 h-5 w-5 shrink-0 text-green-600 dark:text-green-400"
+            aria-hidden="true"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="m5 12.5 4.5 4L19 7"
+            />
+            <circle cx="12" cy="12" r="9" />
+          </svg>
+          <p className="flex-1 leading-5">{notice}</p>
+          <button
+            type="button"
+            onClick={() => setNotice("")}
+            aria-label="Dismiss notification"
+            className="rounded-md px-1 text-lg leading-5 text-slate-400 dark:text-[#6B788A] transition hover:bg-green-50 dark:hover:bg-green-950/40 hover:text-slate-700 dark:hover:text-[#B4BFCD] focus:outline-none focus:ring-2 focus:ring-green-300 dark:focus:ring-green-800"
+          >
+            ×
+          </button>
+        </div>
+      )}
+
+      <Link
+        href="/profile"
+        className="mb-7 inline-flex items-center gap-2 rounded-xl border border-[#E7E5DF] dark:border-[#263345] bg-white dark:bg-[#172130] px-4 py-2.5 text-sm font-medium text-[#294C78] dark:text-[#9CB9E3] shadow-sm transition hover:border-[#C8D5E7] dark:hover:border-[#33445A] hover:bg-[#E7EEF8] dark:hover:bg-[#1E3150] focus:outline-none focus:ring-2 focus:ring-[#294C78]/30"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.8}
+          className="h-4 w-4"
+          aria-hidden="true"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M15.75 19.5 8.25 12l7.5-7.5"
+          />
+        </svg>
+        Back to profile
+      </Link>
+
+      {/* Header */}
+      <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-[#24344D] dark:text-[#E5EAF1] md:text-4xl">
+            My Submissions
+          </h1>
+          <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-[#8B98AA]">
+            Everything you have uploaded and where it is in the review.
+          </p>
+        </div>
+
+      </div>
+
+      {/* Status filter buttons */}
+      <div className="mb-6 flex flex-wrap gap-2">
+        {(["all", "pending", "approved", "rejected"] as StatusFilter[]).map(
+          (option) => (
+            <button
+              key={option}
+              type="button"
+              onClick={() => setFilter(option)}
+              aria-pressed={filter === option}
+              className={
+                filter === option
+                  ? "rounded-full bg-[#294C78] px-4 py-2 text-sm font-semibold text-white shadow-sm"
+                  : "rounded-full border border-[#E7E5DF] dark:border-[#263345] bg-white dark:bg-[#172130] px-4 py-2 text-sm font-medium text-slate-600 dark:text-[#B4BFCD] transition hover:border-[#C8D5E7] dark:hover:border-[#33445A] hover:bg-[#F0F4FA] dark:hover:bg-[#1D2938]"
+              }
+            >
+              {option === "all"
+                ? "All"
+                : STATUS_STYLES[option].label.split(" ")[0]}{" "}
+              ({counts[option]})
+            </button>
+          )
+        )}
+      </div>
+
+      {error && (
+        <div role="alert" className="mb-6 rounded-xl border border-red-200 dark:border-red-900/60 bg-red-50 dark:bg-red-950/40 px-4 py-3 text-sm font-medium text-red-700 dark:text-red-300">
+          {error}
+        </div>
+      )}
+
+      {loading ? (
+        <div className="rounded-2xl border border-[#E7E5DF] dark:border-[#263345] bg-white dark:bg-[#172130] p-10 text-center text-sm text-slate-500 dark:text-[#8B98AA] shadow-sm">
+          Loading your submissions...
+        </div>
+      ) : visible.length === 0 ? (
+        // Empty state
+        <div className="rounded-2xl border border-[#E7E5DF] dark:border-[#263345] bg-white dark:bg-[#172130] p-12 text-center shadow-sm">
+          <h3 className="text-lg font-semibold text-[#24344D] dark:text-[#E5EAF1]">
+            {submissions.length === 0
+              ? "You haven't uploaded anything yet"
+              : "Nothing with this status"}
+          </h3>
+          <p className="mt-2 text-sm text-slate-500 dark:text-[#8B98AA]">
+            Uploaded notes appear here while they are reviewed.
+          </p>
+          {submissions.length === 0 && (
+            <Link
+              href="/submit-note"
+              className="mt-6 inline-block rounded-lg bg-[#294C78] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#203B60] focus:outline-none focus:ring-2 focus:ring-[#294C78]/30 focus:ring-offset-2"
+            >
+              Upload your first note
+            </Link>
+          )}
+        </div>
+      ) : (
+        // List of submissions
+        <div className="space-y-3">
+          {visible.map((submission) => {
+            const status = STATUS_STYLES[submission.status];
+
+            return (
+              <div
+                key={submission.id}
+                className="flex flex-col gap-4 rounded-2xl border border-[#E7E5DF] dark:border-[#263345] bg-white dark:bg-[#172130] p-5 shadow-sm transition hover:border-[#C8D5E7] dark:hover:border-[#33445A] sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="font-semibold text-[#24344D] dark:text-[#E5EAF1]">{submission.title}</h3>
+                    <span
+                      className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${status.className}`}
+                    >
+                      {status.label}
+                    </span>
+                  </div>
+
+                  <p className="mt-1 text-sm leading-6 text-slate-500 dark:text-[#8B98AA]">
+                    {resourceTypeLabel(submission.type)}
+                    {" · "}
+                    {submission.programmes?.name ?? "Unknown programme"}
+                    {" · "}
+                    Submitted {formatDate(submission.created_at)}
+                    {submission.reviewed_at &&
+                      ` · Reviewed ${formatDate(submission.reviewed_at)}`}
+                  </p>
+
+                  {/* Only rejected submissions have a reason */}
+                  {submission.status === "rejected" && (
+                    <p className="mt-2 text-sm text-red-700 dark:text-red-300">
+                      Reason:{" "}
+                      {rejectionReasonLabel(submission.rejection_reason) ||
+                        "No reason given"}
+                    </p>
+                  )}
+                </div>
+
+                <button
+                  onClick={() => viewFile(submission.file_path)}
+                  className="shrink-0 rounded-lg border border-[#D9DEE7] dark:border-[#263345] px-4 py-2 text-sm font-semibold text-[#294C78] dark:text-[#9CB9E3] transition hover:bg-[#F0F4FA] dark:hover:bg-[#1D2938] focus:outline-none focus:ring-2 focus:ring-[#294C78]/30"
+                >
+                  View
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </main>
+  );
+}
