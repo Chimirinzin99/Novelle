@@ -20,6 +20,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { BACKEND_URL } from "@/lib/config";
 import { callBackend, readJson } from "@/lib/backend";
+import { MAX_UPLOAD_BYTES, MAX_UPLOAD_MB, FILE_TOO_BIG_MESSAGE } from "@/lib/uploads";
 import {
   EMPTY_AUTHOR_FORM,
   appendAuthorFields,
@@ -125,9 +126,9 @@ export default function SubmitNotePage() {
       return;
     }
 
-    if (selectedFile.size > 5 * 1024 * 1024) {
+    if (selectedFile.size > MAX_UPLOAD_BYTES) {
       setFile(null);
-      setError("That file is larger than 5 MB. Choose a smaller PDF.");
+      setError(`That file is larger than ${MAX_UPLOAD_MB} MB. Choose a smaller PDF.`);
       clearFileInput();
       return;
     }
@@ -185,8 +186,8 @@ export default function SubmitNotePage() {
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      setError("The PDF must be 5 MB or smaller.");
+    if (file.size > MAX_UPLOAD_BYTES) {
+      setError(FILE_TOO_BIG_MESSAGE);
       return;
     }
 
@@ -244,7 +245,7 @@ export default function SubmitNotePage() {
         );
       }
 
-      // Submit through the backend so the 5 MB limit is enforced server-side.
+      // Submit through the backend so the size limit is enforced server-side.
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) {
         setError("Your session has expired. Please sign in again.");
@@ -545,7 +546,7 @@ export default function SubmitNotePage() {
                   <path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" strokeLinecap="round" />
                 </svg>
                 <span className="font-bold text-ink">Drop your PDF here, or click to choose</span>
-                <span className="text-sm text-ink-soft">PDF only · 5 MB maximum</span>
+                <span className="text-sm text-ink-soft">PDF only · {MAX_UPLOAD_MB} MB maximum</span>
               </label>
             )}
           </div>

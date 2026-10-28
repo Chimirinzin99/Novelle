@@ -3,6 +3,7 @@ import multer from "multer";
 
 import { authenticateUser } from "../middleware/auth";
 import { requireRole } from "../middleware/role";
+import { MAX_UPLOAD_BYTES } from "../constants/uploads";
 
 import {
   getResources,
@@ -17,7 +18,7 @@ const router = Router();
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 5 * 1024 * 1024, // 5 MB
+    fileSize: MAX_UPLOAD_BYTES, // Part 14: 4 MB (constants/uploads.ts)
   },
   fileFilter: (_req, file, cb) => {
     if (file.mimetype !== "application/pdf") {

@@ -22,9 +22,10 @@ import {
 } from "../constants/submissions";
 import { notifyUser, shortTitle } from "../utils/notifications";
 import { readAuthor, readBoolean } from "../utils/author";
+import { MAX_UPLOAD_BYTES, FILE_TOO_BIG_MESSAGE } from "../constants/uploads";
 
 const RESOURCE_BUCKET = "resources";
-const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
+// MAX_UPLOAD_BYTES (4 MB since Part 14) now comes from constants/uploads.ts.
 
 // Years a programme can have (Architecture is 5 years).
 const MIN_YEAR = 1;
@@ -53,7 +54,7 @@ export const uploadStudentSubmission = async (
       return res.status(400).json({ success: false, message: "Please upload a PDF file." });
     }
     if (req.file.size > MAX_UPLOAD_BYTES) {
-      return res.status(413).json({ success: false, message: "PDF must be 5 MB or smaller." });
+      return res.status(413).json({ success: false, message: FILE_TOO_BIG_MESSAGE });
     }
     if (req.file.mimetype !== "application/pdf" || !req.file.originalname.toLowerCase().endsWith(".pdf")) {
       return res.status(400).json({ success: false, message: "Only PDF files are allowed." });

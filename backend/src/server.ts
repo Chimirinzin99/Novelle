@@ -1,5 +1,7 @@
 // server.ts — the Novelle backend (Express).
 // Part 13e: adds /api/auth (login with lockout).
+// Part 14: runs on Vercel as well as locally (same file, no changes needed
+// for Vercel to find it: it looks for src/server.ts with app.listen).
 
 import "dotenv/config";
 import express, { NextFunction, Request, Response } from "express";
@@ -12,6 +14,7 @@ import submissionsRoutes from "./routes/submissions.routes";
 import usersRoutes from "./routes/users.routes";
 import statsRoutes from "./routes/stats.routes";
 import authRoutes from "./routes/auth.routes";
+import { FILE_TOO_BIG_MESSAGE } from "./constants/uploads";
 
 // ------------------------------------
 // Settings from .env (with local defaults)
@@ -92,7 +95,7 @@ app.use(
     if (error instanceof multer.MulterError) {
       const message =
         error.code === "LIMIT_FILE_SIZE"
-          ? "PDF file must be 5 MB or smaller."
+          ? FILE_TOO_BIG_MESSAGE
           : "File upload failed.";
       return res.status(400).json({ success: false, message });
     }

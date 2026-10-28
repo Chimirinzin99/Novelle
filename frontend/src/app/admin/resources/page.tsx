@@ -26,6 +26,7 @@ import { supabase } from "@/lib/supabase";
 import { isAdminRole, isSuperAdminRole } from "@/lib/roles";
 import { BACKEND_URL } from "@/lib/config";
 import { callBackend, readJson } from "@/lib/backend";
+import { MAX_UPLOAD_BYTES, MAX_UPLOAD_MB, FILE_TOO_BIG_MESSAGE } from "@/lib/uploads";
 import { RESOURCE_TYPES } from "@/lib/resourceTypes";
 import {
   EMPTY_AUTHOR_FORM,
@@ -258,8 +259,8 @@ export default function ManageResourcesPage() {
         return;
       }
 
-      if (file.size > 5 * 1024 * 1024) {
-        setError("PDF must be 5 MB or smaller.");
+      if (file.size > MAX_UPLOAD_BYTES) {
+        setError(FILE_TOO_BIG_MESSAGE);
         return;
       }
     }
@@ -673,18 +674,28 @@ export default function ManageResourcesPage() {
                     </p>
 
                     <p className="mt-1 text-[10px] text-ink-soft">
-                      PDF only · Maximum size: 5 MB
+                      PDF only · Maximum size: {MAX_UPLOAD_MB} MB
                     </p>
 
                     <input
                       id="pdf"
                       type="file"
                       accept="application/pdf,.pdf"
-                      onChange={(e) =>
-                        setFile(
-                          e.target.files?.[0] || null
-                        )
-                      }
+                      onChange={(e) => {
+                        // Part 14: check the size as soon as a file is picked
+                        // (not only on Upload), like the student submit page.
+                        const picked = e.target.files?.[0] || null;
+                        if (picked && picked.size > MAX_UPLOAD_BYTES) {
+                          setFile(null);
+                          setError(
+                            `That file is larger than ${MAX_UPLOAD_MB} MB. Choose a smaller PDF.`
+                          );
+                          e.target.value = ""; // lets the same file be picked again later
+                          return;
+                        }
+                        setError("");
+                        setFile(picked);
+                      }}
                       className="hidden"
                     />
                   </label>

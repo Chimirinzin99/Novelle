@@ -124,10 +124,13 @@ export const login = async (req: Request, res: Response) => {
         const result = Array.isArray(rows) ? rows[0] : null;
 
         if (result?.locked_until) {
-          // Part 13f: THIS try caused the lock -> alert the owner. Not awaited,
-          // so the reply isn't slowed down by Gmail (it logs its own errors).
+          // Part 13f: THIS try caused the lock -> alert the owner.
+          // Part 14: now AWAITED. On Vercel the function may be stopped as soon
+          // as the reply is sent, so an email started "in the background" could
+          // be cut off. Waiting costs ~1-3 s, only on the try that locks.
+          // sendLockoutAlert never throws (it logs its own errors).
           if (result.just_locked) {
-            void sendLockoutAlert(email, result.locked_until, result.failed_count);
+            await sendLockoutAlert(email, result.locked_until, result.failed_count);
           }
           return lockedReply(res, result.locked_until);
         }
