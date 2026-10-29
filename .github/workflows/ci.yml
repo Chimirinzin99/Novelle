@@ -1,0 +1,57 @@
+# .github/workflows/ci.yml — Part 14: automatic checks on GitHub (CI).
+#
+# Runs on every push to develop or main, and on every pull request into them.
+# It does the same checks you run by hand before committing:
+#   backend:  type check + build (tsc)
+#   frontend: type check + production build (next build)
+# A red ✗ next to a commit on GitHub means one of these failed — fix it before
+# it reaches the live site. (Vercel still deploys on its own; this is the warning light.)
+
+name: CI
+
+on:
+  push:
+    branches: [develop, main]
+  pull_request:
+    branches: [develop, main]
+
+jobs:
+  backend:
+    name: Backend (type check + build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npm run build
+
+  frontend:
+    name: Frontend (type check + build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    # The build needs these names to exist. They are PLACEHOLDERS, not the real
+    # project: CI only checks that the code builds, it never talks to Supabase.
+    env:
+      NEXT_PUBLIC_BACKEND_URL: https://example.com
+      NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder-key
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npm run build
