@@ -28,7 +28,7 @@ export default function PageHeader({
       {backHref && (
         <Link
           href={backHref}
-          className="mb-6 inline-flex items-center gap-1.5 rounded-lg text-[15px] font-semibold text-navy-soft outline-none hover:text-navy hover:underline focus-visible:ring-2 focus-visible:ring-navy/40"
+          className="mb-6 inline-flex items-center gap-1.5 rounded-xl border border-line bg-white px-3.5 py-2 text-sm font-semibold text-navy-soft shadow-sm outline-none transition hover:bg-sky-wash hover:text-navy focus-visible:ring-2 focus-visible:ring-navy/40"
         >
           <svg
             viewBox="0 0 24 24"

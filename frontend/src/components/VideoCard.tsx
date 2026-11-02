@@ -81,16 +81,21 @@ export default function VideoCard({
 
         {extra}
 
-        <div className="mt-auto flex gap-2 pt-1">
-          <button type="button" onClick={watch} className={primaryButton}>
+        <div className="mt-auto flex items-center gap-2 pt-1">
+          <button
+            type="button"
+            onClick={watch}
+            className={footer
+              ? "flex h-11 min-w-0 flex-1 items-center justify-center whitespace-nowrap rounded-[10px] bg-navy px-1 text-xs font-bold text-white outline-none transition hover:bg-navy-soft focus-visible:ring-2 focus-visible:ring-navy/40 focus-visible:ring-offset-2"
+              : primaryButton}
+          >
             Watch
           </button>
-          {onLike && (
+          {onLike && !footer && (
           <LikeButton liked={!!liked} count={likes} label={title} onClick={onLike} />
           )}
+          {footer && <div className="flex shrink-0 items-center gap-2">{footer}</div>}
         </div>
-
-        {footer && <div className="flex items-center justify-between gap-2 border-t border-line pt-3">{footer}</div>}
       </div>
     </article>
   );

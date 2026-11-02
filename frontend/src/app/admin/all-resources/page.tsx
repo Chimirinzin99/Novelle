@@ -16,7 +16,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Heart, Pencil, Search, Trash2 } from "lucide-react";
+import { CheckCircle2, Heart, Pencil, Search, Trash2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { usePreview } from "@/components/PreviewProvider";
 import { downloadFile } from "@/lib/files";
@@ -70,6 +70,7 @@ export default function AllResourcesPage() {
   const [error, setError] = useState("");
   const [openingId, setOpeningId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<Resource | null>(null);
   const [success, setSuccess] = useState("");
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   // The resource in the Edit window (null = closed).
@@ -131,6 +132,21 @@ export default function AllResourcesPage() {
     void loadResources();
   }, [router]);
 
+  useEffect(() => {
+    if (!success) return;
+    const timer = window.setTimeout(() => setSuccess(""), 4000);
+    return () => window.clearTimeout(timer);
+  }, [success]);
+
+  useEffect(() => {
+    if (!pendingDelete || deletingId === pendingDelete.id) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setPendingDelete(null);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [pendingDelete, deletingId]);
+
   const visibleResources = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
     return resources.filter((resource) => {
@@ -163,9 +179,6 @@ export default function AllResourcesPage() {
   }
 
   async function deleteResource(resource: Resource) {
-    const title = resource.title || resource.topic || "this resource";
-    if (!window.confirm(`Delete “${title}”? This cannot be undone.`)) return;
-
     setError("");
     setSuccess("");
     setDeletingId(resource.id);
@@ -190,7 +203,7 @@ export default function AllResourcesPage() {
         delete next[resource.id];
         return next;
       });
-      setSuccess("Resource deleted.");
+      setSuccess("Resource deleted successfully.");
     } catch (deleteError) {
       console.error("Delete resource error:", deleteError);
       setError(
@@ -200,6 +213,7 @@ export default function AllResourcesPage() {
       );
     } finally {
       setDeletingId(null);
+      setPendingDelete(null);
     }
   }
 
@@ -230,7 +244,7 @@ export default function AllResourcesPage() {
 
   // Small square icon buttons for Edit / Delete.
   const iconButton =
-    "flex h-10 w-10 items-center justify-center rounded-[10px] border-[1.5px] border-sky-line bg-white text-navy outline-none transition hover:bg-sky-wash focus-visible:ring-2 focus-visible:ring-navy/40 disabled:cursor-wait disabled:opacity-50";
+    "flex h-9 w-9 items-center justify-center rounded-[10px] border-[1.5px] border-sky-line bg-white text-navy outline-none transition hover:bg-sky-wash focus-visible:ring-2 focus-visible:ring-navy/40 disabled:cursor-wait disabled:opacity-50";
 
   return (
     <main className="min-h-full bg-cream px-4 py-8 sm:px-8 sm:py-10 lg:px-12">
@@ -283,7 +297,16 @@ export default function AllResourcesPage() {
         </div>
 
         {error && <div role="alert" className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
-        {success && <div role="status" className="mb-5 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">{success}</div>}
+        {success && (
+          <div
+            role="status"
+            aria-live="polite"
+            className="fixed bottom-5 right-5 z-[70] flex max-w-[calc(100vw-2.5rem)] items-center gap-2.5 rounded-xl border border-green-200 bg-white px-4 py-3 text-sm font-semibold text-green-800 shadow-lg"
+          >
+            <CheckCircle2 className="h-5 w-5 shrink-0 text-green-600" aria-hidden="true" />
+            <span>{success}</span>
+          </div>
+        )}
 
         {loading ? (
           <EmptyState title="Loading resources…" />
@@ -299,42 +322,42 @@ export default function AllResourcesPage() {
               const programmeLink = resource.programmes?.name && (
                 <p className="text-sm font-semibold text-navy-soft">{resource.programmes.name}</p>
               );
-
-              // Bottom row: read-only like count on the left, Edit + Delete on the right.
-              const footer = (
-                <>
-                  <span
-                    className="flex items-center gap-1.5 text-sm font-semibold text-ink-soft"
-                    title="Likes from students"
-                  >
+              const resourceMeta = (
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  {programmeLink}
+                  <p className="flex items-center gap-1.5 text-sm font-semibold text-ink-soft" title="Likes from students">
                     <Heart className="h-4 w-4 text-gold" aria-hidden="true" />
                     {likes} {likes === 1 ? "like" : "likes"}
-                  </span>
-                  <span className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSuccess("");
-                        setEditing(resource);
-                      }}
-                      title="Edit resource"
-                      aria-label={`Edit ${title}`}
-                      className={iconButton}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => deleteResource(resource)}
-                      disabled={deletingId === resource.id}
-                      title="Delete resource"
-                      aria-label={`Delete ${title}`}
-                      className={`${iconButton} hover:border-red-200 hover:bg-red-50 hover:text-red-700`}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </span>
-                </>
+                  </p>
+                </div>
+              );
+
+              // Edit and Delete sit in the same action row as View/Download.
+              const footer = (
+                <span className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSuccess("");
+                      setEditing(resource);
+                    }}
+                    title="Edit resource"
+                    aria-label={`Edit ${title}`}
+                    className={iconButton}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                      onClick={() => setPendingDelete(resource)}
+                    disabled={deletingId === resource.id}
+                    title="Delete resource"
+                    aria-label={`Delete ${title}`}
+                    className={`${iconButton} hover:border-red-200 hover:bg-red-50 hover:text-red-700`}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </span>
               );
 
               return resource.type === "video" && resource.video_id ? (
@@ -345,7 +368,7 @@ export default function AllResourcesPage() {
                   moduleName={resource.module_name}
                   year={resource.year}
                   semester={resource.semester}
-                  extra={programmeLink}
+                  extra={resourceMeta}
                   footer={footer}
                 />
               ) : (
@@ -359,7 +382,7 @@ export default function AllResourcesPage() {
                   authorType={resource.author_type}
                   authorName={resource.author_name}
                   isSolved={resource.is_solved}
-                  extra={programmeLink}
+                  extra={resourceMeta}
                   onView={() => openFile(resource, false)}
                   onDownload={() => openFile(resource, true)}
                   footer={footer}
@@ -369,6 +392,54 @@ export default function AllResourcesPage() {
           </div>
         )}
       </div>
+
+      {pendingDelete && (
+        <div
+          className="fixed inset-0 z-[80] flex items-center justify-center bg-ink/45 p-4"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && deletingId !== pendingDelete.id) {
+              setPendingDelete(null);
+            }
+          }}
+        >
+          <section
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="delete-resource-title"
+            aria-describedby="delete-resource-description"
+            className="w-full max-w-md rounded-2xl border border-line bg-white p-6 shadow-2xl"
+          >
+            <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-full bg-red-50 text-red-600">
+              <Trash2 className="h-5 w-5" aria-hidden="true" />
+            </div>
+            <h2 id="delete-resource-title" className="text-xl font-bold text-navy">
+              Delete this resource?
+            </h2>
+            <p id="delete-resource-description" className="mt-2 text-sm leading-6 text-ink-soft">
+              Delete “{pendingDelete.title || pendingDelete.topic || "Untitled resource"}”? This action can’t be undone.
+            </p>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                autoFocus
+                disabled={deletingId === pendingDelete.id}
+                onClick={() => setPendingDelete(null)}
+                className="rounded-xl border border-line bg-white px-4 py-2.5 text-sm font-semibold text-ink-nav transition hover:bg-sky-wash focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy/40 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={deletingId === pendingDelete.id}
+                onClick={() => void deleteResource(pendingDelete)}
+                className="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-60"
+              >
+                {deletingId === pendingDelete.id ? "Deleting…" : "Delete resource"}
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
 
       {/* Edit window (opens over the page) */}
       {editing && (

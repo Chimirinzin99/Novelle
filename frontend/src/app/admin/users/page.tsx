@@ -353,7 +353,7 @@ export default function UsersPage() {
         <div className="mb-8">
           <button
             onClick={() => router.push("/admin")}
-            className="mb-3 text-sm text-navy-soft hover:underline"
+            className="mb-5 inline-flex items-center rounded-xl border border-line bg-white px-4 py-2.5 text-sm font-semibold text-navy-soft shadow-sm transition hover:bg-sky-wash hover:text-navy focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy-soft"
           >
             ← Back to Admin Dashboard
           </button>
