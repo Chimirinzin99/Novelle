@@ -23,7 +23,8 @@ import { usePreview } from "@/components/PreviewProvider";
 import { BACKEND_URL } from "@/lib/config";
 import { callBackend, readJson } from "@/lib/backend";
 import { REJECTION_REASONS } from "@/lib/rejectionReasons";
-import { resourceTypeLabel } from "@/lib/resourceTypes";
+import TypeBadge from "@/components/TypeBadge";
+import { primaryButton } from "@/components/PdfCard";
 import {
   authorFormError,
   authorFormFrom,
@@ -587,23 +588,23 @@ export default function AdminSubmissionsPage() {
               return (
                 <div
                   key={submission.id}
-                  className="rounded-xl border border-line bg-white p-6 shadow-sm"
+                  className="flex flex-col gap-3.5 rounded-2xl border border-line bg-white p-5 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md"
                 >
                   {/* Submission information */}
                   <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
                     <div>
-                      <div className="flex items-center gap-3">
-                        <h2 className="text-xl font-semibold text-ink">
+                      <div className="flex flex-wrap items-start gap-2">
+                        <h2 className="mr-1 text-base font-bold leading-snug text-ink">
                           {submission.title}
                         </h2>
 
-                        <span className="rounded-full bg-gold-tint px-3 py-1 text-xs font-semibold text-gold-ink">
+                        <TypeBadge type={submission.type} />
+                        <span className="rounded-full bg-gold-tint px-2.5 py-1 text-xs font-bold text-gold-ink">
                           Pending
                         </span>
                       </div>
 
                       <p className="mt-2 text-sm text-ink-soft">
-                        Type: {resourceTypeLabel(submission.type)}
                         {/* Only super admins need the programme name (lib/roles.ts) */}
                         {isSuperAdminRole(profile?.role) &&
                           submission.programme &&
@@ -627,7 +628,7 @@ export default function AdminSubmissionsPage() {
 
                     <button
                       onClick={() => openPdf(submission.file_path, submission.title)}
-                      className="rounded-lg border border-sky-line bg-white px-4 py-2 text-sm font-semibold text-ink-nav hover:bg-cream"
+                      className={`${primaryButton} !flex-none px-5`}
                     >
                       View PDF
                     </button>

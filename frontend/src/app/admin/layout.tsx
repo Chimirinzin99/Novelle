@@ -10,7 +10,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <PreviewProvider>
       <div className="flex h-screen flex-col overflow-hidden bg-cream md:flex-row">
         <AdminSidebar />
-        <div className="min-h-0 min-w-0 flex-1 overflow-y-auto">{children}</div>
+        <div className="min-h-0 min-w-0 flex-1 overflow-y-auto md:ml-72">{children}</div>
       </div>
     </PreviewProvider>
   );

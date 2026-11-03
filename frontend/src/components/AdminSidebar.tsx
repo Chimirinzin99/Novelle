@@ -153,7 +153,7 @@ export default function AdminSidebar() {
         </nav>
       </header>
 
-      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col bg-navy text-white md:flex">
+      <aside className="fixed inset-y-0 left-0 z-40 hidden h-screen w-72 shrink-0 flex-col bg-navy text-white md:flex">
         {/* Logo; the tagline shows the role ("Programme admin" / "Super admin") */}
         <div className="px-5 pb-4 pt-6">
           <Logo tone="dark" href="/admin" tagline={profile ? roleLabel(profile.role) : "\u00a0"} />

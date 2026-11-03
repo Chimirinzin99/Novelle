@@ -230,7 +230,7 @@ export default function Home() {
         {programmeName && (
           <Link
             href={`${programmeHref(programmeName)}/${viewAllPath}`}
-            className="w-fit rounded text-[15px] font-bold text-navy-soft outline-none hover:text-navy hover:underline focus-visible:ring-2 focus-visible:ring-navy/40"
+            className="w-fit rounded-xl border border-line bg-white px-3.5 py-2 text-sm font-bold text-navy-soft shadow-sm outline-none transition hover:bg-sky-wash hover:text-navy focus-visible:ring-2 focus-visible:ring-navy/40"
           >
             View all {viewAllLabel} →
           </Link>

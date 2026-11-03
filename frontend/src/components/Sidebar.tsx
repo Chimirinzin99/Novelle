@@ -316,7 +316,7 @@ export default function Sidebar() {
   return (
     // z-40: sticky creates its own stacking context; this keeps the
     // notification panel above the page (fixed 21 Oct).
-    <aside className="sticky top-0 z-40 flex h-screen w-64 shrink-0 flex-col border-r border-line bg-white px-4 py-6">
+    <aside className="fixed inset-y-0 left-0 z-40 flex h-screen w-72 shrink-0 flex-col border-r border-line bg-cream px-4 py-6">
       {/* Brand */}
       <div className="mb-7 shrink-0 px-2">
         <Logo href="/home" />
