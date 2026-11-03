@@ -141,7 +141,7 @@ export default function LikedPage() {
             text="Tap the heart on any note or video and it will show up here."
           />
         ) : (
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
             {items.map((item) => {
               // Safe: null resources were filtered out in loadLiked.
               const resource = item.resources!;

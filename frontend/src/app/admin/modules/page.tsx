@@ -539,7 +539,7 @@ export default function ModulesPage() {
   return (
     // text-gray-900: without it the text (and the form boxes, which inherit
     // it) takes the near-white dark-mode colour from globals.css.
-    <main className="min-h-screen bg-cream px-8 py-8 text-ink">
+    <main className="min-h-screen bg-cream px-4 py-8 text-ink sm:px-8">
       <div className="mx-auto max-w-6xl">
 
         {/* Header */}

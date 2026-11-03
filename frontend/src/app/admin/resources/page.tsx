@@ -387,7 +387,7 @@ export default function ManageResourcesPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-cream p-8">
+      <main className="min-h-screen bg-cream p-4 sm:p-8">
         <div className="mx-auto max-w-7xl rounded-2xl bg-white p-10 text-center">
           <p className="text-sm text-ink-soft">
             Loading resources...
@@ -399,7 +399,7 @@ export default function ManageResourcesPage() {
 
   if (!profile) {
     return (
-      <main className="min-h-screen bg-cream p-8">
+      <main className="min-h-screen bg-cream p-4 sm:p-8">
         <div className="mx-auto max-w-7xl rounded-2xl bg-white p-10 text-center">
           <p className="text-sm text-red-600">
             {error || "Access denied."}
@@ -415,7 +415,7 @@ export default function ManageResourcesPage() {
       {/* Part 12: the old top bar (Back to Dashboard, "Novelle / programme",
           and a profile + logout menu) was removed — the admin sidebar already
           has all of these. A normal page header replaces it. */}
-      <div className="mx-auto w-full max-w-7xl px-6 pt-8 md:px-8 lg:px-10">
+      <div className="mx-auto w-full max-w-7xl px-4 pt-8 sm:px-6 md:px-8 lg:px-10">
         <PageHeader
           eyebrow={isSuperAdmin ? "All programmes" : programmeName || "Programme"}
           title="Add resource"

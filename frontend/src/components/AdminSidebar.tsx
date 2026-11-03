@@ -3,6 +3,10 @@
 // Part 12: navy admin sidebar from the chosen design — the shared <Logo />
 // (dark version, role as its tagline), cream "current page" pill, light
 // text on navy. Links, profile cache and logout work exactly as before.
+// Responsive part: below 1024 px (lg) the sidebar becomes a slide-in menu,
+// like the student one. A navy top bar with ☰ and the logo replaces the old
+// row of links across the top; ☰ opens the menu, and the backdrop, X, Escape
+// or choosing a link closes it.
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -13,8 +17,10 @@ import {
   GraduationCap,
   LayoutDashboard,
   LogOut,
+  Menu,
   UserRound,
   Users,
+  X,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import Logo from "@/components/Logo";
@@ -73,6 +79,18 @@ export default function AdminSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const [profile, setProfile] = useState<SidebarProfile | null>(null);
+  // Phones/tablets: is the slide-in menu open?
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  // Escape closes the slide-in menu
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMenuOpen(false);
+    };
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, [menuOpen]);
 
   useEffect(() => {
     let active = true;
@@ -132,28 +150,59 @@ export default function AdminSidebar() {
       : pathname === href || pathname.startsWith(`${href}/`);
     // Current page = cream pill with navy text; others = light text on navy.
     // focus-visible: a ring only for keyboard (Tab) users.
-    return `flex shrink-0 items-center gap-2.5 rounded-xl px-3 py-2.5 text-[15px] outline-none transition focus-visible:ring-2 focus-visible:ring-gold md:mb-1 md:w-full md:gap-3 md:px-3 md:py-3 ${active ? "bg-cream font-bold text-navy" : "font-medium text-[#E3ECF8] hover:bg-white/10 hover:text-white"}`;
+    return `mb-1 flex w-full items-center gap-3 rounded-xl px-3 py-3 text-[15px] outline-none transition focus-visible:ring-2 focus-visible:ring-gold ${active ? "bg-cream font-bold text-navy" : "font-medium text-[#E3ECF8] hover:bg-white/10 hover:text-white"}`;
   };
 
   return (
     <>
-      <header className="sticky top-0 z-40 bg-navy md:hidden">
-        <div className="flex items-center justify-between px-4 py-3">
-          <Logo tone="dark" href="/admin" tagline={profile ? roleLabel(profile.role) : "Admin"} />
-          <div className="flex items-center gap-3">
-            <span className="max-w-36 truncate text-right text-xs text-[#C9D8EE]">{profile ? profile.full_name || roleLabel(profile.role) : ""}</span>
-            <button onClick={logout} aria-label="Log out" className="rounded-lg border border-white/25 p-2 text-white hover:bg-white/10"><LogOut className="h-4 w-4" /></button>
-          </div>
-        </div>
-        <nav aria-label="Admin navigation" className="flex gap-1 overflow-x-auto px-3 pb-3">
-          {links.map(({ href, label, icon: Icon }) => (
-            <Link key={href} href={href} className={linkClass(href)}><Icon className="h-4 w-4" /><span>{label}</span></Link>
-          ))}
-          <Link href="/admin/profile" className={linkClass("/admin/profile")}><UserRound className="h-4 w-4" /><span>Profile</span></Link>
-        </nav>
+      {/* Phones/tablets (below lg): navy top bar with ☰ and the logo */}
+      <header className="z-30 flex h-16 shrink-0 items-center gap-2 bg-navy px-3 lg:hidden">
+        <button
+          type="button"
+          onClick={() => setMenuOpen(true)}
+          aria-label="Open menu"
+          aria-expanded={menuOpen}
+          aria-controls="admin-sidebar"
+          className="rounded-lg p-2 text-white outline-none transition hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-gold"
+        >
+          <Menu className="h-6 w-6" />
+        </button>
+        <Logo tone="dark" href="/admin" tagline={profile ? roleLabel(profile.role) : "\u00a0"} />
       </header>
 
-      <aside className="fixed inset-y-0 left-0 z-40 hidden h-screen w-72 shrink-0 flex-col bg-navy text-white md:flex">
+      {/* Dark backdrop behind the open menu; a click on it closes the menu */}
+      {menuOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-ink/40 lg:hidden"
+          onClick={() => setMenuOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Laptops: always shown on the left (fixed; the layout leaves lg:ml-72).
+          Phones/tablets: slides in when ☰ is pressed; while closed it is off
+          screen and invisible, so Tab can't reach it. Clicking a link closes it. */}
+      <aside
+        id="admin-sidebar"
+        onClick={(event) => {
+          if ((event.target as HTMLElement).closest("a")) setMenuOpen(false);
+        }}
+        className={[
+          "fixed inset-y-0 left-0 z-50 flex h-screen w-72 max-w-[85vw] shrink-0 flex-col bg-navy text-white",
+          "transition-transform duration-200 lg:z-40 lg:translate-x-0",
+          menuOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full max-lg:invisible",
+        ].join(" ")}
+      >
+        {/* Phones/tablets: close button */}
+        <button
+          type="button"
+          onClick={() => setMenuOpen(false)}
+          aria-label="Close menu"
+          className="absolute right-3 top-4 rounded-lg p-2 text-white outline-none transition hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-gold lg:hidden"
+        >
+          <X className="h-5 w-5" />
+        </button>
+
         {/* Logo; the tagline shows the role ("Programme admin" / "Super admin") */}
         <div className="px-5 pb-4 pt-6">
           <Logo tone="dark" href="/admin" tagline={profile ? roleLabel(profile.role) : "\u00a0"} />

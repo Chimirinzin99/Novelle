@@ -239,8 +239,8 @@ export default function Home() {
     );
   }
 
-  // Cards: 1 column on phones, 2 on tablets, 3 on laptops, 4 on big screens.
-  const grid = "grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4";
+  // Cards: 1 column on phones, 2 on tablets, 3 on laptops and up (max 3).
+  const grid = "grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3";
 
   function renderPdfSection(section: {
     title: string;

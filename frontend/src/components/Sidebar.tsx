@@ -6,6 +6,9 @@
 // It refreshes on load, on login/logout, when the window gets focus, when the
 // panel opens and every minute; each item shows a coloured status word.
 // Part 12: restyled with the theme colours and the shared <Logo />.
+// Responsive part: below 1024 px (lg) the sidebar becomes a slide-in menu.
+// A top bar with ☰, the logo and the bell takes its place; ☰ opens the menu,
+// and the backdrop, X, Escape or choosing a link closes it.
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -65,7 +68,9 @@ type IconName =
   | "settings"
   | "logout"
   | "login"
-  | "chevron";
+  | "chevron"
+  | "menu"
+  | "close";
 
 // Small line icons drawn with SVG. stroke="currentColor" means the icon
 // takes the text colour of whatever it sits in.
@@ -142,6 +147,10 @@ function Icon({
       )}
 
       {name === "chevron" && <path d="m9 18 6-6-6-6" />}
+
+      {name === "menu" && <path d="M4 6h16M4 12h16M4 18h16" />}
+
+      {name === "close" && <path d="M6 6l12 12M18 6 6 18" />}
     </svg>
   );
 }
@@ -172,8 +181,13 @@ export default function Sidebar() {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
 
-  // Notification panel reference (to detect clicks outside it)
+  // Phones/tablets: is the slide-in menu open?
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  // Bell + panel containers (sidebar bell on laptops, top-bar bell on
+  // phones), used to detect clicks outside the panel.
   const notificationsRef = useRef<HTMLDivElement>(null);
+  const mobileBellRef = useRef<HTMLDivElement>(null);
 
   // Programme scroll-zoom references and state (Ngawang's effect)
   const programmeListRef = useRef<HTMLElement>(null);
@@ -264,7 +278,11 @@ export default function Sidebar() {
     if (!notificationsOpen) return;
 
     const handleClick = (event: MouseEvent) => {
-      if (!notificationsRef.current?.contains(event.target as Node)) {
+      const target = event.target as Node;
+      if (
+        !notificationsRef.current?.contains(target) &&
+        !mobileBellRef.current?.contains(target)
+      ) {
         setNotificationsOpen(false);
       }
     };
@@ -281,6 +299,16 @@ export default function Sidebar() {
       document.removeEventListener("keydown", handleKey);
     };
   }, [notificationsOpen]);
+
+  // Escape closes the slide-in menu (phones/tablets)
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMenuOpen(false);
+    };
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, [menuOpen]);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
@@ -307,6 +335,105 @@ export default function Sidebar() {
     setNotificationsOpen(!notificationsOpen);
   }
 
+  // The bell button + its panel. Drawn twice: in the sidebar (laptops) and in
+  // the top bar (phones/tablets); each copy is hidden on the other size.
+  function renderBell(
+    ref: React.RefObject<HTMLDivElement | null>,
+    wrapperClass: string,
+    panelPosition: string
+  ) {
+    return (
+      <div ref={ref} className={`relative ${wrapperClass}`}>
+        <button
+          type="button"
+          onClick={toggleNotifications}
+          aria-label={`Notifications${
+            unreadCount ? `, ${unreadCount} unread` : ""
+          }`}
+          aria-expanded={notificationsOpen}
+          className="relative rounded-lg p-1.5 text-ink-soft outline-none transition hover:bg-sky-wash hover:text-navy focus-visible:ring-2 focus-visible:ring-navy/40"
+        >
+          <Icon name="bell" className="h-5 w-5" />
+
+          {/* Unread count in star gold (the design's colour for counts) */}
+          {unreadCount > 0 && (
+            <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-gold px-1 text-[9px] font-extrabold leading-none text-ink">
+              {unreadCount > 9 ? "9+" : unreadCount}
+            </span>
+          )}
+        </button>
+
+        {notificationsOpen && (
+          <div
+            role="dialog"
+            aria-label="Notifications"
+            className={`absolute z-[60] w-80 overflow-hidden rounded-2xl border border-line bg-white shadow-xl ${panelPosition}`}
+          >
+            <div className="flex items-center justify-between border-b border-line px-4 py-3">
+              <h2 className="text-sm font-bold text-navy">Notifications</h2>
+
+              {unreadCount > 0 && (
+                <button
+                  type="button"
+                  onClick={markAllRead}
+                  className="text-xs font-semibold text-navy-soft hover:text-navy"
+                >
+                  Mark all read
+                </button>
+              )}
+            </div>
+
+            {notifications.length === 0 ? (
+              <p className="px-4 py-8 text-center text-sm text-ink-soft">
+                You’re all caught up.
+              </p>
+            ) : (
+              <ul className="max-h-72 divide-y divide-line overflow-y-auto">
+                {notifications.map((notification) => (
+                  <li key={notification.id}>
+                    <button
+                      type="button"
+                      onClick={() => openNotification(notification)}
+                      className={`flex w-full items-start gap-3 px-4 py-3 text-left transition hover:bg-sky-wash ${
+                        notification.read ? "bg-white" : "bg-cream"
+                      }`}
+                    >
+                      {/* Unread dot (sky blue is fine here: decoration) */}
+                      <span
+                        className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${
+                          notification.read ? "bg-transparent" : "bg-brand-sky"
+                        }`}
+                        aria-hidden="true"
+                      />
+
+                      <span className="min-w-0">
+                        {/* Part 13c: coloured status word */}
+                        <span
+                          className={`block text-xs font-bold uppercase tracking-wide ${KIND_LABEL[notification.kind].className}`}
+                        >
+                          {KIND_LABEL[notification.kind].text}
+                        </span>
+                        <span className="block text-sm leading-5 text-ink">
+                          {notification.message}
+                        </span>
+                        <time
+                          dateTime={notification.createdAt}
+                          className="mt-1 block text-xs text-ink-soft"
+                        >
+                          {new Date(notification.createdAt).toLocaleString()}
+                        </time>
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.push("/login");
@@ -314,221 +441,191 @@ export default function Sidebar() {
   };
 
   return (
-    // z-40: sticky creates its own stacking context; this keeps the
-    // notification panel above the page (fixed 21 Oct).
-    <aside className="fixed inset-y-0 left-0 z-40 flex h-screen w-72 shrink-0 flex-col border-r border-line bg-cream px-4 py-6">
-      {/* Brand */}
-      <div className="mb-7 shrink-0 px-2">
-        <Logo href="/home" />
-      </div>
-
-      {/* Main navigation */}
-      <nav aria-label="Main" className="shrink-0 space-y-1">
-        <Link href="/home" className={navClass(pathname === "/home")}>
-          <Icon name="home" />
-          <span>Home</span>
-        </Link>
-
-        {/* Upload: the main action for students, so it is coloured gold
-            from the logo's star (user's idea, Part 12). The "+" icon uses the
-            bright star gold; the word uses the darker gold-ink, because the
-            bright gold is too faint to read as text on white. On the upload
-            page itself it gets a pale gold background. */}
-        <Link
-          href="/submit-note"
-          aria-current={pathname === "/submit-note" ? "page" : undefined}
-          className={[
-            "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-[15px] font-bold text-gold-ink",
-            "outline-none transition-colors duration-150 hover:bg-gold-tint",
-            "focus-visible:ring-2 focus-visible:ring-navy/40",
-            pathname === "/submit-note" ? "bg-gold-tint" : "",
-          ].join(" ")}
-        >
-          <span className="text-gold">
-            <Icon name="plus" className="h-5 w-5" />
-          </span>
-          <span>Upload</span>
-        </Link>
-      </nav>
-
-      {/* My Account */}
-      <section className="mt-7 shrink-0">
-        <div className="mb-2 flex items-center justify-between px-3">
-          <p className={sectionLabel}>My Account</p>
-
-          <div ref={notificationsRef} className="relative">
-            <button
-              type="button"
-              onClick={toggleNotifications}
-              aria-label={`Notifications${
-                unreadCount ? `, ${unreadCount} unread` : ""
-              }`}
-              aria-expanded={notificationsOpen}
-              className="relative rounded-lg p-1.5 text-ink-soft outline-none transition hover:bg-sky-wash hover:text-navy focus-visible:ring-2 focus-visible:ring-navy/40"
-            >
-              <Icon name="bell" className="h-5 w-5" />
-
-              {/* Unread count in star gold (the design's colour for counts) */}
-              {unreadCount > 0 && (
-                <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-gold px-1 text-[9px] font-extrabold leading-none text-ink">
-                  {unreadCount > 9 ? "9+" : unreadCount}
-                </span>
-              )}
-            </button>
-
-            {notificationsOpen && (
-              <div
-                role="dialog"
-                aria-label="Notifications"
-                className="absolute left-[calc(100%+0.75rem)] top-0 z-[60] w-80 max-w-[calc(100vw-18rem)] overflow-hidden rounded-2xl border border-line bg-white shadow-xl"
-              >
-                <div className="flex items-center justify-between border-b border-line px-4 py-3">
-                  <h2 className="text-sm font-bold text-navy">Notifications</h2>
-
-                  {unreadCount > 0 && (
-                    <button
-                      type="button"
-                      onClick={markAllRead}
-                      className="text-xs font-semibold text-navy-soft hover:text-navy"
-                    >
-                      Mark all read
-                    </button>
-                  )}
-                </div>
-
-                {notifications.length === 0 ? (
-                  <p className="px-4 py-8 text-center text-sm text-ink-soft">
-                    You’re all caught up.
-                  </p>
-                ) : (
-                  <ul className="max-h-72 divide-y divide-line overflow-y-auto">
-                    {notifications.map((notification) => (
-                      <li key={notification.id}>
-                        <button
-                          type="button"
-                          onClick={() => openNotification(notification)}
-                          className={`flex w-full items-start gap-3 px-4 py-3 text-left transition hover:bg-sky-wash ${
-                            notification.read ? "bg-white" : "bg-cream"
-                          }`}
-                        >
-                          {/* Unread dot (sky blue is fine here: decoration) */}
-                          <span
-                            className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${
-                              notification.read ? "bg-transparent" : "bg-brand-sky"
-                            }`}
-                            aria-hidden="true"
-                          />
-
-                          <span className="min-w-0">
-                            {/* Part 13c: coloured status word */}
-                            <span
-                              className={`block text-xs font-bold uppercase tracking-wide ${KIND_LABEL[notification.kind].className}`}
-                            >
-                              {KIND_LABEL[notification.kind].text}
-                            </span>
-                            <span className="block text-sm leading-5 text-ink">
-                              {notification.message}
-                            </span>
-                            <time
-                              dateTime={notification.createdAt}
-                              className="mt-1 block text-xs text-ink-soft"
-                            >
-                              {new Date(notification.createdAt).toLocaleString()}
-                            </time>
-                          </span>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-
-        <nav aria-label="My account" className="space-y-1">
-          <Link href="/profile" className={navClass(pathname === "/profile")}>
-            <Icon name="user" />
-            <span>Profile</span>
-          </Link>
-        </nav>
-      </section>
-
-      {/* Scrollable programmes with zoom-on-scroll */}
-      <section className="mt-7 flex min-h-0 flex-1 flex-col">
-        <div className="mb-2 flex shrink-0 items-center justify-between px-3">
-          <p className={sectionLabel}>Programmes</p>
-          <Icon name="graduation" className="h-4 w-4 text-muted-blue" />
-        </div>
-
-        <nav
-          ref={programmeListRef}
-          onScroll={updateProgrammeZoom}
-          className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden pr-1 [scrollbar-color:#CFDDF1_transparent] [scrollbar-width:thin]"
-          aria-label="Programmes"
-        >
-          {PROGRAMMES.map((programme, index) => {
-            const href = programmeHref(programme.name);
-            const active = pathname === href || pathname.startsWith(`${href}/`);
-            const isZoomed = zoomedProgramme === index;
-
-            return (
-              <Link
-                key={programme.name}
-                href={href}
-                title={programme.name}
-                data-programme-item
-                aria-current={active ? "page" : undefined}
-                className={[
-                  "group relative flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm",
-                  "origin-center outline-none transition-all duration-200 ease-out",
-                  "focus-visible:ring-2 focus-visible:ring-navy/40",
-                  isZoomed ? "scale-[1.04] opacity-100" : "scale-[0.96] opacity-80",
-                  active
-                    ? "bg-sky-wash font-bold text-navy"
-                    : "text-ink-nav hover:bg-sky-wash hover:text-navy",
-                ].join(" ")}
-              >
-                {/* Dot: sky blue for the current programme, grey otherwise */}
-                <span
-                  className={[
-                    "h-1.5 w-1.5 shrink-0 rounded-full transition-colors",
-                    active ? "bg-brand-sky" : "bg-sky-line group-hover:bg-brand-sky",
-                  ].join(" ")}
-                />
-
-                <span className="min-w-0 flex-1 leading-5">{programme.label}</span>
-
-                {active && <Icon name="chevron" className="h-4 w-4 shrink-0 text-navy" />}
-              </Link>
-            );
-          })}
-        </nav>
-      </section>
-
-      {/* Bottom actions */}
-      <div className="mt-4 shrink-0 border-t border-line pt-4">
-        <Link href="/settings" className={navClass(pathname === "/settings")}>
-          <Icon name="settings" />
-          <span>Settings</span>
-        </Link>
-
-        {loggedIn ? (
+    <>
+      {/* Phones/tablets (below lg): top bar with ☰, logo and bell */}
+      <header className="z-30 flex h-16 shrink-0 items-center justify-between gap-3 border-b border-line bg-cream px-3 lg:hidden">
+        <div className="flex min-w-0 items-center gap-2">
           <button
             type="button"
-            onClick={handleLogout}
-            className="mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[15px] font-medium text-ink-nav outline-none transition-colors hover:bg-red-50 hover:text-red-700 focus-visible:ring-2 focus-visible:ring-navy/40"
+            onClick={() => setMenuOpen(true)}
+            aria-label="Open menu"
+            aria-expanded={menuOpen}
+            aria-controls="student-sidebar"
+            className="rounded-lg p-2 text-ink-nav outline-none transition hover:bg-sky-wash hover:text-navy focus-visible:ring-2 focus-visible:ring-navy/40"
           >
-            <Icon name="logout" />
-            <span>Logout</span>
+            <Icon name="menu" className="h-6 w-6" />
           </button>
-        ) : (
-          <Link href="/login" className={`mt-1 ${navClass(pathname === "/login")}`}>
-            <Icon name="login" />
-            <span>Login</span>
+          <Logo href="/home" />
+        </div>
+
+        {renderBell(mobileBellRef, "", "right-0 top-[calc(100%+0.5rem)] max-w-[calc(100vw-1.5rem)]")}
+      </header>
+
+      {/* Dark backdrop behind the open menu; a click on it closes the menu */}
+      {menuOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-ink/40 lg:hidden"
+          onClick={() => setMenuOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Laptops: always shown on the left (fixed; the layout leaves lg:ml-72).
+          Phones/tablets: slides in from the left when ☰ is pressed; while closed
+          it is moved off screen and made invisible, so Tab can't reach it.
+          Clicking any link inside closes the menu. */}
+      <aside
+        id="student-sidebar"
+        onClick={(event) => {
+          if ((event.target as HTMLElement).closest("a")) setMenuOpen(false);
+        }}
+        className={[
+          "fixed inset-y-0 left-0 z-50 flex h-screen w-72 max-w-[85vw] shrink-0 flex-col border-r border-line bg-cream px-4 py-6",
+          "transition-transform duration-200 lg:z-40 lg:translate-x-0",
+          menuOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full max-lg:invisible",
+        ].join(" ")}
+      >
+        {/* Phones/tablets: close button */}
+        <button
+          type="button"
+          onClick={() => setMenuOpen(false)}
+          aria-label="Close menu"
+          className="absolute right-3 top-4 rounded-lg p-2 text-ink-soft outline-none transition hover:bg-sky-wash hover:text-navy focus-visible:ring-2 focus-visible:ring-navy/40 lg:hidden"
+        >
+          <Icon name="close" className="h-5 w-5" />
+        </button>
+
+        {/* Brand */}
+        <div className="mb-7 shrink-0 px-2">
+          <Logo href="/home" />
+        </div>
+
+        {/* Main navigation */}
+        <nav aria-label="Main" className="shrink-0 space-y-1">
+          <Link href="/home" className={navClass(pathname === "/home")}>
+            <Icon name="home" />
+            <span>Home</span>
           </Link>
-        )}
-      </div>
-    </aside>
+
+          {/* Upload: the main action for students, so it is coloured gold
+              from the logo's star (user's idea, Part 12). The "+" icon uses the
+              bright star gold; the word uses the darker gold-ink, because the
+              bright gold is too faint to read as text on white. On the upload
+              page itself it gets a pale gold background. */}
+          <Link
+            href="/submit-note"
+            aria-current={pathname === "/submit-note" ? "page" : undefined}
+            className={[
+              "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-[15px] font-bold text-gold-ink",
+              "outline-none transition-colors duration-150 hover:bg-gold-tint",
+              "focus-visible:ring-2 focus-visible:ring-navy/40",
+              pathname === "/submit-note" ? "bg-gold-tint" : "",
+            ].join(" ")}
+          >
+            <span className="text-gold">
+              <Icon name="plus" className="h-5 w-5" />
+            </span>
+            <span>Upload</span>
+          </Link>
+        </nav>
+
+        {/* My Account */}
+        <section className="mt-7 shrink-0">
+          <div className="mb-2 flex items-center justify-between px-3">
+            <p className={sectionLabel}>My Account</p>
+
+            {/* Laptops only: phones use the bell in the top bar */}
+            {renderBell(
+              notificationsRef,
+              "max-lg:hidden",
+              "left-[calc(100%+0.75rem)] top-0 max-w-[calc(100vw-18rem)]"
+            )}
+          </div>
+
+          <nav aria-label="My account" className="space-y-1">
+            <Link href="/profile" className={navClass(pathname === "/profile")}>
+              <Icon name="user" />
+              <span>Profile</span>
+            </Link>
+          </nav>
+        </section>
+
+        {/* Scrollable programmes with zoom-on-scroll */}
+        <section className="mt-7 flex min-h-0 flex-1 flex-col">
+          <div className="mb-2 flex shrink-0 items-center justify-between px-3">
+            <p className={sectionLabel}>Programmes</p>
+            <Icon name="graduation" className="h-4 w-4 text-muted-blue" />
+          </div>
+
+          <nav
+            ref={programmeListRef}
+            onScroll={updateProgrammeZoom}
+            className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden pr-1 [scrollbar-color:#CFDDF1_transparent] [scrollbar-width:thin]"
+            aria-label="Programmes"
+          >
+            {PROGRAMMES.map((programme, index) => {
+              const href = programmeHref(programme.name);
+              const active = pathname === href || pathname.startsWith(`${href}/`);
+              const isZoomed = zoomedProgramme === index;
+
+              return (
+                <Link
+                  key={programme.name}
+                  href={href}
+                  title={programme.name}
+                  data-programme-item
+                  aria-current={active ? "page" : undefined}
+                  className={[
+                    "group relative flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm",
+                    "origin-center outline-none transition-all duration-200 ease-out",
+                    "focus-visible:ring-2 focus-visible:ring-navy/40",
+                    isZoomed ? "scale-[1.04] opacity-100" : "scale-[0.96] opacity-80",
+                    active
+                      ? "bg-sky-wash font-bold text-navy"
+                      : "text-ink-nav hover:bg-sky-wash hover:text-navy",
+                  ].join(" ")}
+                >
+                  {/* Dot: sky blue for the current programme, grey otherwise */}
+                  <span
+                    className={[
+                      "h-1.5 w-1.5 shrink-0 rounded-full transition-colors",
+                      active ? "bg-brand-sky" : "bg-sky-line group-hover:bg-brand-sky",
+                    ].join(" ")}
+                  />
+
+                  <span className="min-w-0 flex-1 leading-5">{programme.label}</span>
+
+                  {active && <Icon name="chevron" className="h-4 w-4 shrink-0 text-navy" />}
+                </Link>
+              );
+            })}
+          </nav>
+        </section>
+
+        {/* Bottom actions */}
+        <div className="mt-4 shrink-0 border-t border-line pt-4">
+          <Link href="/settings" className={navClass(pathname === "/settings")}>
+            <Icon name="settings" />
+            <span>Settings</span>
+          </Link>
+
+          {loggedIn ? (
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[15px] font-medium text-ink-nav outline-none transition-colors hover:bg-red-50 hover:text-red-700 focus-visible:ring-2 focus-visible:ring-navy/40"
+            >
+              <Icon name="logout" />
+              <span>Logout</span>
+            </button>
+          ) : (
+            <Link href="/login" className={`mt-1 ${navClass(pathname === "/login")}`}>
+              <Icon name="login" />
+              <span>Login</span>
+            </Link>
+          )}
+        </div>
+      </aside>
+    </>
   );
 }

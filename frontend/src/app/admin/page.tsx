@@ -562,7 +562,10 @@ export default function AdminPage() {
               </button>
 
               {notificationsOpen && (
-                <div className="absolute right-0 top-14 z-30 w-[min(21rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-line bg-white p-4 shadow-xl">
+                // Responsive part: on phones the panel is pinned across the
+                // screen (the bell sits on the left, so "right-0" pushed it off
+                // the left edge); from sm up it hangs below the bell as before.
+                <div className="fixed inset-x-4 top-20 z-30 overflow-hidden rounded-2xl border border-line bg-white p-4 shadow-xl sm:absolute sm:inset-x-auto sm:right-0 sm:top-14 sm:w-[21rem]">
                   <div className="flex items-center justify-between gap-3">
                     <h2 className="font-bold text-navy">Notifications</h2>
                     {pendingCount > 0 && (

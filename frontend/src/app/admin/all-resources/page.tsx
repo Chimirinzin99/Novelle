@@ -313,7 +313,7 @@ export default function AllResourcesPage() {
         ) : visibleResources.length === 0 ? (
           <EmptyState title="No resources found" text="Try another search or resource type." />
         ) : (
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
             {visibleResources.map((resource) => {
               const title = resource.title || resource.topic || "Untitled resource";
               const likes = likeCounts[resource.id] || 0;

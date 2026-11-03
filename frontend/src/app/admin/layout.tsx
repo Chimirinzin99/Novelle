@@ -8,9 +8,12 @@ import PreviewProvider from "@/components/PreviewProvider";
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
     <PreviewProvider>
-      <div className="flex h-screen flex-col overflow-hidden bg-cream md:flex-row">
+      {/* Responsive part: a column, so on phones/tablets the sidebar's top bar
+          sits above the page; on laptops (lg) the sidebar is fixed on the left
+          and the page leaves room for it with lg:ml-72 (= the sidebar's w-72). */}
+      <div className="flex h-screen flex-col overflow-hidden bg-cream">
         <AdminSidebar />
-        <div className="min-h-0 min-w-0 flex-1 overflow-y-auto md:ml-72">{children}</div>
+        <div className="min-h-0 min-w-0 flex-1 overflow-y-auto lg:ml-72">{children}</div>
       </div>
     </PreviewProvider>
   );

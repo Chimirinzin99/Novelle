@@ -303,7 +303,7 @@ export default function ResourceList({
           />
         ) : (
           // 1 / 2 / 3 / 4 columns, same as /home
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
             {filtered.map((resource) => (
               <PdfCard
                 key={resource.id}

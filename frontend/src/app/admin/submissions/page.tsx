@@ -443,7 +443,7 @@ export default function AdminSubmissionsPage() {
   }
 
   return (
-    <main className="min-h-screen bg-cream px-8 py-8 text-ink">
+    <main className="min-h-screen bg-cream px-4 py-8 text-ink sm:px-8">
       <div className="mx-auto max-w-6xl">
         {/* Header */}
         <div className="mb-8">
