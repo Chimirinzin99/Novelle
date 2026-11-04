@@ -7,7 +7,7 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { Mail, ShieldCheck, GraduationCap, LockKeyhole, Check } from "lucide-react";
+import { Mail, ShieldCheck, GraduationCap, LockKeyhole, Check, Monitor } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { isAdminRole, roleLabel } from "@/lib/roles";
 import {
@@ -19,6 +19,7 @@ import {
 } from "@/lib/password";
 import PasswordChecklist from "@/components/PasswordChecklist";
 import WeakPasswordNotice from "@/components/WeakPasswordNotice";
+import ThemeSelect from "@/components/ThemeSelect";
 
 type AdminProfile = {
   full_name: string | null;
@@ -171,6 +172,20 @@ export default function AdminProfilePage() {
               </dl>
             </>
           ) : null}
+        </section>
+
+        {/* Dark mode part: Light / Dark / Same as device */}
+        <section className="mt-6 rounded-2xl border border-line bg-white p-6 shadow-sm sm:p-8">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-wash text-navy-soft"><Monitor className="h-5 w-5" /></span>
+              <div>
+                <h2 className="font-semibold text-ink"><label htmlFor="admin-theme">Theme</label></h2>
+                <p className="mt-1 text-sm text-ink-soft">Light, dark, or the same as your phone or computer.</p>
+              </div>
+            </div>
+            <ThemeSelect id="admin-theme" className="rounded-lg border border-sky-line bg-white px-3 py-2 text-sm text-ink outline-none focus:border-navy-soft focus:ring-2 focus:ring-navy-soft/20" />
+          </div>
         </section>
 
         {!loading && profile && (

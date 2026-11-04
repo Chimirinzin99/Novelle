@@ -30,8 +30,9 @@ export default function Logo({
       <span
         className={
           dark
-            ? "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-cream"
-            : "flex h-11 w-11 shrink-0 items-center justify-center"
+            ? "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-logo-tile"
+            : // Dark mode part: on a dark page the navy "N" needs the cream tile too.
+              "flex h-11 w-11 shrink-0 items-center justify-center dark:rounded-xl dark:bg-logo-tile"
         }
       >
         <Image
@@ -46,7 +47,7 @@ export default function Logo({
       <span className="flex flex-col gap-0.5">
         <span
           className={`font-display text-base font-bold tracking-[0.14em] ${
-            dark ? "text-white" : "text-navy"
+            dark ? "text-on-bar" : "text-navy"
           }`}
         >
           NOVELLE

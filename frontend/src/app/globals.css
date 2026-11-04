@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+/* Dark mode part: "dark:" classes apply when <html> has class="dark"
+   (set by the small script in app/layout.tsx from the user's choice),
+   instead of Tailwind's default (the computer's setting only). */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /*
   Novelle theme (Part 12 — "From the Novelle logo" scheme, chosen 24 Oct 2026).
 
@@ -41,10 +46,77 @@
   --color-ink-soft: #4a5672;
   --color-ink-nav: #2b3a55;
 
+  /* Admin sidebar (dark mode part): its own names, because in dark mode
+     "navy" turns light blue (for buttons and headings) but the sidebar
+     must stay dark. bar = background, bar-soft = profile box,
+     on-bar = text and see-through hovers on the bar. */
+  --color-bar: #103167;
+  --color-bar-soft: #1f4a8e;
+  --color-on-bar: #ffffff;
+
+  /* The square tile behind the logo mark: always cream, even in dark mode,
+     so the navy "N" stays visible. */
+  --color-logo-tile: #fefbf4;
+
   /* Fonts: the variables are created by next/font in layout.tsx.
      font-sans = body text (Source Sans 3), font-display = headings (Montserrat). */
   --font-sans: var(--font-body), system-ui, sans-serif;
   --font-display: var(--font-heading), system-ui, sans-serif;
+}
+
+/*
+  DARK MODE — option C "Soft slate" (chosen 4 Nov 2026).
+  The same colour names get dark values, so every page that uses the names
+  (bg-cream, text-ink, border-line …) switches by itself.
+  Two tricks keep the many existing classes working:
+    - white = the card colour, so "bg-white" cards turn slate, and
+      "text-white" on navy buttons turns dark;
+    - navy = light blue, so navy buttons become light blue with dark text,
+      and navy headings/links become light blue.
+  Red and green (errors, success, delete buttons) get dark versions too.
+  Every text colour below passes the 4.5:1 contrast rule on its background.
+*/
+html.dark {
+  color-scheme: dark; /* dark form controls and scrollbars */
+
+  --color-navy: #9cc3f2;
+  --color-navy-soft: #b9d5f7;
+  --color-muted-blue: #97a3b9;
+  --color-brand-sky: #6fa3e6;
+  --color-sky-tint: #2f4566;
+  --color-sky-wash: #2b3549;
+  --color-sky-line: #3a4862;
+
+  --color-gold: #f5ae3c;
+  --color-gold-tint: #3d3220;
+  --color-gold-ink: #f5c46e;
+
+  --color-cream: #1b2230; /* page background */
+  --color-line: #33405a;
+  --color-white: #252f42; /* cards and boxes */
+
+  --color-ink: #e6ebf3;
+  --color-ink-soft: #a6b1c4;
+  --color-ink-nav: #cbd3e1;
+
+  --color-bar: #121927;
+  --color-bar-soft: #252f42;
+  --color-on-bar: #e6ebf3;
+
+  --color-red-50: #3a1f25;
+  --color-red-100: #4a242c;
+  --color-red-200: #6b2f39;
+  --color-red-500: #ff8a8a;
+  --color-red-600: #ff9b9b;
+  --color-red-700: #ffb3b3;
+  --color-red-800: #ffc9c9;
+  --color-green-50: #17352a;
+  --color-green-100: #1e4a35;
+  --color-green-200: #2c5e45;
+  --color-green-300: #3f7a5b;
+  --color-green-600: #7fd9a4;
+  --color-green-700: #9be3b9;
+  --color-green-800: #b5ecca;
 }
 
 /*
@@ -53,9 +125,8 @@
 */
 @layer base {
   html {
-    /* Light design only: keeps form controls and scrollbars light even when
-       the computer is in dark mode (the old dark-mode block made form text
-       near-white — see Part 7). */
+    /* Light unless the user picked dark (html.dark above sets "dark"):
+       keeps form controls and scrollbars matching the page. */
     color-scheme: light;
   }
 

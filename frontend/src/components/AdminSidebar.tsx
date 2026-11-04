@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import Logo from "@/components/Logo";
+import ThemeToggle from "@/components/ThemeToggle";
 import { isAdminRole, isSuperAdminRole, roleLabel } from "@/lib/roles";
 
 type SidebarProfile = {
@@ -152,22 +153,24 @@ export default function AdminSidebar() {
     const active = href === "/admin"
       ? pathname === href
       : pathname === href || pathname.startsWith(`${href}/`);
-    // Current page = cream pill with navy text; others = light text on navy.
+    // Current page = cream pill with navy text; others = light text on the bar.
+    // Dark mode part: the bar uses its own colours (bg-bar, text-on-bar in
+    // globals.css) so it stays dark when "navy" turns light blue.
     // focus-visible: a ring only for keyboard (Tab) users.
-    return `mb-1 flex w-full items-center gap-3 rounded-xl px-3 py-3 text-[15px] outline-none transition focus-visible:ring-2 focus-visible:ring-gold ${active ? "bg-cream font-bold text-navy" : "font-medium text-[#E3ECF8] hover:bg-white/10 hover:text-white"}`;
+    return `mb-1 flex w-full items-center gap-3 rounded-xl px-3 py-3 text-[15px] outline-none transition focus-visible:ring-2 focus-visible:ring-gold ${active ? "bg-cream font-bold text-navy" : "font-medium text-[#E3ECF8] hover:bg-on-bar/10 hover:text-on-bar"}`;
   };
 
   return (
     <>
       {/* Phones/tablets (below lg): navy top bar with ☰ and the logo */}
-      <header className="z-30 flex h-16 shrink-0 items-center gap-2 bg-navy px-3 lg:hidden">
+      <header className="z-30 flex h-16 shrink-0 items-center gap-2 bg-bar px-3 lg:hidden">
         <button
           type="button"
           onClick={() => setMenuOpen(true)}
           aria-label="Open menu"
           aria-expanded={menuOpen}
           aria-controls="admin-sidebar"
-          className="rounded-lg p-2 text-white outline-none transition hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-gold"
+          className="rounded-lg p-2 text-on-bar outline-none transition hover:bg-on-bar/10 focus-visible:ring-2 focus-visible:ring-gold"
         >
           <Menu className="h-6 w-6" />
         </button>
@@ -177,7 +180,7 @@ export default function AdminSidebar() {
       {/* Dark backdrop behind the open menu; a click on it closes the menu */}
       {menuOpen && (
         <div
-          className="fixed inset-0 z-40 bg-ink/40 lg:hidden"
+          className="fixed inset-0 z-40 bg-ink/40 lg:hidden dark:bg-black/60"
           onClick={() => setMenuOpen(false)}
           aria-hidden="true"
         />
@@ -192,7 +195,7 @@ export default function AdminSidebar() {
           if ((event.target as HTMLElement).closest("a")) setMenuOpen(false);
         }}
         className={[
-          "fixed inset-y-0 left-0 z-50 flex h-screen w-72 max-w-[85vw] shrink-0 flex-col bg-navy text-white",
+          "fixed inset-y-0 left-0 z-50 flex h-screen w-72 max-w-[85vw] shrink-0 flex-col bg-bar text-on-bar",
           "transition-transform duration-200 lg:z-40 lg:translate-x-0",
           menuOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full max-lg:invisible",
         ].join(" ")}
@@ -202,7 +205,7 @@ export default function AdminSidebar() {
           type="button"
           onClick={() => setMenuOpen(false)}
           aria-label="Close menu"
-          className="absolute right-3 top-4 rounded-lg p-2 text-white outline-none transition hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-gold lg:hidden"
+          className="absolute right-3 top-4 rounded-lg p-2 text-on-bar outline-none transition hover:bg-on-bar/10 focus-visible:ring-2 focus-visible:ring-gold lg:hidden"
         >
           <X className="h-5 w-5" />
         </button>
@@ -219,25 +222,27 @@ export default function AdminSidebar() {
           ))}
         </nav>
 
-        <div className="border-t border-white/15 p-4">
-          <div className="mb-3 flex items-center gap-3 rounded-xl bg-navy-soft px-3 py-3">
+        <div className="border-t border-on-bar/15 p-4">
+          <div className="mb-3 flex items-center gap-3 rounded-xl bg-bar-soft px-3 py-3">
             {profile ? (
               <>
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-sky text-sm font-bold text-white">
                   {(profile.full_name?.trim().charAt(0) || "A").toUpperCase()}
                 </span>
-                <div className="min-w-0"><p className="truncate text-sm font-bold text-white">{profile.full_name || "Admin"}</p><p className="truncate text-xs text-[#C9D8EE]">{profile.email || ""}</p></div>
+                <div className="min-w-0"><p className="truncate text-sm font-bold text-on-bar">{profile.full_name || "Admin"}</p><p className="truncate text-xs text-[#C9D8EE]">{profile.email || ""}</p></div>
               </>
             ) : (
               // Grey placeholder while the profile loads (first visit or a browser refresh only).
               <>
-                <span className="h-9 w-9 shrink-0 animate-pulse rounded-full bg-white/20" />
-                <div className="min-w-0 flex-1 space-y-2"><div className="h-3 w-24 animate-pulse rounded bg-white/20" /><div className="h-3 w-32 animate-pulse rounded bg-white/20" /></div>
+                <span className="h-9 w-9 shrink-0 animate-pulse rounded-full bg-on-bar/20" />
+                <div className="min-w-0 flex-1 space-y-2"><div className="h-3 w-24 animate-pulse rounded bg-on-bar/20" /><div className="h-3 w-32 animate-pulse rounded bg-on-bar/20" /></div>
               </>
             )}
           </div>
+          {/* Dark mode part: one-click light/dark */}
+          <ThemeToggle className="mb-1 flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-[15px] font-medium text-[#E3ECF8] outline-none transition hover:bg-on-bar/10 hover:text-on-bar focus-visible:ring-2 focus-visible:ring-gold" />
           <Link href="/admin/profile" aria-current={pathname === "/admin/profile" ? "page" : undefined} className={linkClass("/admin/profile")}><UserRound className="h-5 w-5" /><span>Profile</span></Link>
-          <button onClick={logout} className="mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-[15px] font-medium text-[#E3ECF8] outline-none transition hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-gold"><LogOut className="h-5 w-5" /><span>Logout</span></button>
+          <button onClick={logout} className="mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-[15px] font-medium text-[#E3ECF8] outline-none transition hover:bg-on-bar/10 hover:text-on-bar focus-visible:ring-2 focus-visible:ring-gold"><LogOut className="h-5 w-5" /><span>Logout</span></button>
         </div>
       </aside>
     </>

@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Montserrat, Source_Sans_3 } from "next/font/google";
 import "./globals.css";
+import { THEME_INIT_SCRIPT } from "@/lib/theme";
+import ThemeWatcher from "@/components/ThemeWatcher";
 
 // next/font downloads these fonts at build time and serves them from our own
 // site (no request to Google from the student's browser). Each one creates a
@@ -25,11 +27,22 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
+    // suppressHydrationWarning: the theme script below adds class="dark"
+    // before React starts, so React would otherwise warn that <html>'s
+    // class differs from the server's.
     <html
       lang="en"
       className={`${heading.variable} ${body.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <head>
+        {/* Dark mode part: apply the saved theme before the page is drawn */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      </head>
+      <body className="min-h-full flex flex-col">
+        <ThemeWatcher />
+        {children}
+      </body>
     </html>
   );
 }

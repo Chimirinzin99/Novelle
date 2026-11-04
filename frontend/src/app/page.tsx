@@ -61,7 +61,10 @@ export default function LandingPage() {
 
       {/* Hero: the big logo mark, the wordmark and the Explore button */}
       <section className="flex min-h-[70vh] flex-col items-center justify-center px-6 text-center">
-        <Image src="/novelle-mark.png" alt="" width={120} height={120} priority />
+        {/* Dark mode part: on a dark page the navy "N" sits on a cream tile */}
+        <span className="inline-flex dark:rounded-3xl dark:bg-logo-tile dark:p-3">
+          <Image src="/novelle-mark.png" alt="" width={120} height={120} priority />
+        </span>
 
         <h1 className="mt-6 text-5xl font-extrabold tracking-[0.14em] text-navy md:text-7xl">
           NOVELLE

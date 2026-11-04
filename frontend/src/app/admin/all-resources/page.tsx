@@ -393,7 +393,7 @@ export default function AllResourcesPage() {
 
       {pendingDelete && (
         <div
-          className="fixed inset-0 z-[80] flex items-center justify-center bg-ink/45 p-4"
+          className="fixed inset-0 z-[80] flex items-center justify-center bg-ink/45 dark:bg-black/70 p-4"
           onMouseDown={(event) => {
             if (event.target === event.currentTarget && deletingId !== pendingDelete.id) {
               setPendingDelete(null);

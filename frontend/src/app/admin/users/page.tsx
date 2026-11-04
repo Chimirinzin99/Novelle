@@ -533,7 +533,7 @@ export default function UsersPage() {
 
       {/* Change role window */}
       {editingUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy/40 px-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy/40 px-4 dark:bg-black/70">
           <form
             onSubmit={handleSaveRole}
             className="w-full max-w-md rounded-xl bg-white p-6 shadow-lg"

@@ -108,7 +108,9 @@ export default function ProgrammePage() {
     <main className="min-h-full bg-cream px-4 py-8 sm:px-8 sm:py-10 lg:px-12">
       <div className="mx-auto max-w-5xl">
         {/* Banner: the dzong picture with a navy fade so the white text is
-            readable on any part of the image. */}
+            readable on any part of the image. Dark mode part: "bar" and
+            "on-bar" (globals.css) are navy and white in light mode, and stay
+            dark / light in dark mode (plain navy turns light blue there). */}
         <div className="relative mb-8 h-[180px] overflow-hidden rounded-2xl sm:h-[200px] lg:h-[220px]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -116,16 +118,16 @@ export default function ProgrammePage() {
             alt=""
             className="absolute inset-0 h-full w-full object-cover object-center"
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-navy/90 via-navy/55 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-r from-bar/90 via-bar/55 to-transparent" />
 
           <div className="relative z-10 flex h-full flex-col justify-center px-6 sm:px-9 lg:px-12">
-            <p className="mb-2 font-display text-xs font-bold uppercase tracking-[0.12em] text-white/85">
+            <p className="mb-2 font-display text-xs font-bold uppercase tracking-[0.12em] text-on-bar/85">
               Programme
             </p>
-            <h1 className="text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
+            <h1 className="text-3xl font-extrabold tracking-tight text-on-bar sm:text-4xl">
               {programmeName || "Loading…"}
             </h1>
-            <p className="mt-2 max-w-xl text-sm text-white/90 sm:text-base">
+            <p className="mt-2 max-w-xl text-sm text-on-bar/90 sm:text-base">
               Explore knowledge, share ideas, and discover learning resources.
             </p>
           </div>

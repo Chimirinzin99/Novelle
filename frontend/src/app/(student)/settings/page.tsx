@@ -30,6 +30,7 @@ import {
 } from "@/lib/password";
 import PasswordChecklist from "@/components/PasswordChecklist";
 import WeakPasswordNotice from "@/components/WeakPasswordNotice";
+import ThemeSelect from "@/components/ThemeSelect";
 
 type FontSize = "small" | "default" | "large";
 
@@ -49,7 +50,7 @@ function Toggle({
       aria-checked={checked}
       aria-label={label}
       onClick={() => onChange(!checked)}
-      className={`relative h-6 w-11 shrink-0 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy-soft focus-visible:ring-offset-2 ${checked ? "bg-navy" : "bg-slate-300"}`}
+      className={`relative h-6 w-11 shrink-0 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy-soft focus-visible:ring-offset-2 ${checked ? "bg-navy" : "bg-slate-300 dark:bg-slate-600"}`}
     >
       <span
         className="absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-[left] duration-200"
@@ -180,6 +181,10 @@ export default function SettingsPage() {
             <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-tint text-navy"><Monitor className="h-5 w-5" /></span>
             <div><h2 className="font-semibold">Appearance</h2><p className="text-sm text-ink-soft">Tune the interface for comfortable reading.</p></div>
           </div>
+          {/* Dark mode part */}
+          <SettingRow title="Theme" description="Light, dark, or the same as your phone or computer.">
+            <ThemeSelect className="rounded-lg border border-sky-line bg-white px-3 py-2 text-sm text-ink outline-none focus:border-navy-soft focus:ring-2 focus:ring-navy-soft/20" />
+          </SettingRow>
           <SettingRow title="Text size" description="Choose a comfortable reading size across the app.">
             <select value={fontSize} onChange={(event) => setFontSize(event.target.value as FontSize)} className="rounded-lg border border-sky-line bg-white px-3 py-2 text-sm text-ink outline-none focus:border-navy-soft focus:ring-2 focus:ring-navy-soft/20" aria-label="Text size">
               <option value="small">Small</option><option value="default">Default</option><option value="large">Large</option>

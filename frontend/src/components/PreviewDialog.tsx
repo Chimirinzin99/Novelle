@@ -59,7 +59,7 @@ export default function PreviewDialog({ item, onClose }: PreviewDialogProps) {
   return (
     // Dark background: clicking it (not the window) closes.
     <div
-      className="fixed inset-0 z-[70] flex items-center justify-center bg-navy/50 p-2 sm:p-6"
+      className="fixed inset-0 z-[70] flex items-center justify-center bg-navy/50 p-2 sm:p-6 dark:bg-black/70"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}

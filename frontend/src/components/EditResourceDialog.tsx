@@ -228,7 +228,7 @@ export default function EditResourceDialog({
 
   return (
     // Dark backdrop; clicking it does nothing, so a half-filled form isn't lost.
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-navy/40 p-4">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-navy/40 p-4 dark:bg-black/70">
       <form
         role="dialog"
         aria-modal="true"

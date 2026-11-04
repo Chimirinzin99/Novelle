@@ -16,6 +16,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { programmeHref } from "@/lib/programmes";
 import Logo from "@/components/Logo";
+import ThemeToggle from "@/components/ThemeToggle";
 import {
   fetchNotifications,
   markAllNotificationsRead,
@@ -464,7 +465,7 @@ export default function Sidebar() {
       {/* Dark backdrop behind the open menu; a click on it closes the menu */}
       {menuOpen && (
         <div
-          className="fixed inset-0 z-40 bg-ink/40 lg:hidden"
+          className="fixed inset-0 z-40 bg-ink/40 lg:hidden dark:bg-black/60"
           onClick={() => setMenuOpen(false)}
           aria-hidden="true"
         />
@@ -604,6 +605,8 @@ export default function Sidebar() {
 
         {/* Bottom actions */}
         <div className="mt-4 shrink-0 border-t border-line pt-4">
+          {/* Dark mode part: one-click light/dark */}
+          <ThemeToggle className={`${navClass(false)} text-left`} />
           <Link href="/settings" className={navClass(pathname === "/settings")}>
             <Icon name="settings" />
             <span>Settings</span>
