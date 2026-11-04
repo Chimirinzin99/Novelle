@@ -7,11 +7,17 @@
 // like the student one. A navy top bar with ☰ and the logo replaces the old
 // row of links across the top; ☰ opens the menu, and the backdrop, X, Escape
 // or choosing a link closes it.
+// Part 19: the admin bell moved here from the dashboard header, so it shows
+// on every admin page and matches the student sidebar: next to the logo on
+// laptops (panel opens to the right), in the top bar on phones (panel drops
+// down). It shows the pending-submissions count, refreshed on page change,
+// window focus, every 60 s and right after an approve/reject (lib/pending.ts).
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
+  Bell,
   ClipboardCheck,
   FileText,
   GraduationCap,
@@ -27,6 +33,10 @@ import { supabase } from "@/lib/supabase";
 import Logo from "@/components/Logo";
 import ThemeToggle from "@/components/ThemeToggle";
 import { isAdminRole, isSuperAdminRole, roleLabel } from "@/lib/roles";
+import { fetchPendingCount, PENDING_CHANGED_EVENT } from "@/lib/pending";
+
+// How often the pending count refreshes while a page stays open.
+const PENDING_REFRESH_MS = 60_000;
 
 type SidebarProfile = {
   full_name: string | null;
@@ -86,6 +96,126 @@ export default function AdminSidebar() {
   const [profile, setProfile] = useState<SidebarProfile | null>(null);
   // Phones/tablets: is the slide-in menu open?
   const [menuOpen, setMenuOpen] = useState(false);
+  // Part 19: pending submissions this admin can review (null = not loaded)
+  const [pendingCount, setPendingCount] = useState<number | null>(null);
+  const isAdmin = isAdminRole(profile?.role);
+
+  // Load the count once the profile shows an admin, again on every page
+  // change (e.g. after leaving the review page), on window focus, every 60 s,
+  // and when a page announces an approve/reject.
+  useEffect(() => {
+    if (!isAdmin) return;
+    let active = true;
+    const refresh = async () => {
+      const count = await fetchPendingCount();
+      if (active) setPendingCount(count);
+    };
+    void refresh();
+    const timer = window.setInterval(refresh, PENDING_REFRESH_MS);
+    window.addEventListener("focus", refresh);
+    window.addEventListener(PENDING_CHANGED_EVENT, refresh);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refresh);
+      window.removeEventListener(PENDING_CHANGED_EVENT, refresh);
+    };
+  }, [isAdmin, pathname]);
+  const hasPending = (pendingCount ?? 0) > 0;
+
+  // Part 19: bell panel. Two containers (sidebar bell on laptops, top-bar
+  // bell on phones) so a click outside BOTH closes the panel.
+  const [bellOpen, setBellOpen] = useState(false);
+  const sidebarBellRef = useRef<HTMLDivElement>(null);
+  const topBarBellRef = useRef<HTMLDivElement>(null);
+
+  // Close the panel on a page change
+  useEffect(() => {
+    setBellOpen(false);
+  }, [pathname]);
+
+  // Close the panel on a click outside it or Escape
+  useEffect(() => {
+    if (!bellOpen) return;
+    const handleClick = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (!sidebarBellRef.current?.contains(target) && !topBarBellRef.current?.contains(target)) {
+        setBellOpen(false);
+      }
+    };
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setBellOpen(false);
+    };
+    document.addEventListener("mousedown", handleClick);
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      document.removeEventListener("mousedown", handleClick);
+      document.removeEventListener("keydown", handleKey);
+    };
+  }, [bellOpen]);
+
+  // The bell button + its panel, drawn twice (like the student sidebar's
+  // renderBell): each copy is hidden on the other screen size.
+  function renderBell(
+    ref: React.RefObject<HTMLDivElement | null>,
+    wrapperClass: string,
+    panelPosition: string
+  ) {
+    const count = pendingCount ?? 0;
+    return (
+      <div ref={ref} className={`relative ${wrapperClass}`}>
+        <button
+          type="button"
+          onClick={() => setBellOpen((open) => !open)}
+          aria-label={`Notifications${hasPending ? `, ${count} pending submissions` : ""}`}
+          aria-expanded={bellOpen}
+          className="relative rounded-lg p-2 text-on-bar outline-none transition hover:bg-on-bar/10 focus-visible:ring-2 focus-visible:ring-gold"
+        >
+          <Bell className="h-5 w-5" />
+          {/* Pending count in star gold, as on the student bell */}
+          {hasPending && (
+            <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-gold px-1 text-[9px] font-extrabold leading-none text-ink dark:text-bar">
+              {count > 99 ? "99+" : count}
+            </span>
+          )}
+        </button>
+
+        {bellOpen && (
+          <div
+            role="dialog"
+            aria-label="Notifications"
+            className={`absolute z-[60] w-80 overflow-hidden rounded-2xl border border-line bg-white p-4 text-ink shadow-xl ${panelPosition}`}
+          >
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-sm font-bold text-navy">Notifications</h2>
+              {hasPending && (
+                <span className="rounded-full bg-gold-tint px-2.5 py-1 text-xs font-bold text-gold-ink">
+                  {count} pending
+                </span>
+              )}
+            </div>
+            {hasPending ? (
+              <Link
+                href="/admin/submissions"
+                onClick={() => setBellOpen(false)}
+                className="mt-3 block rounded-xl bg-cream p-3 transition hover:bg-sky-wash"
+              >
+                <p className="text-sm font-semibold text-ink">Student submissions need review</p>
+                <p className="mt-1 text-xs leading-5 text-ink-soft">
+                  {count} {count === 1 ? "resource is" : "resources are"} waiting for approval.
+                </p>
+                <span className="mt-2 inline-block text-xs font-bold text-navy-soft">Review submissions →</span>
+              </Link>
+            ) : (
+              <p className="mt-3 rounded-xl bg-cream p-3 text-sm text-ink-soft">
+                You’re all caught up. No pending submissions to review.
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   // Escape closes the slide-in menu
   useEffect(() => {
@@ -175,6 +305,8 @@ export default function AdminSidebar() {
           <Menu className="h-6 w-6" />
         </button>
         <Logo tone="dark" href="/admin" tagline={profile ? roleLabel(profile.role) : "\u00a0"} />
+        {/* Part 19: bell on the right of the top bar */}
+        {renderBell(topBarBellRef, "ml-auto", "right-0 top-[calc(100%+0.5rem)] max-w-[calc(100vw-1.5rem)]")}
       </header>
 
       {/* Dark backdrop behind the open menu; a click on it closes the menu */}
@@ -211,8 +343,10 @@ export default function AdminSidebar() {
         </button>
 
         {/* Logo; the tagline shows the role ("Programme admin" / "Super admin") */}
-        <div className="px-5 pb-4 pt-6">
+        <div className="flex items-start justify-between gap-2 px-5 pb-4 pt-6">
           <Logo tone="dark" href="/admin" tagline={profile ? roleLabel(profile.role) : "\u00a0"} />
+          {/* Part 19: laptops only (phones use the top-bar bell) */}
+          {renderBell(sidebarBellRef, "max-lg:hidden", "left-[calc(100%+0.75rem)] top-0 max-w-[calc(100vw-20rem)]")}
         </div>
 
         <nav aria-label="Admin navigation" className="flex-1 overflow-y-auto px-3 py-5">

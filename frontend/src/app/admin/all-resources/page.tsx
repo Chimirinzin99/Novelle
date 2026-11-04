@@ -18,6 +18,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, Heart, Pencil, Search, Trash2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { fetchLikeCounts } from "@/lib/likes";
 import { usePreview } from "@/components/PreviewProvider";
 import { downloadFile } from "@/lib/files";
 import { BACKEND_URL } from "@/lib/config";
@@ -116,16 +117,8 @@ export default function AllResourcesPage() {
         const loaded = (data || []) as unknown as Resource[];
         setResources(loaded);
         // Like counts only (admins don't like resources here).
-        const countRows = await Promise.all(
-          loaded.map(async (resource) => {
-            const { data: count, error: countError } = await supabase.rpc(
-              "get_like_count",
-              { p_resource_id: resource.id }
-            );
-            return [resource.id, countError ? 0 : Number(count) || 0] as const;
-          })
-        );
-        setLikeCounts(Object.fromEntries(countRows));
+        // Part 19: all in one request (was one request per resource).
+        setLikeCounts(await fetchLikeCounts(loaded.map((resource) => resource.id)));
       }
       setLoading(false);
     }

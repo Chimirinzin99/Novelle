@@ -7,6 +7,11 @@
 // video query now also reads module_name (shown on the card).
 // Part 13d: PDF cards also show the author credit and Solved/Unsolved.
 // PDF preview part: View opens the preview window instead of a new tab.
+// Part 19: each PDF section asks the database for its newest 6 only (three
+// small queries at the same time) instead of downloading every PDF of the
+// programme and keeping 8 of them in the browser. Videos and the student's
+// likes load at the same time, and all like counts come in ONE request
+// (fetchLikeCounts) — about 4 round trips instead of ~25.
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -14,7 +19,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { usePreview } from "@/components/PreviewProvider";
 import { downloadFile } from "@/lib/files";
-import { setLiked } from "@/lib/likes";
+import { fetchLikeCounts, setLiked } from "@/lib/likes";
 import WelcomeHeader from "@/components/WelcomeHeader";
 import PdfCard from "@/components/PdfCard";
 import VideoCard from "@/components/VideoCard";
@@ -44,8 +49,10 @@ type Video = {
   video_id: string;
 };
 
-const HOME_VIDEO_LIMIT = 8;
-const HOME_SECTION_LIMIT = 8;
+// Part 19: 6 per section (was 8). Cards sit 3 / 2 / 1 per row (laptop /
+// tablet / phone), and 6 fills every row on all three, so no half-empty row.
+const HOME_VIDEO_LIMIT = 6;
+const HOME_SECTION_LIMIT = 6;
 
 export default function Home() {
   const router = useRouter();
@@ -67,12 +74,15 @@ export default function Home() {
   async function loadStudentData() {
     setLoading(true);
 
+    // Part 19: getSession() reads the login saved in this browser (no network
+    // call); getUser() asked Supabase's server first. The database rules still
+    // check the token on every query below.
     const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
+      data: { session },
+    } = await supabase.auth.getSession();
+    const user = session?.user;
 
-    if (userError || !user) {
+    if (!user) {
       router.replace("/login");
       return;
     }
@@ -97,89 +107,72 @@ export default function Home() {
 
     setProgrammeName(programme?.name ?? "");
 
-    const { data: resources, error: resourcesError } = await supabase
-      .from("resources")
-      .select(
-        "id, title, topic, type, module_name, year, semester, file_path, author_type, author_name, is_solved"
-      )
-      .eq("programme_id", profile.programme_id)
-      .in("type", ["note", "question_paper", "assignment"])
-      .order("created_at", { ascending: false });
+    // Part 19: the newest HOME_SECTION_LIMIT of one type, limited by the
+    // database (.limit), so the page never downloads the whole library.
+    const newestOfType = (type: string) =>
+      supabase
+        .from("resources")
+        .select(
+          "id, title, topic, type, module_name, year, semester, file_path, author_type, author_name, is_solved"
+        )
+        .eq("programme_id", profile.programme_id)
+        .eq("type", type)
+        .order("created_at", { ascending: false })
+        .limit(HOME_SECTION_LIMIT);
 
+    // All five queries run at the same time (Promise.all), not one after another.
+    const [notesResult, papersResult, assignmentsResult, videosResult, favouritesResult] =
+      await Promise.all([
+        newestOfType("note"),
+        newestOfType("question_paper"),
+        newestOfType("assignment"),
+        supabase
+          .from("resources")
+          .select("id, title, topic, module_name, year, semester, video_id")
+          .eq("programme_id", profile.programme_id)
+          .eq("type", "video")
+          .order("created_at", { ascending: false })
+          .limit(HOME_VIDEO_LIMIT),
+        supabase.from("favourites").select("resource_id").eq("user_id", user.id),
+      ]);
+
+    const resourcesError =
+      notesResult.error || papersResult.error || assignmentsResult.error;
     if (resourcesError) {
       console.error("Error fetching resources:", resourcesError);
       setLoading(false);
       return;
     }
 
-    const allPdfs: PdfResource[] = resources || [];
-
-    const loadedNotes = allPdfs
-      .filter((resource) => resource.type === "note")
-      .slice(0, HOME_SECTION_LIMIT);
-
-    const loadedPapers = allPdfs
-      .filter((resource) => resource.type === "question_paper")
-      .slice(0, HOME_SECTION_LIMIT);
-
-    const loadedAssignments = allPdfs
-      .filter((resource) => resource.type === "assignment")
-      .slice(0, HOME_SECTION_LIMIT);
+    const loadedNotes: PdfResource[] = notesResult.data || [];
+    const loadedPapers: PdfResource[] = papersResult.data || [];
+    const loadedAssignments: PdfResource[] = assignmentsResult.data || [];
 
     setNotes(loadedNotes);
     setQuestionPapers(loadedPapers);
     setAssignments(loadedAssignments);
 
-    const { data: videoData, error: videosError } = await supabase
-      .from("resources")
-      .select("id, title, topic, module_name, year, semester, video_id")
-      .eq("programme_id", profile.programme_id)
-      .eq("type", "video")
-      .order("created_at", { ascending: false })
-      .limit(HOME_VIDEO_LIMIT);
-
-    if (videosError) {
-      console.error("Error fetching videos:", videosError);
+    if (videosResult.error) {
+      console.error("Error fetching videos:", videosResult.error);
     }
 
-    const loadedVideos: Video[] = videoData || [];
+    const loadedVideos: Video[] = videosResult.data || [];
     setVideos(loadedVideos);
 
-    const { data: favouriteData, error: favouriteError } = await supabase
-      .from("favourites")
-      .select("resource_id")
-      .eq("user_id", user.id);
-
-    if (favouriteError) {
-      console.error("Error fetching favourites:", favouriteError);
+    if (favouritesResult.error) {
+      console.error("Error fetching favourites:", favouritesResult.error);
     } else {
       setFavourites(
-        (favouriteData || []).map((item) => item.resource_id)
+        (favouritesResult.data || []).map((item) => item.resource_id)
       );
     }
 
-    const counts: Record<number, number> = {};
-
-    for (const item of [
-      ...loadedNotes,
-      ...loadedPapers,
-      ...loadedAssignments,
-      ...loadedVideos,
-    ]) {
-      const { data, error } = await supabase.rpc("get_like_count", {
-        p_resource_id: item.id,
-      });
-
-      if (error) {
-        console.error(
-          `Error getting likes for resource ${item.id}:`,
-          error
-        );
-        counts[item.id] = 0;
-      } else {
-        counts[item.id] = Number(data) || 0;
-      }
-    }
+    // Part 19: every card's like count in one request
+    const counts = await fetchLikeCounts(
+      [...loadedNotes, ...loadedPapers, ...loadedAssignments, ...loadedVideos].map(
+        (item) => item.id
+      )
+    );
 
     setLikeCounts(counts);
     setLoading(false);

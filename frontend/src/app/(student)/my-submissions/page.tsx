@@ -3,6 +3,9 @@
 // /my-submissions — the student's own submissions and their status.
 // PDF preview part: View opens the preview window instead of a new tab.
 // Part 12: hard-coded colours switched to the theme colours.
+// Part 19: each row also shows the author credit ("By …" / "By a student")
+// and, for question papers and assignments, the Solved / Unsolved tag —
+// the same wording and colours as the browse cards (lib/author.ts).
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -11,6 +14,7 @@ import { supabase } from "@/lib/supabase";
 import { usePreview } from "@/components/PreviewProvider";
 import { rejectionReasonLabel } from "@/lib/rejectionReasons";
 import { resourceTypeLabel } from "@/lib/resourceTypes";
+import { authorCredit, isSolvableType, solvedTag } from "@/lib/author";
 
 // One row from resource_submissions, plus the programme name joined in.
 type Submission = {
@@ -22,6 +26,9 @@ type Submission = {
   file_path: string;
   created_at: string;
   reviewed_at: string | null;
+  author_type: string | null; // Part 19 (columns from Part 13d)
+  author_name: string | null;
+  is_solved: boolean;
   programmes: { name: string } | null;
 };
 
@@ -90,7 +97,7 @@ export default function MySubmissionsPage() {
     const { data, error } = await supabase
       .from("resource_submissions")
       .select(
-        "id, title, type, status, rejection_reason, file_path, created_at, reviewed_at, programmes(name)"
+        "id, title, type, status, rejection_reason, file_path, created_at, reviewed_at, author_type, author_name, is_solved, programmes(name)"
       )
       .eq("submitted_by", user.id)
       .order("created_at", { ascending: false }); // newest first
@@ -254,6 +261,9 @@ export default function MySubmissionsPage() {
         <div className="space-y-3">
           {visible.map((submission) => {
             const status = STATUS_STYLES[submission.status];
+            // Part 19: credit line and Solved tag, as on the browse cards
+            const credit = authorCredit(submission.author_type, submission.author_name);
+            const solved = isSolvableType(submission.type) ? solvedTag(submission.is_solved) : null;
 
             return (
               <div
@@ -279,6 +289,17 @@ export default function MySubmissionsPage() {
                     {submission.reviewed_at &&
                       ` · Reviewed ${formatDate(submission.reviewed_at)}`}
                   </p>
+
+                  {(credit || solved) && (
+                    <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+                      {credit && <span className="font-medium text-ink">{credit}</span>}
+                      {solved && (
+                        <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${solved.className}`}>
+                          {solved.text}
+                        </span>
+                      )}
+                    </div>
+                  )}
 
                   {/* Only rejected submissions have a reason */}
                   {submission.status === "rejected" && (

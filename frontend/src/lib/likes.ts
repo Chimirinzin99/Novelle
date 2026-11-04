@@ -33,3 +33,24 @@ export async function setLiked(resourceId: number, like: boolean): Promise<strin
   }
   return null;
 }
+
+// Part 19: like counts for many resources in ONE request (migration 016,
+// get_like_counts). Before, each page asked get_like_count once per card;
+// /home made ~20 round trips in a row. Resources with no likes are missing
+// from the database answer, so every id starts at 0 here.
+// If the request fails, all counts show 0 (the page still works).
+export async function fetchLikeCounts(resourceIds: number[]): Promise<Record<number, number>> {
+  const counts: Record<number, number> = {};
+  for (const id of resourceIds) counts[id] = 0;
+  if (resourceIds.length === 0) return counts;
+
+  const { data, error } = await supabase.rpc("get_like_counts", { p_resource_ids: resourceIds });
+  if (error) {
+    console.error("Like counts error:", error);
+    return counts;
+  }
+  for (const row of (data || []) as { resource_id: number; likes: number }[]) {
+    counts[row.resource_id] = Number(row.likes) || 0;
+  }
+  return counts;
+}

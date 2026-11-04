@@ -13,7 +13,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { usePreview } from "@/components/PreviewProvider";
 import { downloadFile } from "@/lib/files";
-import { setLiked } from "@/lib/likes";
+import { fetchLikeCounts, setLiked } from "@/lib/likes";
 import FilterBar from "@/components/FilterBar";
 import PageHeader, { CountPill } from "@/components/PageHeader";
 import PdfCard from "@/components/PdfCard";
@@ -140,18 +140,8 @@ export default function ResourceList({
       setFavourites([]);
     }
 
-    const counts: Record<number, number> = {};
-
-    await Promise.all(
-      loaded.map(async (resource) => {
-        const { data: likeCount, error: likeError } = await supabase.rpc(
-          "get_like_count",
-          { p_resource_id: resource.id }
-        );
-
-        counts[resource.id] = likeError ? 0 : Number(likeCount) || 0;
-      })
-    );
+    // Part 19: all like counts in one request (was one request per card)
+    const counts = await fetchLikeCounts(loaded.map((resource) => resource.id));
 
     setLikeCounts(counts);
     setLoading(false);

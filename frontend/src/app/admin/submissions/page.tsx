@@ -22,6 +22,7 @@ import { usePreview } from "@/components/PreviewProvider";
 import { BACKEND_URL } from "@/lib/config";
 import { callBackend, readJson } from "@/lib/backend";
 import { REJECTION_REASONS } from "@/lib/rejectionReasons";
+import { announcePendingChanged } from "@/lib/pending";
 import TypeBadge from "@/components/TypeBadge";
 import { primaryButton } from "@/components/PdfCard";
 import {
@@ -291,6 +292,8 @@ export default function AdminSubmissionsPage() {
     setSubmissions((current) =>
       current.filter((item) => item.id !== submissionId)
     );
+    // Part 19: tell the sidebar to refresh its pending count now
+    announcePendingChanged();
   };
 
   const handleApprove = async (submission: Submission) => {

@@ -21,7 +21,6 @@ import {
   FileText,
   FileQuestion,
   ClipboardList,
-  Bell,
   Video,
   Database,
   Users,
@@ -109,7 +108,6 @@ export default function AdminPage() {
   const [programmeName, setProgrammeName] = useState("");
 
   const [pendingCount, setPendingCount] = useState(0);
-  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notesCount, setNotesCount] = useState(0);
   const [papersCount, setPapersCount] = useState(0);
   const [assignmentsCount, setAssignmentsCount] = useState(0);
@@ -533,59 +531,8 @@ export default function AdminPage() {
             </p>
           </div>
 
-          <div className="flex shrink-0 items-center gap-2">
-            {/* 4 Nov: "Back to site" and "+ Add resource" removed — the sidebar
-                has Add Resource, and admins rarely need the public landing page. */}
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setNotificationsOpen((open) => !open)}
-                aria-label={`Notifications${pendingCount ? `, ${pendingCount} pending submissions` : ""}`}
-                aria-expanded={notificationsOpen}
-                className="relative flex h-11 w-11 items-center justify-center rounded-[10px] border-[1.5px] border-sky-line bg-white text-navy outline-none transition hover:bg-sky-wash focus-visible:ring-2 focus-visible:ring-navy/40"
-              >
-                <Bell className="h-5 w-5" />
-                {pendingCount > 0 && (
-                  <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-gold px-1 text-[10px] font-extrabold text-ink ring-2 ring-cream">
-                    {pendingCount > 99 ? "99+" : pendingCount}
-                  </span>
-                )}
-              </button>
-
-              {notificationsOpen && (
-                // Responsive part: on phones the panel is pinned across the
-                // screen (the bell sits on the left, so "right-0" pushed it off
-                // the left edge); from sm up it hangs below the bell as before.
-                <div className="fixed inset-x-4 top-20 z-30 overflow-hidden rounded-2xl border border-line bg-white p-4 shadow-xl sm:absolute sm:inset-x-auto sm:right-0 sm:top-14 sm:w-[21rem]">
-                  <div className="flex items-center justify-between gap-3">
-                    <h2 className="font-bold text-navy">Notifications</h2>
-                    {pendingCount > 0 && (
-                      <span className="rounded-full bg-gold-tint px-2.5 py-1 text-xs font-bold text-gold-ink">
-                        {pendingCount} pending
-                      </span>
-                    )}
-                  </div>
-                  {pendingCount > 0 ? (
-                    <Link
-                      href="/admin/submissions"
-                      className="mt-3 block rounded-xl bg-cream p-3 transition hover:bg-sky-wash"
-                    >
-                      <p className="text-sm font-semibold text-ink">Student submissions need review</p>
-                      <p className="mt-1 text-xs leading-5 text-ink-soft">
-                        {pendingCount} {pendingCount === 1 ? "resource is" : "resources are"} waiting for approval.
-                      </p>
-                      <span className="mt-2 inline-block text-xs font-bold text-navy-soft">Review submissions →</span>
-                    </Link>
-                  ) : (
-                    <p className="mt-3 rounded-xl bg-cream p-3 text-sm text-ink-soft">
-                      You’re all caught up. No pending submissions to review.
-                    </p>
-                  )}
-                </div>
-              )}
-            </div>
-
-          </div>
+          {/* 4 Nov: "Back to site" and "+ Add resource" removed. Part 19: the
+              bell moved to the admin sidebar, so it shows on every admin page. */}
         </header>
 
         {/* ---- Super admin: needs attention ---- */}

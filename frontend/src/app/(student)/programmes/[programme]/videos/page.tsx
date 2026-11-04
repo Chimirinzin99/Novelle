@@ -7,7 +7,7 @@
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { setLiked } from "@/lib/likes";
+import { fetchLikeCounts, setLiked } from "@/lib/likes";
 import FilterBar from "@/components/FilterBar";
 import PageHeader, { CountPill } from "@/components/PageHeader";
 import VideoCard from "@/components/VideoCard";
@@ -108,17 +108,8 @@ export default function VideosPage() {
       }
     }
 
-    // 4. Total likes per video (same database function as the Notes page).
-    const counts: Record<number, number> = {};
-
-    for (const video of loadedVideos) {
-      const { data: likeCount, error: likeError } = await supabase.rpc(
-        "get_like_count",
-        { p_resource_id: video.id }
-      );
-
-      counts[video.id] = likeError ? 0 : Number(likeCount) || 0;
-    }
+    // 4. Total likes per video — Part 19: all in one request (lib/likes.ts)
+    const counts = await fetchLikeCounts(loadedVideos.map((video) => video.id));
 
     setLikeCounts(counts);
     setLoading(false);

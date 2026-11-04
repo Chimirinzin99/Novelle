@@ -496,9 +496,16 @@ export default function Sidebar() {
           <Icon name="close" className="h-5 w-5" />
         </button>
 
-        {/* Brand */}
-        <div className="mb-7 shrink-0 px-2">
+        {/* Brand. Part 19: the laptop bell moved up here, next to the logo
+            (it sat beside "My Account", which made it look like part of that
+            section); same place as on the admin sidebar. */}
+        <div className="mb-7 flex shrink-0 items-start justify-between gap-2 px-2">
           <Logo href="/home" />
+          {renderBell(
+            notificationsRef,
+            "max-lg:hidden",
+            "left-[calc(100%+0.75rem)] top-0 max-w-[calc(100vw-20rem)]"
+          )}
         </div>
 
         {/* Main navigation */}
@@ -534,13 +541,6 @@ export default function Sidebar() {
         <section className="mt-7 shrink-0">
           <div className="mb-2 flex items-center justify-between px-3">
             <p className={sectionLabel}>My Account</p>
-
-            {/* Laptops only: phones use the bell in the top bar */}
-            {renderBell(
-              notificationsRef,
-              "max-lg:hidden",
-              "left-[calc(100%+0.75rem)] top-0 max-w-[calc(100vw-18rem)]"
-            )}
           </div>
 
           <nav aria-label="My account" className="space-y-1">
