@@ -6,7 +6,6 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { BACKEND_URL } from "@/lib/config";
 import { callBackend, readJson } from "@/lib/backend";
@@ -510,13 +509,6 @@ export default function ModulesPage() {
     return (
       <main className="min-h-screen bg-cream px-5 py-8 text-ink md:px-8">
         <div className="mx-auto max-w-6xl">
-          <button
-            type="button"
-            onClick={() => router.push("/admin")}
-            className="mb-8 inline-flex items-center gap-2 rounded-xl border border-line bg-white px-4 py-2.5 text-sm font-medium text-ink-nav shadow-sm transition hover:bg-sky-wash focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy-soft"
-          >
-            <ArrowLeft className="h-4 w-4" /> Back to Dashboard
-          </button>
           <p className="text-ink-soft">Loading modules...</p>
         </div>
       </main>
@@ -545,13 +537,6 @@ export default function ModulesPage() {
         {/* Header */}
         <div className="mb-8 flex items-center justify-between">
           <div>
-            <button
-              type="button"
-              onClick={() => router.push("/admin")}
-              className="mb-5 inline-flex items-center gap-2 rounded-xl border border-line bg-white px-4 py-2.5 text-sm font-medium text-ink-nav shadow-sm transition hover:bg-sky-wash focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy-soft"
-            >
-              <ArrowLeft className="h-4 w-4" /> Back to Dashboard
-            </button>
 
             <p className="text-sm font-medium text-navy-soft">
               Module Management

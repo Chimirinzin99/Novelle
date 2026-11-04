@@ -16,6 +16,7 @@ import {
   FileText,
   GraduationCap,
   LayoutDashboard,
+  Library,
   LogOut,
   Menu,
   UserRound,
@@ -32,10 +33,13 @@ type SidebarProfile = {
   role: string;
 };
 
+// Order (4 Nov): browse before add. "All Resources" is the library page
+// (/admin/all-resources); "Add Resource" is the upload page.
 const navItems = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/submissions", label: "Pending Submissions", icon: ClipboardCheck },
-  { href: "/admin/resources", label: "Add Resources", icon: FileText },
+  { href: "/admin/all-resources", label: "All Resources", icon: Library },
+  { href: "/admin/resources", label: "Add Resource", icon: FileText },
   { href: "/admin/modules", label: "Manage Modules", icon: GraduationCap },
 ];
 

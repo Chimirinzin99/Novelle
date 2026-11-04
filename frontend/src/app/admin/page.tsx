@@ -22,7 +22,6 @@ import {
   FileQuestion,
   ClipboardList,
   Bell,
-  ArrowLeft,
   Video,
   Database,
   Users,
@@ -535,16 +534,8 @@ export default function AdminPage() {
           </div>
 
           <div className="flex shrink-0 items-center gap-2">
-            <button
-              type="button"
-              onClick={() => router.push("/")}
-              aria-label="Back to Novelle site"
-              className="inline-flex h-11 items-center gap-2 rounded-[10px] border-[1.5px] border-sky-line bg-white px-3 text-sm font-semibold text-navy outline-none transition hover:bg-sky-wash focus-visible:ring-2 focus-visible:ring-navy/40"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              <span className="hidden sm:inline">Back to site</span>
-            </button>
-
+            {/* 4 Nov: "Back to site" and "+ Add resource" removed — the sidebar
+                has Add Resource, and admins rarely need the public landing page. */}
             <div className="relative">
               <button
                 type="button"
@@ -594,13 +585,6 @@ export default function AdminPage() {
               )}
             </div>
 
-            <Link
-              href="/admin/resources"
-              className="inline-flex h-11 items-center gap-2 rounded-[10px] bg-navy px-4 text-[15px] font-bold text-white outline-none transition hover:bg-navy-soft focus-visible:ring-2 focus-visible:ring-navy/40 focus-visible:ring-offset-2"
-            >
-              <span aria-hidden="true" className="text-lg leading-none">+</span>
-              Add resource
-            </Link>
           </div>
         </header>
 
@@ -773,23 +757,30 @@ export default function AdminPage() {
                         )}
                       </td>
                       <td className="px-5 py-3">
-                        {programme.admins.length > 0 ? (
-                          <span className="text-ink">{programme.admins.join(", ")}</span>
-                        ) : (
-                          // Quiet grey text + a small outlined button: with
-                          // 9 of 10 programmes unassigned, ten bright links
-                          // in a column were too loud.
-                          <span className="flex items-center gap-3">
+                        {/* 4 Nov: Assign is shown for every programme — a programme
+                            can have several admins. Names are listed one per line;
+                            grey "Not assigned" when there are none. The button is
+                            quiet (outlined) so ten of them in a column aren't loud. */}
+                        <div className="flex items-center gap-3">
+                          {programme.admins.length > 0 ? (
+                            <ul className="min-w-0 space-y-0.5">
+                              {programme.admins.map((name, index) => (
+                                <li key={`${name}-${index}`} className="text-ink">
+                                  {name || "Unnamed admin"}
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
                             <span className="text-ink-soft">Not assigned</span>
-                            <Link
-                              href="/admin/users"
-                              aria-label={`Assign a programme admin for ${programme.name}`}
-                              className="rounded-lg border-[1.5px] border-sky-line bg-white px-3 py-1 text-xs font-bold text-navy outline-none transition hover:bg-sky-wash focus-visible:ring-2 focus-visible:ring-navy/40"
-                            >
-                              Assign
-                            </Link>
-                          </span>
-                        )}
+                          )}
+                          <Link
+                            href="/admin/users"
+                            aria-label={`Assign a programme admin for ${programme.name}`}
+                            className="ml-auto shrink-0 rounded-lg border-[1.5px] border-sky-line bg-white px-3 py-1 text-xs font-bold text-navy outline-none transition hover:bg-sky-wash focus-visible:ring-2 focus-visible:ring-navy/40"
+                          >
+                            Assign
+                          </Link>
+                        </div>
                       </td>
                     </tr>
                   ))}

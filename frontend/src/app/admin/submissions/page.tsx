@@ -17,7 +17,6 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { usePreview } from "@/components/PreviewProvider";
 import { BACKEND_URL } from "@/lib/config";
@@ -429,13 +428,6 @@ export default function AdminSubmissionsPage() {
     return (
       <main className="min-h-screen bg-cream px-5 py-8 text-ink md:px-8">
         <div className="mx-auto max-w-6xl">
-          <button
-            type="button"
-            onClick={() => router.push("/admin")}
-            className="mb-8 inline-flex items-center gap-2 rounded-xl border border-line bg-white px-4 py-2.5 text-sm font-medium text-ink-nav shadow-sm transition hover:bg-sky-wash"
-          >
-            <ArrowLeft className="h-4 w-4" /> Back to Dashboard
-          </button>
           <p className="text-base font-medium text-ink-nav">Loading submissions...</p>
         </div>
       </main>
@@ -447,13 +439,6 @@ export default function AdminSubmissionsPage() {
       <div className="mx-auto max-w-6xl">
         {/* Header */}
         <div className="mb-8">
-          <button
-            type="button"
-            onClick={() => router.push("/admin")}
-            className="mb-5 inline-flex items-center gap-2 rounded-xl border border-line bg-white px-4 py-2.5 text-sm font-medium text-ink-nav shadow-sm transition hover:bg-sky-wash"
-          >
-            <ArrowLeft className="h-4 w-4" /> Back to Dashboard
-          </button>
 
           <p className="text-sm font-semibold text-navy-soft">
             Student Submissions

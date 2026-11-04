@@ -250,8 +250,6 @@ export default function AllResourcesPage() {
     <main className="min-h-full bg-cream px-4 py-8 sm:px-8 sm:py-10 lg:px-12">
       <div className="mx-auto max-w-7xl">
         <PageHeader
-          backHref="/admin"
-          backLabel="Back to Dashboard"
           eyebrow="Resource library"
           title="All resources"
           description={`Browse, edit and delete notes, papers, assignments and videos${isSuperAdmin ? " in every programme" : " in your programme"}.`}

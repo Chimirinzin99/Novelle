@@ -10,6 +10,14 @@
 // 21 Oct redesign, so that code could never run. Editing and deleting now
 // happen on /admin/all-resources (components/EditResourceDialog.tsx).
 
+// 4 Nov redesign: same look as the student upload page (/submit-note) — one
+// column of numbered steps: 1 type (cards, incl. Video), 2 title, 3 where it
+// belongs (programme for super admins, year, semester, module — required),
+// 4 PDF (drag & drop) or YouTube link, 5 who made it (optional) + Solved.
+// The empty "Your resource library is separate" box is gone: the sidebar now
+// has "All Resources". The upload logic (handleUpload) is unchanged; the form
+// still sends `topic` (shown as "Title", like the Edit window).
+
 // /admin/resources — the ONE admin page for adding and managing resources
 // (notes, question papers, assignments and YouTube videos).
 // Part 7 merged the old /admin/notes page (typed module name) and the old
@@ -19,15 +27,13 @@
 //   - Video is a type like any other, using a YouTube link instead of a PDF.
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { FileText, Upload } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import { supabase } from "@/lib/supabase";
 import { isAdminRole, isSuperAdminRole } from "@/lib/roles";
 import { BACKEND_URL } from "@/lib/config";
 import { callBackend, readJson } from "@/lib/backend";
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_MB, FILE_TOO_BIG_MESSAGE } from "@/lib/uploads";
-import { RESOURCE_TYPES } from "@/lib/resourceTypes";
+import { RESOURCE_TYPES, resourceTypeBadge } from "@/lib/resourceTypes";
 import {
   EMPTY_AUTHOR_FORM,
   appendAuthorFields,
@@ -41,6 +47,25 @@ import {
   parseYouTubeId,
   youTubeThumbnail,
 } from "@/lib/youtube";
+
+// Same as the student page (Architecture has 5 years).
+const YEARS = [1, 2, 3, 4, 5];
+const TITLE_MAX = 120;
+
+// One line under each type card.
+const TYPE_HINTS: Record<string, string> = {
+  note: "Lecture or study notes",
+  question_paper: "A past exam or test paper",
+  assignment: "An assignment or coursework sheet",
+  video: "A YouTube link",
+};
+
+// "1.2 MB" / "350 KB" for the chosen-file row.
+function fileSize(bytes: number) {
+  return bytes >= 1024 * 1024
+    ? `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+    : `${Math.max(1, Math.round(bytes / 1024))} KB`;
+}
 
 // A row from GET /api/modules (programme admins only get their own programme's).
 type Module = {
@@ -68,7 +93,6 @@ type Profile = {
 };
 
 export default function ManageResourcesPage() {
-  const router = useRouter();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [programmeName, setProgrammeName] = useState("");
 
@@ -102,6 +126,7 @@ export default function ManageResourcesPage() {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [isDragging, setIsDragging] = useState(false); // PDF dragged over the drop zone
 
 
   useEffect(() => {
@@ -224,7 +249,7 @@ export default function ManageResourcesPage() {
     setSuccess("");
 
     if (!topic.trim()) {
-      setError("Please enter a topic.");
+      setError("Please enter a title.");
       return;
     }
 
@@ -343,13 +368,7 @@ export default function ManageResourcesPage() {
       setAuthor(EMPTY_AUTHOR_FORM);
       setIsSolved(false);
 
-      const fileInput = document.getElementById(
-        "pdf"
-      ) as HTMLInputElement;
-
-      if (fileInput) {
-        fileInput.value = "";
-      }
+      clearFileInput();
 
     } catch (err) {
       console.error(err);
@@ -359,6 +378,59 @@ export default function ManageResourcesPage() {
     }
 
     setUploading(false);
+  }
+
+  // The hidden file input keeps its last file; empty it so the same file
+  // can be chosen again after Remove / Clear / a refusal.
+  function clearFileInput() {
+    const input = document.getElementById("pdf-file") as HTMLInputElement | null;
+    if (input) input.value = "";
+  }
+
+  // A PDF was picked or dropped: check it at once (the backend checks again).
+  function selectFile(picked: File | null) {
+    setError("");
+    setSuccess("");
+    if (!picked) {
+      setFile(null);
+      return;
+    }
+    const isPdf =
+      picked.type === "application/pdf" || picked.name.toLowerCase().endsWith(".pdf");
+    if (!isPdf) {
+      setFile(null);
+      setError("That file is not a PDF. Choose a .pdf file to continue.");
+      clearFileInput();
+      return;
+    }
+    if (picked.size > MAX_UPLOAD_BYTES) {
+      setFile(null);
+      setError(`That file is larger than ${MAX_UPLOAD_MB} MB. Choose a smaller PDF.`);
+      clearFileInput();
+      return;
+    }
+    setFile(picked);
+  }
+
+  function removeFile() {
+    setFile(null);
+    clearFileInput();
+  }
+
+  // Clear button: empty the form (the programme choice is kept, as after an upload).
+  function clearForm() {
+    setTopic("");
+    setType("note");
+    setYear("");
+    setSemester("");
+    setModuleId("");
+    setFile(null);
+    setVideoUrl("");
+    setAuthor(EMPTY_AUTHOR_FORM);
+    setIsSolved(false);
+    setError("");
+    setSuccess("");
+    clearFileInput();
   }
 
   // Active modules for a year + semester (and programme, for super admins).
@@ -383,15 +455,18 @@ export default function ManageResourcesPage() {
       ? "Select year and semester first"
       : moduleOptions.length === 0
       ? "No active modules for this year/semester"
-      : "Select module";
+      : "Choose module";
+
+  const inputClass =
+    "h-12 w-full rounded-xl border-2 border-sky-line bg-white px-4 text-base text-ink outline-none transition placeholder:text-ink-soft focus:border-navy-soft focus:ring-4 focus:ring-sky-tint disabled:cursor-not-allowed disabled:bg-sky-wash disabled:text-ink-soft";
+  const stepLabel = "mb-2 block font-display text-base font-bold text-navy";
+  const fieldLabel = "mb-1.5 block text-sm font-medium text-ink-nav";
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-cream p-4 sm:p-8">
-        <div className="mx-auto max-w-7xl rounded-2xl bg-white p-10 text-center">
-          <p className="text-sm text-ink-soft">
-            Loading resources...
-          </p>
+      <main className="min-h-full bg-cream px-4 py-8 sm:px-8 sm:py-10 lg:px-12">
+        <div className="mx-auto max-w-2xl rounded-2xl border border-line bg-white p-10 text-center">
+          <p className="text-sm text-ink-soft">Loading…</p>
         </div>
       </main>
     );
@@ -399,375 +474,374 @@ export default function ManageResourcesPage() {
 
   if (!profile) {
     return (
-      <main className="min-h-screen bg-cream p-4 sm:p-8">
-        <div className="mx-auto max-w-7xl rounded-2xl bg-white p-10 text-center">
-          <p className="text-sm text-red-600">
-            {error || "Access denied."}
-          </p>
+      <main className="min-h-full bg-cream px-4 py-8 sm:px-8 sm:py-10 lg:px-12">
+        <div className="mx-auto max-w-2xl rounded-2xl border border-line bg-white p-10 text-center">
+          <p className="text-sm text-red-700">{error || "Access denied."}</p>
         </div>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-cream text-ink">
-
-      {/* Part 12: the old top bar (Back to Dashboard, "Novelle / programme",
-          and a profile + logout menu) was removed — the admin sidebar already
-          has all of these. A normal page header replaces it. */}
-      <div className="mx-auto w-full max-w-7xl px-4 pt-8 sm:px-6 md:px-8 lg:px-10">
+    <main className="min-h-full bg-cream px-4 py-8 sm:px-8 sm:py-10 lg:px-12">
+      <div className="mx-auto max-w-2xl">
         <PageHeader
           eyebrow={isSuperAdmin ? "All programmes" : programmeName || "Programme"}
           title="Add resource"
-          description="Upload a note, question paper or assignment PDF, or add a YouTube video."
+          description="Upload a note, question paper or assignment PDF, or add a YouTube video. It is published straight away."
         />
-      </div>
 
-      {/* ================= MAIN CONTENT ================= */}
+        <form onSubmit={handleUpload} className="flex flex-col gap-7 rounded-2xl border border-line bg-white p-5 sm:p-7">
+          {/* 1. Type — four cards (real radio buttons: Tab to the group,
+                 arrow keys to choose). Video is admin-only. */}
+          <fieldset disabled={uploading}>
+            <legend className={stepLabel}>1. What are you adding?</legend>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {RESOURCE_TYPES.map((t) => {
+                const selected = type === t.code;
+                return (
+                  <label
+                    key={t.code}
+                    className={`flex cursor-pointer flex-col gap-1.5 rounded-xl border-2 p-4 transition has-[:focus-visible]:ring-4 has-[:focus-visible]:ring-sky-tint ${
+                      selected ? "border-navy bg-sky-wash" : "border-sky-line bg-white hover:border-navy-soft"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="resource-type"
+                      value={t.code}
+                      checked={selected}
+                      onChange={() => {
+                        setType(t.code);
+                        setError("");
+                      }}
+                      className="sr-only"
+                    />
+                    <span className="flex items-center justify-between gap-2">
+                      <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${resourceTypeBadge(t.code)}`}>{t.label}</span>
+                      {/* tick for the chosen one */}
+                      <span
+                        aria-hidden="true"
+                        className={`flex h-5 w-5 items-center justify-center rounded-full border-2 ${
+                          selected ? "border-navy bg-navy text-white" : "border-sky-line"
+                        }`}
+                      >
+                        {selected && (
+                          <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth={3}>
+                            <path d="m5 12 5 5 9-10" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        )}
+                      </span>
+                    </span>
+                    <span className="text-sm text-ink-soft">{TYPE_HINTS[t.code]}</span>
+                  </label>
+                );
+              })}
+            </div>
+          </fieldset>
 
-      <div className="mx-auto w-full max-w-7xl px-6 pb-8 md:px-8 lg:px-10">
-
-        {/* Messages */}
-
-        {error && (
-          <div className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
-            {error}
+          {/* 2. Title (saved as the resource's topic) */}
+          <div>
+            <label htmlFor="resource-title" className={stepLabel}>
+              2. Title
+            </label>
+            <input
+              id="resource-title"
+              type="text"
+              value={topic}
+              onChange={(e) => setTopic(e.target.value)}
+              placeholder="e.g. Introduction to Programming — Unit 3 notes"
+              disabled={uploading}
+              maxLength={TITLE_MAX}
+              aria-describedby="title-help"
+              className={inputClass}
+            />
+            <p id="title-help" className="mt-1.5 flex justify-between gap-3 text-sm text-ink-soft">
+              <span>A clear title helps students find it.</span>
+              <span aria-live="polite">
+                {topic.length}/{TITLE_MAX}
+              </span>
+            </p>
           </div>
-        )}
 
-        {success && (
-          <div className="mb-5 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-medium text-green-600">
-            {success}
-          </div>
-        )}
+          {/* 3. Where it belongs. The backend copies the module's name, year,
+                 semester and programme, so the module is required. */}
+          <fieldset disabled={uploading}>
+            <legend className={stepLabel}>3. Where does it belong?</legend>
 
-        {/* ================= TOP SECTION ================= */}
-
-        <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
-
-          {/* ADD RESOURCE */}
-
-          <div className="rounded-2xl border border-line bg-white p-5 shadow-sm">
-
-            <div className="mb-5 flex items-start justify-between">
-              <div>
-                <h2 className="text-lg font-semibold text-ink">
-                  Add Resource
-                </h2>
-
-                <p className="mt-1 text-xs text-ink-soft">
-                  Share a note, question paper, assignment, or video.
-                </p>
+            {/* Super admins choose the programme first */}
+            {isSuperAdmin && (
+              <div className="mb-3">
+                <label htmlFor="resource-programme" className={fieldLabel}>
+                  Programme
+                </label>
+                <select
+                  id="resource-programme"
+                  value={programmeId}
+                  onChange={(e) => {
+                    setProgrammeId(e.target.value);
+                    setModuleId(""); // old module may belong to another programme
+                  }}
+                  className={inputClass}
+                >
+                  <option value="">Choose programme</option>
+                  {programmes.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
               </div>
+            )}
 
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-sky-wash">
-                <Upload className="h-4 w-4 text-ink-soft" />
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label htmlFor="resource-year" className={fieldLabel}>
+                  Year
+                </label>
+                <select
+                  id="resource-year"
+                  value={year}
+                  onChange={(e) => {
+                    setYear(e.target.value);
+                    setModuleId(""); // the module list changes
+                  }}
+                  className={inputClass}
+                >
+                  <option value="">Choose year</option>
+                  {YEARS.map((y) => (
+                    <option key={y} value={y}>
+                      Year {y}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="resource-semester" className={fieldLabel}>
+                  Semester
+                </label>
+                <select
+                  id="resource-semester"
+                  value={semester}
+                  onChange={(e) => {
+                    setSemester(e.target.value);
+                    setModuleId(""); // the module list changes
+                  }}
+                  className={inputClass}
+                >
+                  <option value="">Choose semester</option>
+                  <option value="1">Semester 1</option>
+                  <option value="2">Semester 2</option>
+                </select>
               </div>
             </div>
 
-            <form
-              onSubmit={handleUpload}
-              className="space-y-4"
-            >
-
-              {/* Topic */}
-
-              <div>
-                <label className="mb-1.5 block text-xs font-medium text-ink-nav">
-                  Topic
-                </label>
-
-                <input
-                  type="text"
-                  value={topic}
-                  onChange={(e) =>
-                    setTopic(e.target.value)
-                  }
-                  placeholder="Enter topic"
-                  className="w-full rounded-lg border border-sky-line px-3 py-2.5 text-sm outline-none transition focus:border-navy-soft focus:ring-1 focus:ring-navy-soft"
-                />
-              </div>
-
-              {/* Type */}
-
-              <div>
-                <label className="mb-1.5 block text-xs font-medium text-ink-nav">
-                  Type
-                </label>
-
-                <select
-                  value={type}
-                  onChange={(e) =>
-                    setType(e.target.value)
-                  }
-                  className="w-full rounded-lg border border-sky-line bg-white px-3 py-2.5 text-sm outline-none transition focus:border-navy-soft focus:ring-1 focus:ring-navy-soft"
-                >
-                  {RESOURCE_TYPES.map((t) => (
-                    <option key={t.code} value={t.code}>
-                      {t.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Programme (super admins only) */}
-
-              {isSuperAdmin && (
-                <div>
-                  <label className="mb-1.5 block text-xs font-medium text-ink-nav">
-                    Programme
-                  </label>
-
-                  <select
-                    value={programmeId}
-                    onChange={(e) => {
-                      setProgrammeId(e.target.value);
-                      setModuleId(""); // old module may belong to another programme
-                    }}
-                    className="w-full rounded-lg border border-sky-line bg-white px-3 py-2.5 text-sm outline-none transition focus:border-navy-soft focus:ring-1 focus:ring-navy-soft"
-                  >
-                    <option value="">Select programme</option>
-                    {programmes.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+            <div className="mt-3">
+              <label htmlFor="resource-module" className={fieldLabel}>
+                Module
+              </label>
+              <select
+                id="resource-module"
+                value={moduleId}
+                onChange={(e) => setModuleId(e.target.value)}
+                disabled={moduleOptions.length === 0}
+                className={inputClass}
+              >
+                <option value="">{modulePlaceholder}</option>
+                {moduleOptions.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.module_code} – {m.module_name}
+                  </option>
+                ))}
+              </select>
+              {/* Chosen year/semester but nothing to pick: say what to do */}
+              {year && semester && (!isSuperAdmin || programmeId) && moduleOptions.length === 0 && (
+                <p className="mt-2 text-sm text-ink-soft">
+                  {isSuperAdmin
+                    ? "Add or activate a module for this year and semester on Manage Modules first."
+                    : "Ask the super admin to add a module for this year and semester."}
+                </p>
               )}
+            </div>
+          </fieldset>
 
-              {/* Year + Semester (they narrow down the Module list) */}
+          {/* 4. The file: a YouTube link for videos, otherwise a PDF */}
+          {/* key: the two branches are different boxes. Without it React reuses
+              the same <input> for the PDF picker and the YouTube link, which
+              React warns about (uncontrolled -> controlled input). */}
+          {isVideo ? (
+            <div key="video">
+              <label htmlFor="video-url" className={stepLabel}>
+                4. YouTube link
+              </label>
+              <input
+                id="video-url"
+                type="url"
+                value={videoUrl}
+                onChange={(e) => setVideoUrl(e.target.value)}
+                placeholder="https://www.youtube.com/watch?v=..."
+                disabled={uploading}
+                aria-describedby="video-help"
+                className={inputClass}
+              />
+              <p id="video-help" className="mt-1.5 text-sm text-ink-soft">
+                Tip: for your own lecture recordings, upload them to YouTube as Unlisted and paste the link here.
+              </p>
 
-              <div className="grid grid-cols-2 gap-3">
-
-                <div>
-                  <label className="mb-1.5 block text-xs font-medium text-ink-nav">
-                    Year
-                  </label>
-
-                  <select
-                    value={year}
-                    onChange={(e) => {
-                      setYear(e.target.value);
-                      setModuleId(""); // the module list changes
-                    }}
-                    className="w-full rounded-lg border border-sky-line bg-white px-3 py-2.5 text-sm outline-none transition focus:border-navy-soft focus:ring-1 focus:ring-navy-soft"
-                  >
-                    <option value="">Select</option>
-                    <option value="1">Year 1</option>
-                    <option value="2">Year 2</option>
-                    <option value="3">Year 3</option>
-                    <option value="4">Year 4</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="mb-1.5 block text-xs font-medium text-ink-nav">
-                    Semester
-                  </label>
-
-                  <select
-                    value={semester}
-                    onChange={(e) => {
-                      setSemester(e.target.value);
-                      setModuleId(""); // the module list changes
-                    }}
-                    className="w-full rounded-lg border border-sky-line bg-white px-3 py-2.5 text-sm outline-none transition focus:border-navy-soft focus:ring-1 focus:ring-navy-soft"
-                  >
-                    <option value="">Select</option>
-
-                    <option value="1">
-                      Semester 1
-                    </option>
-
-                    <option value="2">
-                      Semester 2
-                    </option>
-                  </select>
-                </div>
-
-              </div>
-
-              {/* Module (from the modules table) */}
-
-              <div>
-                <label className="mb-1.5 block text-xs font-medium text-ink-nav">
-                  Module
-                </label>
-
-                <select
-                  value={moduleId}
-                  onChange={(e) => setModuleId(e.target.value)}
-                  disabled={moduleOptions.length === 0}
-                  className="w-full rounded-lg border border-sky-line bg-white px-3 py-2.5 text-sm outline-none transition focus:border-navy-soft focus:ring-1 focus:ring-navy-soft disabled:bg-cream disabled:text-ink-soft"
-                >
-                  <option value="">{modulePlaceholder}</option>
-                  {moduleOptions.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.module_code} - {m.module_name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* PDF or YouTube link, depending on the type */}
-
-              {isVideo ? (
-                <div>
-                  <label
-                    htmlFor="video-url"
-                    className="mb-1.5 block text-xs font-medium text-ink-nav"
-                  >
-                    YouTube Link
-                  </label>
-
-                  <input
-                    id="video-url"
-                    type="url"
-                    value={videoUrl}
-                    onChange={(e) =>
-                      setVideoUrl(e.target.value)
-                    }
-                    placeholder="https://www.youtube.com/watch?v=..."
-                    className="w-full rounded-lg border border-sky-line px-3 py-2.5 text-sm outline-none transition focus:border-navy-soft focus:ring-1 focus:ring-navy-soft"
+              {/* Live preview: thumbnail if the link is valid */}
+              {videoUrl.trim() &&
+                (previewVideoId ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={youTubeThumbnail(previewVideoId)}
+                    alt="Video thumbnail preview"
+                    className="mt-3 aspect-video w-full max-w-sm rounded-xl bg-sky-wash object-cover"
                   />
+                ) : (
+                  <p className="mt-2 text-sm text-red-700">This doesn&apos;t look like a YouTube video link.</p>
+                ))}
+            </div>
+          ) : (
+            <div key="pdf">
+              <p id="pdf-label" className={stepLabel}>
+                4. PDF file
+              </p>
 
-                  <p className="mt-1 text-[10px] text-ink-soft">
-                    Tip: for your own lecture recordings, upload them to
-                    YouTube as Unlisted and paste the link here.
-                  </p>
+              {/* The real file input, hidden; the drop zone below is its label. */}
+              <input
+                id="pdf-file"
+                type="file"
+                accept="application/pdf,.pdf"
+                onChange={(e) => selectFile(e.target.files?.[0] || null)}
+                disabled={uploading}
+                aria-labelledby="pdf-label"
+                className="sr-only"
+              />
 
-                  {/* Live preview: thumbnail if the link is valid */}
-                  {videoUrl.trim() &&
-                    (previewVideoId ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={youTubeThumbnail(previewVideoId)}
-                        alt="Video thumbnail preview"
-                        className="mt-3 aspect-video w-full rounded-lg bg-sky-wash object-cover"
-                      />
-                    ) : (
-                      <p className="mt-2 text-[11px] text-red-600">
-                        This doesn&apos;t look like a YouTube video link.
-                      </p>
-                    ))}
-                </div>
-              ) : (
-                <div>
-                  <label
-                    htmlFor="pdf"
-                    className="mb-1.5 block text-xs font-medium text-ink-nav"
-                  >
-                    PDF File
-                  </label>
-
-                  <label
-                    htmlFor="pdf"
-                    className="flex cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-sky-line bg-cream px-4 py-5 text-center transition hover:border-sky-line hover:bg-sky-wash"
-                  >
-                    <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-lg bg-white shadow-sm">
-                      <FileText className="h-4 w-4 text-ink-soft" />
-                    </div>
-
-                    <p className="text-xs font-medium text-ink-nav">
-                      Select PDF file
-                    </p>
-
-                    <p className="mt-1 text-[10px] text-ink-soft">
-                      PDF only · Maximum size: {MAX_UPLOAD_MB} MB
-                    </p>
-
-                    <input
-                      id="pdf"
-                      type="file"
-                      accept="application/pdf,.pdf"
-                      onChange={(e) => {
-                        // Part 14: check the size as soon as a file is picked
-                        // (not only on Upload), like the student submit page.
-                        const picked = e.target.files?.[0] || null;
-                        if (picked && picked.size > MAX_UPLOAD_BYTES) {
-                          setFile(null);
-                          setError(
-                            `That file is larger than ${MAX_UPLOAD_MB} MB. Choose a smaller PDF.`
-                          );
-                          e.target.value = ""; // lets the same file be picked again later
-                          return;
-                        }
-                        setError("");
-                        setFile(picked);
-                      }}
-                      className="hidden"
-                    />
-                  </label>
-
-                  {file && (
-                    <p className="mt-2 truncate text-[11px] text-ink-soft">
-                      Selected: {file.name}
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {/* Part 13d: who made it (optional) + Solved */}
-              <fieldset>
-                <legend className="mb-1.5 block text-xs font-medium text-ink-nav">
-                  Who made it? <span className="text-ink-soft">(optional)</span>
-                </legend>
-                <AuthorFields
-                  idPrefix="admin-upload"
-                  value={author}
-                  onChange={setAuthor}
-                  disabled={uploading}
-                  selfLabel="I made this"
-                />
-                {author.authorType && (
+              {file ? (
+                <div className="flex items-center gap-3 rounded-xl border-2 border-sky-line bg-sky-wash p-4">
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-white text-navy">
+                    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth={1.7} aria-hidden="true">
+                      <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
+                      <path d="M14 3v6h6" />
+                    </svg>
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-semibold text-ink">{file.name}</p>
+                    <p className="text-sm text-ink-soft">{fileSize(file.size)} · PDF</p>
+                  </div>
                   <button
                     type="button"
-                    onClick={() => setAuthor(EMPTY_AUTHOR_FORM)}
-                    className="mt-2 text-xs font-semibold text-navy-soft hover:text-navy hover:underline"
+                    onClick={removeFile}
+                    disabled={uploading}
+                    className="rounded-lg px-3 py-2 text-sm font-semibold text-navy-soft outline-none hover:bg-white hover:text-navy focus-visible:ring-2 focus-visible:ring-navy/40"
                   >
-                    Clear choice
+                    Remove
                   </button>
-                )}
-              </fieldset>
-
-              {isSolvableType(type) && (
-                <SolvedField checked={isSolved} onChange={setIsSolved} disabled={uploading} />
+                </div>
+              ) : (
+                <label
+                  htmlFor="pdf-file"
+                  className={`flex cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed px-5 py-9 text-center transition ${
+                    isDragging ? "border-navy-soft bg-sky-tint" : "border-sky-line bg-cream hover:border-navy-soft hover:bg-sky-wash"
+                  } ${uploading ? "pointer-events-none opacity-60" : ""}`}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    if (!uploading) setIsDragging(true);
+                  }}
+                  onDragLeave={(e) => {
+                    e.preventDefault();
+                    setIsDragging(false);
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setIsDragging(false);
+                    if (!uploading) selectFile(e.dataTransfer.files?.[0] || null);
+                  }}
+                >
+                  <svg viewBox="0 0 24 24" className="mb-1 h-8 w-8 text-navy" fill="none" stroke="currentColor" strokeWidth={1.7} aria-hidden="true">
+                    <path d="M12 16V4m0 0-4 4m4-4 4 4" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" strokeLinecap="round" />
+                  </svg>
+                  <span className="font-bold text-ink">Drop your PDF here, or click to choose</span>
+                  <span className="text-sm text-ink-soft">PDF only · {MAX_UPLOAD_MB} MB maximum</span>
+                </label>
               )}
+            </div>
+          )}
 
-              {/* Upload */}
+          {/* 5. Who made it? (Part 13d) — optional for admins; an admin's
+                 "I made this" always shows their own name. */}
+          <fieldset disabled={uploading}>
+            <legend className={stepLabel}>
+              5. Who made it? <span className="font-sans text-sm font-normal text-ink-soft">(optional)</span>
+            </legend>
+            <AuthorFields
+              idPrefix="admin-upload"
+              value={author}
+              onChange={setAuthor}
+              disabled={uploading}
+              selfLabel="I made this"
+            />
+            {author.authorType && (
+              <button
+                type="button"
+                onClick={() => setAuthor(EMPTY_AUTHOR_FORM)}
+                className="mt-2 text-sm font-semibold text-navy-soft hover:text-navy hover:underline"
+              >
+                Clear choice
+              </button>
+            )}
 
+            {/* Solved / Unsolved: question papers and assignments only */}
+            {isSolvableType(type) && (
+              <div className="mt-4 border-t border-line pt-4">
+                <SolvedField checked={isSolved} onChange={setIsSolved} disabled={uploading} />
+              </div>
+            )}
+          </fieldset>
+
+          {error && (
+            <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+              {error}
+            </p>
+          )}
+          {success && (
+            <p role="status" className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-medium text-green-800">
+              {success}
+            </p>
+          )}
+
+          {/* What happens next + the buttons */}
+          <div className="flex flex-col gap-4 border-t border-line pt-6">
+            <p className="flex items-start gap-2 text-sm text-ink-soft">
+              <svg viewBox="0 0 24 24" className="mt-0.5 h-4 w-4 shrink-0 text-navy-soft" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                <circle cx="12" cy="12" r="9" />
+                <path d="M12 8h.01M11 12h1v4h1" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              Students see it straight away. You can edit or delete it later on All Resources.
+            </p>
+
+            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={clearForm}
+                disabled={uploading}
+                className="h-12 rounded-xl border-[1.5px] border-sky-line bg-white px-5 text-[15px] font-semibold text-navy outline-none transition hover:bg-sky-wash focus-visible:ring-2 focus-visible:ring-navy/40 disabled:opacity-60"
+              >
+                Clear
+              </button>
               <button
                 type="submit"
                 disabled={uploading}
-                className="flex w-full items-center justify-center gap-2 rounded-lg bg-navy px-5 py-2.5 text-xs font-semibold text-white transition hover:bg-navy-soft disabled:cursor-not-allowed disabled:opacity-50"
+                className="h-12 rounded-xl bg-navy px-6 font-display text-[15px] font-bold tracking-wide text-white outline-none transition hover:bg-navy-soft focus-visible:ring-4 focus-visible:ring-sky-tint disabled:cursor-not-allowed disabled:opacity-60"
               >
-                <Upload className="h-3.5 w-3.5" />
-
-                {uploading
-                  ? "Uploading..."
-                  : "Upload Resource"}
+                {uploading ? "Adding…" : isVideo ? "Add video" : "Upload resource"}
               </button>
-
-            </form>
+            </div>
           </div>
-
-          <div className="flex min-h-64 flex-col items-center justify-center rounded-2xl border border-dashed border-sky-line bg-white p-8 text-center">
-            <FileText className="h-8 w-8 text-ink-soft" />
-            <h2 className="mt-4 text-base font-semibold text-ink">Your resource library is separate</h2>
-            <p className="mt-2 max-w-sm text-sm leading-6 text-ink-soft">Browse, search, edit and delete published resources on the All Resources page.</p>
-            <button
-              type="button"
-              onClick={() => router.push("/admin/all-resources")}
-              className="mt-5 rounded-lg border border-line bg-white px-4 py-2.5 text-sm font-semibold text-ink-nav transition hover:bg-cream"
-            >
-              Browse all resources
-            </button>
-          </div>
-        </div>
-
+        </form>
       </div>
-
     </main>
   );
 }

@@ -7,7 +7,7 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Mail, ShieldCheck, GraduationCap, LockKeyhole, Check } from "lucide-react";
+import { Mail, ShieldCheck, GraduationCap, LockKeyhole, Check } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { isAdminRole, roleLabel } from "@/lib/roles";
 import {
@@ -126,13 +126,6 @@ export default function AdminProfilePage() {
   return (
     <main className="min-h-screen bg-cream px-5 py-8 text-ink md:px-10 md:py-10">
       <div className="mx-auto max-w-3xl">
-        <button
-          type="button"
-          onClick={() => router.push("/admin")}
-          className="mb-7 inline-flex items-center gap-2 rounded-xl border border-line bg-white px-4 py-2.5 text-sm font-semibold text-ink-nav shadow-sm transition hover:bg-sky-wash focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy-soft"
-        >
-          <ArrowLeft className="h-4 w-4" /> Back to dashboard
-        </button>
 
         <header className="mb-8">
           <p className="text-sm font-semibold text-navy-soft">Admin workspace</p>
