@@ -10,6 +10,7 @@ import { supabase } from "@/lib/supabase";
 import Logo from "@/components/Logo";
 import PasswordChecklist from "@/components/PasswordChecklist";
 import { passwordMeetsRules, PASSWORD_RULES_MESSAGE } from "@/lib/password";
+import { CST_EMAIL_HINT, CST_EMAIL_MESSAGE, CST_EMAIL_PLACEHOLDER, isCstEmail } from "@/lib/cstEmail";
 
 type Programme = {
   id: number;
@@ -44,7 +45,7 @@ export default function RegisterPage() {
       if (error) {
         console.error("Programme loading error:", error);
         setError(
-          "Unable to load programmes. Please check your Supabase programmes table and RLS policy."
+          "Unable to load the programme list. Please refresh the page and try again."
         );
         setLoadingProgrammes(false);
         return;
@@ -72,13 +73,12 @@ export default function RegisterPage() {
       return;
     }
 
-    // Check RUB email (spaces removed, lower case)
+    // Check the CST email (spaces removed, lower case).
+    // Part 20: only CST addresses — student ID or a lecturer's name (lib/cstEmail.ts).
     const cleanEmail = email.trim().toLowerCase();
 
-    if (!cleanEmail.endsWith("@rub.edu.bt")) {
-      setError(
-        "Please use your RUB email address, for example: yourname@rub.edu.bt"
-      );
+    if (!isCstEmail(cleanEmail)) {
+      setError(CST_EMAIL_MESSAGE);
       setLoading(false);
       return;
     }
@@ -116,7 +116,7 @@ export default function RegisterPage() {
     }
 
     setSuccess(
-      "Registration successful! Please check your RUB email (and the spam folder) and confirm your account before logging in."
+      "Registration successful! Please check your CST email inbox (and the Spam folder) and confirm your account before logging in."
     );
 
     // Clear form
@@ -142,7 +142,7 @@ export default function RegisterPage() {
           </h1>
 
           <p className="mt-2 text-sm text-ink-soft">
-            Register using your RUB email
+            Register using your CST email
           </p>
         </div>
 
@@ -167,7 +167,7 @@ export default function RegisterPage() {
           {/* Email */}
           <div>
             <label htmlFor="email" className="mb-2 block text-sm font-medium text-ink-nav">
-              RUB Email
+              CST Email
             </label>
 
             <input
@@ -175,10 +175,13 @@ export default function RegisterPage() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="yourname@rub.edu.bt"
+              placeholder={CST_EMAIL_PLACEHOLDER}
               required
+              aria-describedby="email-hint"
               className="h-12 w-full rounded-xl border-2 border-sky-line bg-white px-4 text-base text-ink placeholder:text-ink-soft outline-none transition focus:border-navy-soft focus:ring-4 focus:ring-sky-tint"
             />
+            {/* Part 20: which address to use */}
+            <p id="email-hint" className="mt-2 text-xs leading-5 text-ink-soft">{CST_EMAIL_HINT}</p>
           </div>
 
           {/* Password */}

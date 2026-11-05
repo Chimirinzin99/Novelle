@@ -24,6 +24,7 @@ import { createClient } from "@supabase/supabase-js";
 
 import { supabase } from "../config/supabase";
 import { sendLockoutAlert } from "../utils/mailer";
+import { CST_EMAIL_MESSAGE, isCstEmail } from "../constants/email";
 
 export const MAX_FAILED_LOGINS = 5;
 export const FAILURE_WINDOW_MINUTES = 15; // older failures are forgotten
@@ -74,10 +75,11 @@ export const login = async (req: Request, res: Response) => {
       typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "";
     const password = typeof req.body?.password === "string" ? req.body.password : "";
 
-    if (!email.endsWith("@rub.edu.bt")) {
+    // Part 20: only CST addresses (constants/email.ts)
+    if (!isCstEmail(email)) {
       return res.status(400).json({
         success: false,
-        message: "Please use your RUB email address, for example: yourname@rub.edu.bt",
+        message: CST_EMAIL_MESSAGE,
       });
     }
     if (!password) {

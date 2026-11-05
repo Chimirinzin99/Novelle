@@ -16,6 +16,7 @@ import { downloadFile } from "@/lib/files";
 import { fetchLikeCounts, setLiked } from "@/lib/likes";
 import FilterBar from "@/components/FilterBar";
 import PageHeader, { CountPill } from "@/components/PageHeader";
+import CardSkeleton from "@/components/CardSkeleton";
 import PdfCard from "@/components/PdfCard";
 import EmptyState from "@/components/EmptyState";
 import { findProgrammeBySlug } from "@/lib/programmes";
@@ -282,8 +283,10 @@ export default function ResourceList({
           </div>
         )}
 
+        {/* Part 20: placeholder cards instead of a one-line message, so the
+            page doesn't jump when the list arrives */}
         {loading ? (
-          <EmptyState title={`Loading ${plural}…`} />
+          <CardSkeleton count={6} label={`Loading ${plural}…`} />
         ) : filtered.length === 0 ? (
           <EmptyState
             title={`No ${plural} found`}

@@ -21,7 +21,12 @@ export default function StudentLayout({
 
         {/* …so only the page area scrolls, and the sidebar stays put.
             min-w-0 lets wide content shrink instead of pushing the page sideways. */}
-        <div className="min-h-0 min-w-0 flex-1 overflow-y-auto lg:ml-72">{children}</div>
+        {/* Part 20: `relative` makes this scrolling area the reference point for
+            absolutely positioned bits inside pages, like the hidden screen-reader
+            labels (sr-only) in the password checklist. Without it they were placed
+            against the whole page, made the window itself scrollable and left a
+            big blank space under Settings. */}
+        <div className="relative min-h-0 min-w-0 flex-1 overflow-y-auto lg:ml-72">{children}</div>
       </div>
     </PreviewProvider>
   );

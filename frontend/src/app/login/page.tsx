@@ -24,6 +24,7 @@ import {
   passwordMeetsRules,
 } from "@/lib/password";
 import Logo from "@/components/Logo";
+import { CST_EMAIL_MESSAGE, CST_EMAIL_PLACEHOLDER, isCstEmail } from "@/lib/cstEmail";
 
 // Part 13e: what POST /api/auth/login sends back
 type LoginReply = {
@@ -75,11 +76,10 @@ export default function LoginPage() {
     // Remove accidental spaces and make email lowercase
     const cleanEmail = email.trim().toLowerCase();
 
-    // Check RUB email
-    if (!cleanEmail.endsWith("@rub.edu.bt")) {
-      setError(
-        "Please use your RUB email address, for example: yourname@rub.edu.bt"
-      );
+    // Check the email
+    // Part 20: only CST addresses (lib/cstEmail.ts)
+    if (!isCstEmail(cleanEmail)) {
+      setError(CST_EMAIL_MESSAGE);
       setLoading(false);
       return;
     }
@@ -215,7 +215,7 @@ export default function LoginPage() {
           {/* Email */}
           <div>
             <label htmlFor="email" className="mb-2 block text-sm font-medium text-ink-nav">
-              RUB Email
+              CST Email
             </label>
 
             <input
@@ -223,7 +223,7 @@ export default function LoginPage() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="yourname@rub.edu.bt"
+              placeholder={CST_EMAIL_PLACEHOLDER}
               required
               className="h-12 w-full rounded-xl border-2 border-sky-line bg-white px-4 text-base text-ink placeholder:text-ink-soft outline-none transition focus:border-navy-soft focus:ring-4 focus:ring-sky-tint"
             />

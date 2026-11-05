@@ -13,7 +13,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           and the page leaves room for it with lg:ml-72 (= the sidebar's w-72). */}
       <div className="flex h-screen flex-col overflow-hidden bg-cream">
         <AdminSidebar />
-        <div className="min-h-0 min-w-0 flex-1 overflow-y-auto lg:ml-72">{children}</div>
+        {/* Part 20: `relative` makes this scrolling area the reference point for
+            absolutely positioned bits inside pages, like the hidden screen-reader
+            labels (sr-only) in the password checklist. Without it they were placed
+            against the whole page, made the window itself scrollable and left a
+            big blank space under Settings. */}
+        <div className="relative min-h-0 min-w-0 flex-1 overflow-y-auto lg:ml-72">{children}</div>
       </div>
     </PreviewProvider>
   );

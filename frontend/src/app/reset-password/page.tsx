@@ -10,6 +10,7 @@ import { supabase } from "@/lib/supabase";
 import Logo from "@/components/Logo";
 import PasswordChecklist from "@/components/PasswordChecklist";
 import { passwordMeetsRules, PASSWORD_RULES_MESSAGE } from "@/lib/password";
+import { CST_EMAIL_MESSAGE, CST_EMAIL_PLACEHOLDER, isCstEmail } from "@/lib/cstEmail";
 
 // /reset-password does two jobs:
 //
@@ -80,10 +81,9 @@ export default function ResetPasswordPage() {
 
     const cleanEmail = email.trim().toLowerCase();
 
-    if (!cleanEmail.endsWith("@rub.edu.bt")) {
-      setError(
-        "Please use your RUB email address, for example: yourname@rub.edu.bt"
-      );
+    // Part 20: only CST addresses (lib/cstEmail.ts)
+    if (!isCstEmail(cleanEmail)) {
+      setError(CST_EMAIL_MESSAGE);
       return;
     }
 
@@ -180,7 +180,7 @@ export default function ResetPasswordPage() {
                 Reset your password
               </h1>
               <p className="mt-2 text-sm text-ink-soft">
-                Enter your RUB email and we&apos;ll send you a link to choose a
+                Enter your CST email and we&apos;ll send you a link to choose a
                 new password.
               </p>
             </div>
@@ -191,14 +191,14 @@ export default function ResetPasswordPage() {
                   htmlFor="email"
                   className="mb-2 block text-sm font-medium text-ink-nav"
                 >
-                  RUB Email
+                  CST Email
                 </label>
                 <input
                   id="email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="yourname@rub.edu.bt"
+                  placeholder={CST_EMAIL_PLACEHOLDER}
                   required
                   className={inputClass}
                 />
@@ -230,6 +230,11 @@ export default function ResetPasswordPage() {
               </span>
               , you&apos;ll get an email with a reset link. Open it on this
               device, in this browser.
+            </p>
+            {/* Part 20: Novelle emails come from Gmail and often land in spam */}
+            <p className="mt-3 text-sm leading-6 text-ink-soft">
+              Not there after a minute? Check your <span className="font-medium text-ink">Spam</span> folder
+              for an email from Novelle.
             </p>
           </div>
         )}

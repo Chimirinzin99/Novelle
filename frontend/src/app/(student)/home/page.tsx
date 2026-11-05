@@ -23,6 +23,7 @@ import { fetchLikeCounts, setLiked } from "@/lib/likes";
 import WelcomeHeader from "@/components/WelcomeHeader";
 import PdfCard from "@/components/PdfCard";
 import VideoCard from "@/components/VideoCard";
+import CardSkeleton from "@/components/CardSkeleton";
 import { programmeHref } from "@/lib/programmes";
 
 type PdfResource = {
@@ -219,14 +220,20 @@ export default function Home() {
           <p className="mt-1 text-sm text-ink-soft">{description}</p>
         </div>
 
-        {/* Hidden until the student's programme name has loaded */}
-        {programmeName && (
+        {/* Part 20: until the programme name loads, an invisible stand-in of
+            the same size keeps the button's space, so the cards below don't
+            jump when it appears (it used to pop in later). */}
+        {programmeName ? (
           <Link
             href={`${programmeHref(programmeName)}/${viewAllPath}`}
             className="w-fit rounded-xl border border-line bg-white px-3.5 py-2 text-sm font-bold text-navy-soft shadow-sm outline-none transition hover:bg-sky-wash hover:text-navy focus-visible:ring-2 focus-visible:ring-navy/40"
           >
             View all {viewAllLabel} →
           </Link>
+        ) : (
+          <span aria-hidden="true" className="invisible w-fit rounded-xl border px-3.5 py-2 text-sm font-bold">
+            View all {viewAllLabel} →
+          </span>
         )}
       </div>
     );
@@ -250,8 +257,10 @@ export default function Home() {
       <section className="mt-10">
         {sectionHeader(section.title, section.description, section.viewAllPath, section.viewAllLabel)}
 
+        {/* Part 20: placeholder cards (same size as the real ones) instead
+            of a one-line "Loading…", so the page doesn't jump */}
         {loading ? (
-          <p className="py-10 text-center text-sm text-ink-soft">Loading…</p>
+          <CardSkeleton count={HOME_SECTION_LIMIT} label={`Loading ${section.viewAllLabel}…`} />
         ) : items.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-sky-line bg-white px-6 py-10 text-center">
             <p className="font-semibold text-ink">{section.emptyTitle}</p>

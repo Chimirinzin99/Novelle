@@ -5,6 +5,8 @@
 // rules (lib/password.ts) with the live checklist, and shows a gold notice
 // when login found the current password too weak.
 // Part 12: hard-coded colours switched to the theme colours.
+// Part 20: Text size and Reduce motion are read/saved through
+// lib/displayPrefs.ts, which also applies them on every page at load.
 
 import { useEffect, useState, type FormEvent } from "react";
 import {
@@ -31,8 +33,13 @@ import {
 import PasswordChecklist from "@/components/PasswordChecklist";
 import WeakPasswordNotice from "@/components/WeakPasswordNotice";
 import ThemeSelect from "@/components/ThemeSelect";
-
-type FontSize = "small" | "default" | "large";
+import {
+  readFontSize,
+  readReduceMotion,
+  saveFontSize,
+  saveReduceMotion,
+  type FontSize,
+} from "@/lib/displayPrefs";
 
 function Toggle({
   checked,
@@ -99,24 +106,24 @@ export default function SettingsPage() {
   useEffect(() => {
     setWeakPasswordNotice(hasWeakPasswordFlag());
     setPreferences(getNotificationPreferences());
-    const savedFontSize = window.localStorage.getItem("novelle:font-size");
-    if (savedFontSize === "small" || savedFontSize === "large") {
-      setFontSize(savedFontSize);
-    }
-    const savedReduceMotion = window.localStorage.getItem("novelle:reduce-motion") === "true";
-    setReduceMotion(savedReduceMotion);
+    // Part 20: only READ here (the head script already applied them).
+    // Before, two effects also wrote "default" on the first render, which
+    // briefly undid a saved "Large".
+    setFontSize(readFontSize());
+    setReduceMotion(readReduceMotion());
     supabase.auth.getUser().then(({ data }) => setEmail(data.user?.email ?? ""));
   }, []);
 
-  useEffect(() => {
-    document.documentElement.dataset.fontSize = fontSize;
-    window.localStorage.setItem("novelle:font-size", fontSize);
-  }, [fontSize]);
+  // Part 20: save + apply only when the user changes a setting
+  function changeFontSize(size: FontSize) {
+    setFontSize(size);
+    saveFontSize(size);
+  }
 
-  useEffect(() => {
-    document.documentElement.dataset.reduceMotion = String(reduceMotion);
-    window.localStorage.setItem("novelle:reduce-motion", String(reduceMotion));
-  }, [reduceMotion]);
+  function changeReduceMotion(reduce: boolean) {
+    setReduceMotion(reduce);
+    saveReduceMotion(reduce);
+  }
 
   function updatePreference(key: keyof NotificationPreferences, value: boolean) {
     const next = { ...preferences, [key]: value };
@@ -186,12 +193,12 @@ export default function SettingsPage() {
             <ThemeSelect className="rounded-lg border border-sky-line bg-white px-3 py-2 text-sm text-ink outline-none focus:border-navy-soft focus:ring-2 focus:ring-navy-soft/20" />
           </SettingRow>
           <SettingRow title="Text size" description="Choose a comfortable reading size across the app.">
-            <select value={fontSize} onChange={(event) => setFontSize(event.target.value as FontSize)} className="rounded-lg border border-sky-line bg-white px-3 py-2 text-sm text-ink outline-none focus:border-navy-soft focus:ring-2 focus:ring-navy-soft/20" aria-label="Text size">
+            <select value={fontSize} onChange={(event) => changeFontSize(event.target.value as FontSize)} className="rounded-lg border border-sky-line bg-white px-3 py-2 text-sm text-ink outline-none focus:border-navy-soft focus:ring-2 focus:ring-navy-soft/20" aria-label="Text size">
               <option value="small">Small</option><option value="default">Default</option><option value="large">Large</option>
             </select>
           </SettingRow>
           <SettingRow title="Reduce motion" description="Limit animated transitions and movement.">
-            <Toggle checked={reduceMotion} onChange={setReduceMotion} label="Reduce motion" />
+            <Toggle checked={reduceMotion} onChange={changeReduceMotion} label="Reduce motion" />
           </SettingRow>
         </section>
 
