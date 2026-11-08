@@ -1,6 +1,8 @@
 "use client";
 
 // /liked — everything the student has liked, from every programme.
+// Part 21: shown as "Starred" (star instead of heart); the URL and the
+// favourites table are unchanged.
 // Part 12: drawn with the shared PageHeader, PdfCard, VideoCard and
 // EmptyState; each card shows its programme as a link. The data code is
 // unchanged. (Clicking the gold heart unlikes and removes the card.)
@@ -77,7 +79,7 @@ export default function LikedPage() {
 
     if (error) {
       console.error("Load liked error:", error);
-      setError("Could not load your liked resources.");
+      setError("Could not load your starred resources.");
     } else {
       // If a resource was deleted or is not visible to this student,
       // "resources" comes back null — skip those.
@@ -120,8 +122,8 @@ export default function LikedPage() {
         <PageHeader
           backHref="/profile"
           backLabel="Back to profile"
-          title="Liked"
-          description="Notes, papers and videos you have liked, from every programme, in one place."
+          title="Starred"
+          description="Notes, papers and videos you have starred, from every programme, in one place."
         />
 
         {error && (
@@ -134,11 +136,13 @@ export default function LikedPage() {
         )}
 
         {loading ? (
-          <EmptyState title="Loading your liked resources…" />
+          <EmptyState title="Loading your starred resources…" />
         ) : items.length === 0 ? (
           <EmptyState
-            title="Nothing liked yet"
-            text="Tap the heart on any note or video and it will show up here."
+            title="Nothing starred yet"
+            text="Tap the star on any note, paper or video to keep it here."
+            actionLabel="Go to Home"
+            actionHref="/home"
           />
         ) : (
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">

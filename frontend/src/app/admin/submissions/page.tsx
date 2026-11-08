@@ -86,7 +86,7 @@ function placementLabel(s: Submission) {
   const moduleText = s.module
     ? `${s.module.module_code} – ${s.module.module_name}`
     : "No module chosen";
-  return `Year ${s.year} · Sem ${s.semester} · ${moduleText}`;
+  return `Year ${s.year}, Semester ${s.semester}: ${moduleText}`;
 }
 
 // Groups a list into dropdown options with counts, A–Z, "none" last.
@@ -392,7 +392,7 @@ export default function AdminSubmissionsPage() {
 
   // 2. Year & semester
   const yearSemOptions = countOptions(byProgramme, placementKey, (s) =>
-    s.year && s.semester ? `Year ${s.year} · Sem ${s.semester}` : "Not given"
+    s.year && s.semester ? `Year ${s.year}, Semester ${s.semester}` : "Not given"
   );
   const activeYearSem = yearSemOptions.some((o) => o.value === yearSemFilter)
     ? yearSemFilter
@@ -596,7 +596,7 @@ export default function AdminSubmissionsPage() {
                         {/* Only super admins need the programme name (lib/roles.ts) */}
                         {isSuperAdminRole(profile?.role) &&
                           submission.programme &&
-                          ` · ${submission.programme.name}`}
+                          `, ${submission.programme.name}`}
                       </p>
 
                       {/* Feedback (27 Oct): where the student placed it */}

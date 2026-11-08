@@ -4,10 +4,16 @@
 // passes the data and what to do on View / Download / Like.
 // Part 13d: optional author credit ("By …" line) and, for question papers and
 // assignments, a Solved / Unsolved tag next to the type badge.
+// Part 21 ("make Novelle look like Novelle"): the type is a folder tab on top
+// of the card, the card has a firm border and small corners (no shadow, no
+// lift on hover — the border turns navy instead), one "Open" button plus a
+// "Download PDF" link, a star instead of a heart, and Solved/Unsolved as a
+// tick/circle + word.
 
-import TypeBadge from "@/components/TypeBadge";
+import TypeTab from "@/components/TypeTab";
 import LikeButton from "@/components/LikeButton";
-import { authorCredit, isSolvableType, solvedTag } from "@/lib/author";
+import StatusMark from "@/components/StatusMark";
+import { authorCredit, isSolvableType } from "@/lib/author";
 
 type PdfCardProps = {
   title: string;
@@ -32,11 +38,19 @@ type PdfCardProps = {
   onLike?: () => void;
 };
 
-// Button classes shared with VideoCard.
+// Button classes shared with VideoCard (and the admin review page).
 export const primaryButton =
-  "flex h-11 flex-1 items-center justify-center rounded-[10px] bg-navy px-3 text-[15px] font-bold text-white outline-none transition hover:bg-navy-soft focus-visible:ring-2 focus-visible:ring-navy/40 focus-visible:ring-offset-2";
+  "flex h-11 items-center justify-center rounded-md bg-navy px-6 text-[15px] font-bold text-white outline-none transition hover:bg-navy-soft focus-visible:ring-2 focus-visible:ring-navy/40 focus-visible:ring-offset-2";
 export const secondaryButton =
-  "flex h-11 flex-1 items-center justify-center rounded-[10px] border-[1.5px] border-sky-line bg-white px-3 text-[15px] font-semibold text-navy outline-none transition hover:bg-sky-wash focus-visible:ring-2 focus-visible:ring-navy/40 focus-visible:ring-offset-2";
+  "flex h-11 items-center justify-center rounded-md border-[1.5px] border-navy bg-white px-5 text-[15px] font-bold text-navy outline-none transition hover:bg-sky-wash focus-visible:ring-2 focus-visible:ring-navy/40 focus-visible:ring-offset-2";
+// The plain text link next to the main button ("Download PDF").
+export const textLinkButton =
+  "flex h-11 items-center whitespace-nowrap rounded-md px-1 text-[15px] font-semibold text-navy underline underline-offset-[3px] outline-none transition hover:text-navy-soft focus-visible:ring-2 focus-visible:ring-navy/40";
+
+// The card frame: tab on top, then the bordered box (shared with VideoCard
+// and CardSkeleton so all three keep the same shape).
+export const cardFrame =
+  "flex flex-1 flex-col rounded-b-md rounded-tr-md border-[1.5px] border-card-line bg-white transition-colors hover:border-navy focus-within:border-navy";
 
 // "Website Fundamentals · Year 1 · Sem 1" (skips any part that is missing).
 // moduleName undefined = the page has no module to show (left out);
@@ -52,7 +66,47 @@ export function resourceDetails(
     semester ? `Sem ${semester}` : null,
   ]
     .filter(Boolean)
-    .join(" · ");
+    .join(", ");
+}
+
+// Part 21: the module and the year/semester on two short lines with small
+// icons (book, calendar) instead of "Module · Year 1 · Sem 1" — the middle
+// dots were a common template habit. Shared with VideoCard.
+export function ResourceMeta({
+  moduleName,
+  year,
+  semester,
+}: {
+  moduleName?: string | null;
+  year?: number | null;
+  semester?: number | null;
+}) {
+  const when = [year ? `Year ${year}` : null, semester ? `Semester ${semester}` : null]
+    .filter(Boolean)
+    .join(", ");
+  const icon = "h-[15px] w-[15px] shrink-0";
+  return (
+    <div className="space-y-0.5 text-sm text-ink-soft">
+      {moduleName !== undefined && (
+        <p className="flex items-center gap-1.5">
+          <svg viewBox="0 0 24 24" className={icon} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z" />
+            <path d="M4 21V5" />
+          </svg>
+          {moduleName || "Unknown module"}
+        </p>
+      )}
+      {when && (
+        <p className="flex items-center gap-1.5">
+          <svg viewBox="0 0 24 24" className={icon} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <rect x="3.5" y="5" width="17" height="15" rx="2" />
+            <path d="M3.5 10h17M8 3v4M16 3v4" />
+          </svg>
+          {when}
+        </p>
+      )}
+    </div>
+  );
 }
 
 export default function PdfCard({
@@ -73,55 +127,40 @@ export default function PdfCard({
   onLike,
 }: PdfCardProps) {
   const credit = authorCredit(authorType, authorName); // "By …" or null
-  const tag = isSolvableType(type) ? solvedTag(isSolved) : null;
+  // Question papers and assignments show Solved / Unsolved; notes show nothing.
+  const tag = isSolvableType(type) ? (isSolved ? "solved" : "unsolved") : null;
 
   return (
-    // <article>: each card is a self-contained item (helps screen readers).
-    <article className="flex flex-col gap-3.5 rounded-2xl border border-line bg-white p-5 transition duration-200 hover:-translate-y-0.5 hover:shadow-md">
-      <div className="flex items-start justify-between gap-2">
-        <h3 className="line-clamp-2 text-base font-bold leading-snug text-ink">{title}</h3>
-        <div className="flex shrink-0 flex-col items-end gap-1.5">
-          <TypeBadge type={type} />
-          {tag && (
-            <span className={`inline-flex items-center whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-bold ${tag.className}`}>
-              {tag.text}
-            </span>
-          )}
+    <div className="flex min-w-0 flex-col">
+      <TypeTab type={type} />
+      {/* <article>: each card is a self-contained item (helps screen readers). */}
+      <article className={`${cardFrame} gap-3 px-5 pb-3.5 pt-[18px]`}>
+        <div className="flex items-start justify-between gap-2.5">
+          <h3 className="line-clamp-2 font-display text-base font-bold leading-snug text-ink">{title}</h3>
+          {tag && <StatusMark kind={tag} />}
         </div>
-      </div>
 
-      <div>
-        <p className="text-sm text-ink-soft">{resourceDetails(moduleName, year, semester)}</p>
-        {credit && <p className="mt-1 text-sm font-medium text-ink-nav">{credit}</p>}
-      </div>
+        <div>
+          <ResourceMeta moduleName={moduleName} year={year} semester={semester} />
+          {credit && <p className="mt-1.5 text-sm font-semibold text-ink-nav">{credit}</p>}
+        </div>
 
-      {extra}
+        {extra}
 
-      {/* mt-auto pushes the buttons to the bottom so cards in a row line up */}
-      <div className="mt-auto flex items-center gap-2 pt-1">
-        <button
-          type="button"
-          onClick={onView}
-          className={footer
-            ? "flex h-11 min-w-0 flex-1 items-center justify-center whitespace-nowrap rounded-[10px] bg-navy px-1 text-xs font-bold text-white outline-none transition hover:bg-navy-soft focus-visible:ring-2 focus-visible:ring-navy/40 focus-visible:ring-offset-2"
-            : primaryButton}
-        >
-          View
-        </button>
-        <button
-          type="button"
-          onClick={onDownload}
-          className={footer
-            ? "flex h-11 min-w-0 flex-1 items-center justify-center whitespace-nowrap rounded-[10px] border-[1.5px] border-sky-line bg-white px-1 text-xs font-semibold text-navy outline-none transition hover:bg-sky-wash focus-visible:ring-2 focus-visible:ring-navy/40 focus-visible:ring-offset-2"
-            : secondaryButton}
-        >
-          Download
-        </button>
-        {onLike && !footer && (
-          <LikeButton liked={!!liked} count={likes} label={title} onClick={onLike} />
+        {/* mt-auto pushes the buttons to the bottom so cards in a row line up */}
+        <div className="mt-auto flex flex-wrap items-center gap-x-4 gap-y-2">
+          <button type="button" onClick={onView} className={primaryButton}>
+            Open
+          </button>
+          <button type="button" onClick={onDownload} className={textLinkButton}>
+            Download PDF
+          </button>
+          {onLike && !footer && (
+            <LikeButton liked={!!liked} count={likes} label={title} onClick={onLike} />
           )}
-        {footer && <div className="flex shrink-0 items-center gap-2">{footer}</div>}
-      </div>
-    </article>
+          {footer && <div className="ml-auto flex shrink-0 items-center gap-2">{footer}</div>}
+        </div>
+      </article>
+    </div>
   );
 }

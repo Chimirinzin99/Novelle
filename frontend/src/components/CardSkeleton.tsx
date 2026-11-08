@@ -14,22 +14,20 @@ export default function CardSkeleton({ count, label }: { count: number; label: s
       <span className="sr-only">{label}</span>
       <div className={SKELETON_GRID} aria-hidden="true">
         {Array.from({ length: count }, (_, index) => (
-          // Same padding, border and gaps as PdfCard; min-h ≈ a card with a
-          // credit line (title, details, "By …", buttons).
-          <div
-            key={index}
-            className="flex min-h-[14.25rem] animate-pulse flex-col gap-3.5 rounded-2xl border border-line bg-white p-5"
-          >
-            <div className="flex items-start justify-between gap-2">
-              <div className="h-5 w-2/3 rounded bg-sky-wash" />
-              <div className="h-5 w-14 rounded-full bg-sky-wash" />
+          // Part 21: same shape as the new PdfCard — a tab on top, then the
+          // bordered box; min-h ≈ a card with a credit line.
+          <div key={index} className="flex animate-pulse flex-col">
+            <div className="flex">
+              <div className="h-[25px] w-24 rounded-t-lg bg-sky-wash" />
             </div>
-            <div className="h-4 w-3/4 rounded bg-sky-wash" />
-            <div className="h-4 w-1/3 rounded bg-sky-wash" />
-            <div className="mt-auto flex gap-2">
-              <div className="h-11 flex-1 rounded-xl bg-sky-wash" />
-              <div className="h-11 flex-1 rounded-xl bg-sky-wash" />
-              <div className="h-11 w-14 rounded-xl bg-sky-wash" />
+            <div className="flex min-h-[12.5rem] flex-col gap-3 rounded-b-md rounded-tr-md border-[1.5px] border-card-line bg-white px-5 pb-3.5 pt-[18px]">
+              <div className="h-5 w-3/4 rounded bg-sky-wash" />
+              <div className="h-4 w-11/12 rounded bg-sky-wash" />
+              <div className="h-4 w-1/2 rounded bg-sky-wash" />
+              <div className="mt-auto flex items-center gap-4">
+                <div className="h-11 w-24 rounded-md bg-sky-wash" />
+                <div className="h-4 w-24 rounded bg-sky-wash" />
+              </div>
             </div>
           </div>
         ))}

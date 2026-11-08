@@ -5,9 +5,11 @@
 
 "use client";
 
+// Part 21: split layout with a CST photo (components/AuthShell.tsx).
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import Logo from "@/components/Logo";
+import AuthShell from "@/components/AuthShell";
 import PasswordChecklist from "@/components/PasswordChecklist";
 import { passwordMeetsRules, PASSWORD_RULES_MESSAGE } from "@/lib/password";
 import { CST_EMAIL_HINT, CST_EMAIL_MESSAGE, CST_EMAIL_PLACEHOLDER, isCstEmail } from "@/lib/cstEmail";
@@ -129,8 +131,9 @@ export default function RegisterPage() {
   };
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-cream px-6 py-10">
-      <div className="w-full max-w-md rounded-2xl border border-line bg-white p-8 shadow-sm">
+    <AuthShell photo="/images/programmes/information-technology.webp" position="center 45%">
+      {/* Part 21: no card box any more — the photo half frames the page */}
+      <div className="w-full max-w-md">
         {/* Logo at the top of the card (links back to the landing page) */}
         <div className="mb-6 flex justify-center">
           <Logo href="/" />
@@ -282,6 +285,6 @@ export default function RegisterPage() {
           </a>
         </p>
       </div>
-    </main>
+    </AuthShell>
   );
 }

@@ -58,6 +58,9 @@
      so the navy "N" stays visible. */
   --color-logo-tile: #fefbf4;
 
+  /* Part 21: the firm border around resource cards ("crisp card"). */
+  --color-card-line: #d9dfe9;
+
   /* Fonts: the variables are created by next/font in layout.tsx.
      font-sans = body text (Source Sans 3), font-display = headings (Montserrat). */
   --font-sans: var(--font-body), system-ui, sans-serif;
@@ -102,6 +105,8 @@ html.dark {
   --color-bar: #121927;
   --color-bar-soft: #252f42;
   --color-on-bar: #e6ebf3;
+
+  --color-card-line: #3a4862;
 
   --color-red-50: #3a1f25;
   --color-red-100: #4a242c;

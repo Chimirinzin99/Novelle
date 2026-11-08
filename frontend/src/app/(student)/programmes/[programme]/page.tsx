@@ -7,11 +7,14 @@
 // question-paper badge. The old decorative background (purple/violet
 // blobs, lines and tree drawing) was removed: it used colours outside the
 // logo palette and sat behind every card. The banner picture is unchanged.
+// Part 21: each programme's banner shows its own CST photo
+// (lib/programmeBanners.ts); crisp category cards (no lift on hover).
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { findProgrammeBySlug } from "@/lib/programmes";
+import { programmeBanner } from "@/lib/programmeBanners";
 import { resourceTypeBadge, type ResourceTypeCode } from "@/lib/resourceTypes";
 
 // slug = the URL part; type = the resource type code (for the colour).
@@ -91,6 +94,8 @@ export default function ProgrammePage() {
     };
   }, [programme]);
 
+  const banner = programmeBanner(programme);
+
   if (programmeName === null) {
     return (
       <main className="min-h-full bg-cream px-4 py-8 sm:px-8 sm:py-10 lg:px-12">
@@ -111,12 +116,13 @@ export default function ProgrammePage() {
             readable on any part of the image. Dark mode part: "bar" and
             "on-bar" (globals.css) are navy and white in light mode, and stay
             dark / light in dark mode (plain navy turns light blue there). */}
-        <div className="relative mb-8 h-[180px] overflow-hidden rounded-2xl sm:h-[200px] lg:h-[220px]">
+        <div className="relative mb-8 h-[180px] overflow-hidden rounded-md sm:h-[200px] lg:h-[220px]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/images/image.png"
+            src={banner.src}
             alt=""
-            className="absolute inset-0 h-full w-full object-cover object-center"
+            className="absolute inset-0 h-full w-full object-cover"
+            style={{ objectPosition: banner.position }}
           />
           <div className="absolute inset-0 bg-gradient-to-r from-bar/90 via-bar/55 to-transparent" />
 
@@ -144,11 +150,11 @@ export default function ProgrammePage() {
             <Link
               key={category.slug}
               href={`/programmes/${encodeURIComponent(programme)}/${category.slug}`}
-              className="group flex min-h-[200px] flex-col rounded-2xl border border-line bg-white p-6 outline-none transition duration-200 hover:-translate-y-0.5 hover:border-sky-line hover:shadow-md focus-visible:ring-2 focus-visible:ring-navy/40"
+              className="group flex min-h-[200px] flex-col rounded-md border-[1.5px] border-card-line bg-white p-6 outline-none transition-colors hover:border-navy focus-visible:ring-2 focus-visible:ring-navy/40"
             >
               {/* Icon in this type's badge colour */}
               <span
-                className={`flex h-12 w-12 items-center justify-center rounded-xl ${resourceTypeBadge(category.type)}`}
+                className={`flex h-12 w-12 items-center justify-center rounded-md ${resourceTypeBadge(category.type)}`}
               >
                 <svg
                   fill="none"
@@ -165,7 +171,7 @@ export default function ProgrammePage() {
               </span>
 
               <div className="mt-auto pt-6">
-                <h3 className="text-xl font-bold text-ink">{category.title}</h3>
+                <h3 className="font-display text-xl font-bold text-ink">{category.title}</h3>
                 <p className="mt-2 text-sm leading-relaxed text-ink-soft">{category.description}</p>
 
                 <span className="mt-5 flex items-center gap-2 text-[15px] font-bold text-navy-soft group-hover:text-navy">

@@ -4,10 +4,12 @@
 // rules (lib/password.ts) and shows the live checklist.
 // Part 12: theme colours and the Novelle logo on top of the card.
 
+// Part 21: split layout with a CST photo (components/AuthShell.tsx).
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import Logo from "@/components/Logo";
+import AuthShell from "@/components/AuthShell";
 import PasswordChecklist from "@/components/PasswordChecklist";
 import { passwordMeetsRules, PASSWORD_RULES_MESSAGE } from "@/lib/password";
 import { CST_EMAIL_MESSAGE, CST_EMAIL_PLACEHOLDER, isCstEmail } from "@/lib/cstEmail";
@@ -162,8 +164,9 @@ export default function ResetPasswordPage() {
     "h-12 w-full rounded-xl bg-navy font-display text-[15px] font-bold tracking-wide text-white outline-none transition hover:bg-navy-soft focus-visible:ring-4 focus-visible:ring-sky-tint disabled:cursor-not-allowed disabled:opacity-60";
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-cream px-6">
-      <div className="w-full max-w-md rounded-2xl border border-line bg-white p-8 shadow-sm">
+    <AuthShell photo="/images/campus/students-walking.webp" position="center 35%">
+      {/* Part 21: no card box any more — the photo half frames the page */}
+      <div className="w-full max-w-md">
         {/* Logo at the top of the card (links back to the landing page) */}
         <div className="mb-6 flex justify-center">
           <Logo href="/" />
@@ -336,6 +339,6 @@ export default function ResetPasswordPage() {
           </p>
         )}
       </div>
-    </main>
+    </AuthShell>
   );
 }

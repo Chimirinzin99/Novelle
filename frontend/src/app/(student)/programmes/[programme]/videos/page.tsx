@@ -116,7 +116,7 @@ export default function VideosPage() {
   }
 
   // Like / unlike (same as the Notes page).
-  // Like / unlike. The heart and count change straight away ("optimistic"),
+  // Like / unlike. The star (Part 21; was a heart) and count change straight away ("optimistic"),
   // then lib/likes.ts saves it; if saving fails, both are put back.
   async function handleFavourite(resourceId: number) {
     const like = !favourites.includes(resourceId);

@@ -242,7 +242,7 @@ export default function EditResourceDialog({
               Edit resource
             </h2>
             <p className="mt-1 text-sm text-ink-soft">
-              Currently: {resource.module_name || "Unknown module"} · Year {resource.year} · Sem {resource.semester}
+              Currently: {resource.module_name || "Unknown module"}, Year {resource.year}, Semester {resource.semester}
             </p>
           </div>
           <button

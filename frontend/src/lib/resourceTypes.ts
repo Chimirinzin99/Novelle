@@ -7,30 +7,36 @@
 //   the SAME colour on every page, so students learn it at a glance. The
 //   colours come from the theme in app/globals.css and differ in lightness,
 //   not only in hue, so they can be told apart by colour-blind students too.
+//   tab: Part 21 — the same colours for the folder tab on top of each card
+//   (the video tab gets a border because its background is white).
 export const RESOURCE_TYPES = [
   {
     code: "note",
     label: "Note",
     studentCanSubmit: true,
     badge: "bg-sky-tint text-navy-soft",
+    tab: "bg-sky-tint text-navy-soft",
   },
   {
     code: "question_paper",
     label: "Question Paper",
     studentCanSubmit: true,
     badge: "bg-navy text-white",
+    tab: "bg-navy text-white",
   },
   {
     code: "assignment",
     label: "Assignment",
     studentCanSubmit: true,
     badge: "bg-gold-tint text-gold-ink",
+    tab: "bg-gold-tint text-gold-ink",
   },
   {
     code: "video",
     label: "Video",
     studentCanSubmit: false,
     badge: "bg-white text-ink border border-sky-line",
+    tab: "bg-white text-ink border-[1.5px] border-b-0 border-card-line",
   },
 ] as const;
 
@@ -50,3 +56,8 @@ export const resourceTypeLabel = (code: string | null | undefined) =>
 export const resourceTypeBadge = (code: string | null | undefined) =>
   RESOURCE_TYPES.find((t) => t.code === code)?.badge ??
   "bg-white text-ink-soft border border-line";
+
+// Folder-tab classes for a type (Part 21); unknown codes get a plain tab.
+export const resourceTypeTab = (code: string | null | undefined) =>
+  RESOURCE_TYPES.find((t) => t.code === code)?.tab ??
+  "bg-white text-ink-soft border-[1.5px] border-b-0 border-card-line";

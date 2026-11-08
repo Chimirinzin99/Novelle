@@ -1,7 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import ExploreButton from "@/components/ExploreButton";
-import Logo from "@/components/Logo";
+import { NOVELLE_CONTACT_EMAIL } from "@/lib/cstEmail";
 
 // Public landing page, shown at "/".
 // No "use client" at the top: this page has no state, clicks handled in code,
@@ -9,116 +9,152 @@ import Logo from "@/components/Logo";
 // (The Explore button is a small client component of its own.)
 // Part 12: the "From the Novelle logo" design — big logo mark, NOVELLE
 // wordmark, the tagline "Share · Learn · Grow", navy buttons, cream page.
+// Part 21: the hero sits on a drone photo of the CST campus (navy fade over
+// it so the text stays readable), the About cards became "How Novelle works",
+// and the footer tells lecturers whom to contact for admin access.
+// Photo: College of Science and Technology (public/images/campus/).
 
-// Feature cards for the About Us section.
-// Keeping them in an array means the cards are written once and repeated with .map().
-// word = the tagline word each card stands for.
-const features = [
+// Part 21: "How Novelle works" — the real path a resource takes, as three
+// numbered steps (replaces the three About Us feature cards, a very common
+// AI-template layout). Wording agreed 8 Nov: "someone", not "seniors", since
+// students of any year and lecturers can upload.
+const steps = [
   {
-    word: "Learn",
-    title: "Browse every programme",
-    text: "Notes, past papers and assignments from all ten CST programmes, sorted by year, semester and module.",
+    title: "Someone shares it",
+    text: "A student or lecturer uploads notes, past papers or assignments, placed by programme, year and module.",
   },
   {
-    word: "Share",
-    title: "Share your notes",
-    text: "Upload your own study material. A programme admin checks each submission before it goes live.",
+    title: "An admin checks it",
+    text: "The programme admin approves it, or sends it back with a reason. Admins can also add resources and videos directly.",
   },
   {
-    word: "Grow",
-    title: "Keep what helps",
-    text: "View or download any resource, and like the ones you want to find again.",
+    title: "Everyone can find it",
+    text: "Search or browse any programme by module. Star the ones worth keeping.",
   },
 ];
 
 // Shared classes for the header links.
+// (on the photo: always-light text, see --color-on-bar in globals.css)
 const headerLink =
-  "rounded-lg px-4 py-2 text-[15px] font-semibold text-ink-nav outline-none transition hover:bg-white hover:text-navy focus-visible:ring-2 focus-visible:ring-navy/40";
+  "rounded-md px-4 py-2 text-[15px] font-semibold text-on-bar outline-none transition hover:bg-on-bar/10 focus-visible:ring-2 focus-visible:ring-gold";
 
 export default function LandingPage() {
   return (
     <main className="flex min-h-screen flex-col bg-cream">
-      {/* Header: logo on the left, links on the right */}
-      <header className="flex items-center justify-between gap-4 px-6 py-5 md:px-10">
-        <Logo href="/" />
+      {/* Hero on the campus photo: header, logo mark, wordmark, Explore */}
+      <section className="relative flex min-h-[86vh] flex-col overflow-hidden">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/images/campus/aerial.webp"
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover"
+          style={{ objectPosition: "center 40%" }}
+        />
+        {/* Navy fade: darker towards the bottom, where the text is */}
+        <div className="absolute inset-0 bg-gradient-to-b from-bar/55 via-bar/80 to-bar/95" />
 
-        <nav aria-label="Main" className="flex items-center gap-1 sm:gap-2">
-          {/* "#about" jumps to the element with id="about" further down this page */}
-          <a href="#about" className={`hidden sm:block ${headerLink}`}>
-            About Us
-          </a>
-          <Link href="/login" className={headerLink}>
-            Login
+        <header className="relative flex items-center justify-between gap-4 px-6 py-5 md:px-10">
+          <Link href="/" className="flex items-center gap-2.5 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-gold">
+            <span className="flex rounded-lg bg-logo-tile p-1">
+              <Image src="/novelle-mark.png" alt="" width={36} height={36} />
+            </span>
+            <span className="font-display text-base font-extrabold tracking-[0.14em] text-on-bar">NOVELLE</span>
           </Link>
-          <Link
-            href="/register"
-            className="rounded-lg bg-navy px-4 py-2 text-[15px] font-bold text-white outline-none transition hover:bg-navy-soft focus-visible:ring-2 focus-visible:ring-navy/40 focus-visible:ring-offset-2"
-          >
-            Sign Up
-          </Link>
-        </nav>
-      </header>
 
-      {/* Hero: the big logo mark, the wordmark and the Explore button */}
-      <section className="flex min-h-[70vh] flex-col items-center justify-center px-6 text-center">
-        {/* Dark mode part: on a dark page the navy "N" sits on a cream tile */}
-        <span className="inline-flex dark:rounded-3xl dark:bg-logo-tile dark:p-3">
-          <Image src="/novelle-mark.png" alt="" width={120} height={120} priority />
-        </span>
+          <nav aria-label="Main" className="flex items-center gap-1 sm:gap-2">
+            {/* "#how" jumps to the element with id="how" further down this page */}
+            <a href="#how" className={`hidden sm:block ${headerLink}`}>
+              How it works
+            </a>
+            <Link href="/login" className={headerLink}>
+              Login
+            </Link>
+            <Link
+              href="/register"
+              className="rounded-md bg-gold px-4 py-2 text-[15px] font-bold text-bar outline-none transition hover:brightness-105 focus-visible:ring-2 focus-visible:ring-on-bar"
+            >
+              Sign Up
+            </Link>
+          </nav>
+        </header>
 
-        <h1 className="mt-6 text-5xl font-extrabold tracking-[0.14em] text-navy md:text-7xl">
-          NOVELLE
-        </h1>
+        <div className="relative flex flex-1 flex-col items-center justify-center px-6 pb-16 text-center">
+          {/* The navy "N" always sits on a cream tile here (dark photo) */}
+          <span className="inline-flex rounded-3xl bg-logo-tile p-3">
+            <Image src="/novelle-mark.png" alt="" width={104} height={104} priority />
+          </span>
 
-        <p className="mt-3 font-display text-sm font-semibold tracking-[0.2em] text-muted-blue md:text-base">
-          SHARE · LEARN · GROW
-        </p>
+          <h1 className="mt-6 text-5xl font-extrabold tracking-[0.14em] text-on-bar md:text-7xl">
+            NOVELLE
+          </h1>
 
-        <p className="mt-6 max-w-xl text-lg text-ink-soft">
-          Notes and learning resources, shared by CST students.
-        </p>
-
-        {/* Goes to /home if logged in, otherwise /login (see components/ExploreButton.tsx) */}
-        <ExploreButton />
-      </section>
-
-      {/* About Us */}
-      <section id="about" className="border-t border-line bg-white px-6 py-20 md:px-10">
-        <div className="mx-auto max-w-5xl">
-          <h2 className="text-3xl font-extrabold text-navy">About Us</h2>
-
-          <p className="mt-4 max-w-3xl text-base leading-7 text-ink-soft">
-            Novelle is a resource-sharing platform for students of the College
-            of Science and Technology. Instead of hunting through group chats
-            for last year&apos;s notes, students can find study material for
-            their modules in one place, and share their own.
+          <p className="mt-3 font-display text-sm font-semibold tracking-[0.2em] text-gold md:text-base">
+            SHARE · LEARN · GROW
           </p>
 
-          {/* One card per item in the features array */}
-          <div className="mt-10 grid gap-5 md:grid-cols-3">
-            {features.map((feature) => (
-              <div key={feature.title} className="rounded-2xl border border-line bg-cream p-6">
-                <p className="flex items-center gap-2 font-display text-xs font-bold uppercase tracking-[0.14em] text-gold-ink">
-                  {/* The logo's star, small (decoration) */}
-                  <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
-                    <path
-                      d="M12 1.5c.6 5.2 3.3 9.3 10.5 10.5C15.3 13.2 12.6 17.3 12 22.5 11.4 17.3 8.7 13.2 1.5 12 8.7 10.8 11.4 6.7 12 1.5z"
-                      className="fill-gold"
-                    />
+          <p className="mt-6 max-w-xl text-lg text-on-bar/90">
+            Notes and learning resources, shared by CST students.
+          </p>
+
+          {/* Goes to /home if logged in, otherwise /login (see components/ExploreButton.tsx) */}
+          <ExploreButton />
+        </div>
+
+        <p className="relative px-6 pb-3 text-right text-xs text-on-bar/75 md:px-10">
+          Photo: College of Science and Technology
+        </p>
+      </section>
+
+      {/* How Novelle works */}
+      <section id="how" className="border-b-[1.5px] border-sky-line bg-white px-6 py-20 md:px-10">
+        <div className="mx-auto max-w-5xl">
+          <h2 className="text-3xl font-extrabold text-navy">How Novelle works</h2>
+          <p className="mt-2 max-w-3xl text-base leading-7 text-ink-soft">
+            Instead of hunting through group chats for last year&apos;s notes, CST
+            students find study material for their modules in one place. Every
+            resource goes through three hands before it reaches you.
+          </p>
+
+          {/* Numbered steps with arrows between them (arrows only on wide screens) */}
+          <ol className="mt-10 grid gap-8 md:grid-cols-[1fr_auto_1fr_auto_1fr] md:gap-4">
+            {steps.map((step, index) => (
+              <li key={step.title} className="contents">
+                <div className="flex flex-col gap-2.5">
+                  <span className="flex h-11 w-11 items-center justify-center rounded-md bg-navy font-display text-xl font-extrabold text-white">
+                    {index + 1}
+                  </span>
+                  <h3 className="mt-1 text-xl font-bold text-ink">{step.title}</h3>
+                  <p className="text-base leading-relaxed text-ink-soft">{step.text}</p>
+                </div>
+                {index < steps.length - 1 && (
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="mt-3 hidden h-8 w-8 text-gold md:block"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={2.4}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d="M4 12h15M14 6l6 6-6 6" />
                   </svg>
-                  {feature.word}
-                </p>
-                <h3 className="mt-3 text-lg font-bold text-ink">{feature.title}</h3>
-                <p className="mt-2 text-sm leading-6 text-ink-soft">{feature.text}</p>
-              </div>
+                )}
+              </li>
             ))}
-          </div>
+          </ol>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="px-6 py-6 text-center text-sm text-ink-soft">
-        Novelle · College of Science and Technology, Royal University of Bhutan
+      {/* Footer (Part 21: lecturers learn whom to ask for admin access) */}
+      <footer className="flex flex-col items-center justify-between gap-2 px-6 py-6 text-center text-sm text-ink-soft sm:flex-row md:px-10">
+        <span>Novelle, College of Science and Technology, Royal University of Bhutan</span>
+        <span>
+          Lecturer and need admin access?{" "}
+          <a href={`mailto:${NOVELLE_CONTACT_EMAIL}`} className="font-bold text-navy underline underline-offset-[3px]">
+            {NOVELLE_CONTACT_EMAIL}
+          </a>
+        </span>
       </footer>
     </main>
   );

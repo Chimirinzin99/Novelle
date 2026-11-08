@@ -168,7 +168,7 @@ export default function ResourceList({
     }
   }
 
-  // Like / unlike. The heart and count change straight away ("optimistic"),
+  // Like / unlike. The star (Part 21; was a heart) and count change straight away ("optimistic"),
   // then lib/likes.ts saves it; if saving fails, both are put back.
   async function handleFavourite(resourceId: number) {
     const like = !favourites.includes(resourceId);
@@ -194,7 +194,8 @@ export default function ResourceList({
 
   const modules = [...new Set(resources.map((r) => r.module_name))];
 
-  const filtered = resources.filter((resource) => {
+  // Matches every filter except Solved/Unsolved (the tabs show these counts).
+  const matchesOtherFilters = (resource: Resource) => {
     const yearMatch =
       selectedYear === "All Years" ||
       resource.year?.toString() === selectedYear.replace("Year ", "");
@@ -208,12 +209,29 @@ export default function ResourceList({
       selectedModule === "All Modules" ||
       resource.module_name === selectedModule;
 
-    const solvedMatch =
-      solvedFilter === "all" ||
-      (solvedFilter === "solved") === resource.is_solved;
+    return yearMatch && semesterMatch && moduleMatch;
+  };
 
-    return yearMatch && semesterMatch && moduleMatch && solvedMatch;
-  });
+  const beforeSolved = resources.filter(matchesOtherFilters);
+  const solvedCounts: Record<SolvedFilter, number> = {
+    all: beforeSolved.length,
+    solved: beforeSolved.filter((r) => r.is_solved).length,
+    unsolved: beforeSolved.filter((r) => !r.is_solved).length,
+  };
+
+  const filtered = beforeSolved.filter(
+    (resource) =>
+      solvedFilter === "all" || (solvedFilter === "solved") === resource.is_solved
+  );
+
+  // Part 21: an empty list says what to do next. With no filters set, the
+  // programme simply has nothing yet, so it invites an upload; with filters,
+  // it offers to clear them.
+  const filtersSet =
+    selectedYear !== "All Years" ||
+    selectedSemester !== "All Semesters" ||
+    selectedModule !== "All Modules" ||
+    solvedFilter !== "all";
 
   function clearFilters() {
     setSelectedYear("All Years");
@@ -251,10 +269,14 @@ export default function ResourceList({
           onClear={clearFilters}
         />
 
-        {/* Part 13d: All / Solved / Unsolved (question papers, assignments) */}
+        {/* Part 13d: All / Solved / Unsolved (question papers, assignments).
+            Part 21: underlined tabs with counts instead of round pills. */}
         {showSolvedFilter && (
-          <div role="group" aria-label="Solved filter" className="-mt-2 mb-6 flex flex-wrap items-center gap-2">
-            <span className="mr-1 text-sm font-semibold text-ink-nav">Answers:</span>
+          <div
+            role="group"
+            aria-label="Answers"
+            className="-mt-2 mb-6 flex flex-wrap gap-x-6 border-b-[1.5px] border-sky-line"
+          >
             {SOLVED_FILTERS.map((option) => {
               const active = solvedFilter === option.value;
               return (
@@ -263,11 +285,12 @@ export default function ResourceList({
                   type="button"
                   aria-pressed={active}
                   onClick={() => setSolvedFilter(option.value)}
-                  className={`rounded-full px-3.5 py-1.5 text-sm font-semibold outline-none transition focus-visible:ring-2 focus-visible:ring-navy/40 ${
-                    active ? "bg-navy text-white" : "border border-sky-line bg-white text-navy hover:bg-sky-wash"
+                  className={`-mb-[1.5px] border-b-[3px] px-0.5 py-2.5 text-[15px] font-bold outline-none transition focus-visible:ring-2 focus-visible:ring-navy/40 ${
+                    active ? "border-gold text-navy" : "border-transparent text-ink-soft hover:text-navy"
                   }`}
                 >
-                  {option.label}
+                  {option.label}{" "}
+                  <span className="font-semibold text-ink-soft">{solvedCounts[option.value]}</span>
                 </button>
               );
             })}
@@ -288,12 +311,25 @@ export default function ResourceList({
         {loading ? (
           <CardSkeleton count={6} label={`Loading ${plural}…`} />
         ) : filtered.length === 0 ? (
-          <EmptyState
-            title={`No ${plural} found`}
-            text={`There are no matching ${plural} for these filters yet. Try changing your selections or check back later.`}
-            actionLabel="Clear filters"
-            onAction={clearFilters}
-          />
+          filtersSet ? (
+            <EmptyState
+              title={`No ${plural} match these filters`}
+              text={
+                selectedModule !== "All Modules"
+                  ? `Nothing for ${selectedModule} yet. Have one? Upload it and help the next batch.`
+                  : "Try other filters, or upload one yourself."
+              }
+              actionLabel="Clear filters"
+              onAction={clearFilters}
+            />
+          ) : (
+            <EmptyState
+              title={`No ${plural} yet`}
+              text={`Have ${singular === "assignment" ? "an" : "a"} ${singular} from an earlier semester? Upload it and an admin will check it before it goes live.`}
+              actionLabel="Upload"
+              actionHref="/submit-note"
+            />
+          )
         ) : (
           // 1 / 2 / 3 / 4 columns, same as /home
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">

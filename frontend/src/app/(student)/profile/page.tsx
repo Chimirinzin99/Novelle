@@ -3,11 +3,15 @@
 // Part 12: hard-coded colours (e.g. bg-[#294C78], text-slate-500) switched to
 // the theme colours from app/globals.css (bg-navy, text-ink-soft …).
 // Nothing else on this page changed.
+// Part 21: "Liked Resources" -> "Starred" (star icon), crisp cards without the
+// lift on hover, and a "Are you a lecturer?" box for name-style CST emails
+// (how to ask for programme admin access).
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { isStaffEmail, NOVELLE_CONTACT_EMAIL } from "@/lib/cstEmail";
 
 type StudentProfile = {
   full_name: string | null;
@@ -99,7 +103,7 @@ export default function ProfilePage() {
           </div>
         )}
 
-        <section className="rounded-2xl border border-line bg-white p-6 shadow-sm sm:p-8">
+        <section className="rounded-md border-[1.5px] border-card-line bg-white p-6 sm:p-8">
           {loading ? (
             <p className="text-sm text-ink-soft">Loading your profile...</p>
           ) : (
@@ -123,20 +127,40 @@ export default function ProfilePage() {
           )}
         </section>
 
+        {/* Part 21: lecturers (name-style CST email) see how to get admin access */}
+        {!loading && isStaffEmail(email) && (
+          <section
+            aria-label="Lecturer access"
+            className="mt-6 rounded border-l-[5px] border-navy bg-sky-wash px-5 py-4"
+          >
+            <h2 className="font-display text-base font-bold text-ink">Are you a lecturer?</h2>
+            <p className="mt-1.5 text-[15px] leading-relaxed text-ink-soft">
+              You can browse, upload and star like everyone else. To review uploads for your
+              programme, ask the Novelle team to make you a programme admin:
+            </p>
+            <a
+              href={`mailto:${NOVELLE_CONTACT_EMAIL}?subject=${encodeURIComponent("Programme admin access")}`}
+              className="mt-2 inline-block font-bold text-navy underline underline-offset-[3px]"
+            >
+              {NOVELLE_CONTACT_EMAIL}
+            </a>
+          </section>
+        )}
+
         <section className="mt-10">
           <div className="mb-5">
             <h2 className="text-xl font-semibold tracking-tight text-navy">
               Your library
             </h2>
             <p className="mt-1 text-sm text-ink-soft">
-              Review uploads and return to resources you have liked.
+              Review uploads and return to resources you have starred.
             </p>
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Link
               href="/my-submissions"
-              className="group flex min-h-44 items-start gap-4 rounded-2xl border border-line bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:border-sky-line hover:shadow-md focus:outline-none focus:ring-2 focus:ring-navy/30"
+              className="group flex min-h-44 items-start gap-4 rounded-md border-[1.5px] border-card-line bg-white p-6 transition-colors hover:border-navy focus:outline-none focus:ring-2 focus:ring-navy/30"
             >
               <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-sky-tint text-navy">
                 <svg
@@ -182,7 +206,7 @@ export default function ProfilePage() {
 
             <Link
               href="/liked"
-              className="group flex min-h-44 items-start gap-4 rounded-2xl border border-line bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:border-sky-line hover:shadow-md focus:outline-none focus:ring-2 focus:ring-navy/30"
+              className="group flex min-h-44 items-start gap-4 rounded-md border-[1.5px] border-card-line bg-white p-6 transition-colors hover:border-navy focus:outline-none focus:ring-2 focus:ring-navy/30"
             >
               <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-sky-tint text-navy">
                 <svg
@@ -197,7 +221,7 @@ export default function ProfilePage() {
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    d="M20.8 4.8a5.5 5.5 0 0 0-7.8 0L12 5.9l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21l7.8-7.3 1.1-1.1a5.5 5.5 0 0 0-.1-7.8Z"
+                    d="M12 2.8l2.8 5.8 6.4.9-4.6 4.5 1.1 6.3L12 17.3l-5.7 3 1.1-6.3L2.8 9.5l6.4-.9z"
                   />
                 </svg>
               </span>
@@ -205,7 +229,7 @@ export default function ProfilePage() {
               <span className="min-w-0 flex-1">
                 <span className="flex items-center justify-between gap-3">
                   <span className="font-semibold text-ink">
-                    Liked Resources
+                    Starred
                   </span>
                   <span
                     aria-hidden="true"
@@ -215,8 +239,8 @@ export default function ProfilePage() {
                   </span>
                 </span>
                 <span className="mt-2 block text-sm leading-6 text-ink-soft">
-                  Find your saved notes, question papers, assignments, and
-                  videos.
+                  Notes, question papers, assignments and videos you starred
+                  to find again.
                 </span>
               </span>
             </Link>

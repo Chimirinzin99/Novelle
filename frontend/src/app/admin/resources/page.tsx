@@ -728,7 +728,7 @@ export default function ManageResourcesPage() {
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-semibold text-ink">{file.name}</p>
-                    <p className="text-sm text-ink-soft">{fileSize(file.size)} · PDF</p>
+                    <p className="text-sm text-ink-soft">PDF, {fileSize(file.size)}</p>
                   </div>
                   <button
                     type="button"
@@ -764,7 +764,7 @@ export default function ManageResourcesPage() {
                     <path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" strokeLinecap="round" />
                   </svg>
                   <span className="font-bold text-ink">Drop your PDF here, or click to choose</span>
-                  <span className="text-sm text-ink-soft">PDF only · {MAX_UPLOAD_MB} MB maximum</span>
+                  <span className="text-sm text-ink-soft">PDF only, up to {MAX_UPLOAD_MB} MB</span>
                 </label>
               )}
             </div>

@@ -512,6 +512,14 @@ export default function AdminPage() {
 
   const sectionTitle = "mb-4 mt-10 text-[19px] font-bold text-navy";
 
+  // Part 21: the gold clock used for "waiting" and "No admin yet".
+  const clockIcon = (
+    <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M12 7.5V12l3 2" />
+    </svg>
+  );
+
   return (
     <main className="min-h-full bg-cream text-ink">
       <div className="mx-auto w-full max-w-7xl px-5 py-8 md:px-8 lg:px-10">
@@ -519,7 +527,7 @@ export default function AdminPage() {
         <header className="mb-8 flex flex-wrap items-end justify-between gap-4">
           <div>
             <p className="font-display text-xs font-bold uppercase tracking-[0.12em] text-muted-blue">
-              {isSuperAdmin ? "All programmes · Super admin" : programmeName}
+              {isSuperAdmin ? "Super admin, all programmes" : programmeName}
             </p>
             <h1 className="mt-1 text-3xl font-extrabold tracking-tight text-navy">
               Welcome back{firstName ? `, ${firstName}` : ""}
@@ -583,60 +591,87 @@ export default function AdminPage() {
           {statCard({ label: "Videos", value: videosCount, note: "YouTube links added by admins", href: "/admin/all-resources?type=video", icon: Video, iconClass: resourceTypeBadge("video") })}
         </section>
 
-        {/* ---- Waiting for review (both roles) ---- */}
-        <section className="mt-10 rounded-2xl border border-line bg-white p-5 sm:p-6">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-[19px] font-bold text-navy">
-              {isSuperAdmin ? "Waiting for review" : "Waiting for your review"}
-            </h2>
-            <span className="rounded-full bg-gold-tint px-3 py-1 text-sm font-bold text-gold-ink">
-              {waiting.length} pending
-            </span>
-          </div>
-
+        {/* ---- Waiting for review (both roles) ----
+            Part 21: a gold summary line ("3 waiting for review, the oldest for 5
+            days") above a plain list with an age and a Review link on each
+            row, instead of pills inside a rounded box. */}
+        <section className="mt-10" aria-label="Waiting for review">
           {waiting.length === 0 ? (
-            <p className="rounded-xl bg-cream p-4 text-sm text-ink-soft">
-              All caught up — nothing is waiting for review.
+            <p className="rounded border-l-[5px] border-green-600 bg-white px-5 py-4 text-[15px] text-ink">
+              <strong>All caught up:</strong> nothing is waiting for review.
             </p>
           ) : (
-            <ul className="flex flex-col gap-3">
-              {waiting.slice(0, WAITING_LIST_LIMIT).map((item) => {
-                const days = daysSince(item.created_at);
-                return (
-                  <li
-                    key={item.id}
-                    className="flex flex-wrap items-center gap-3 rounded-xl border border-line bg-cream p-3 sm:flex-nowrap"
-                  >
-                    <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${resourceTypeBadge(item.type)}`}>
-                      {resourceTypeLabel(item.type)}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-bold text-ink">{item.title}</p>
-                      <p className="text-sm text-ink-soft">
-                        by {item.submitter?.full_name || "a deleted account"}
-                        {isSuperAdmin && item.programme ? ` · ${item.programme.name}` : ""} · {shortDate(item.created_at)}
-                        {" · "}
-                        {/* Old ones stand out in dark gold */}
-                        <span className={days >= LATE_AFTER_DAYS ? "font-bold text-gold-ink" : ""}>
-                          {days === 0 ? "today" : `waiting ${days} ${days === 1 ? "day" : "days"}`}
-                        </span>
-                      </p>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
+            <div className="flex flex-wrap items-center gap-3 rounded border-l-[5px] border-gold bg-gold-tint px-5 py-4">
+              <p className="flex-1 text-[17px] text-ink">
+                <strong>
+                  {waiting.length} waiting for review
+                </strong>
+                {", "}
+                {daysSince(waiting[0].created_at) === 0
+                  ? "all from today"
+                  : `the oldest for ${daysSince(waiting[0].created_at)} ${daysSince(waiting[0].created_at) === 1 ? "day" : "days"}`}
+              </p>
+              <Link
+                href="/admin/submissions"
+                className="rounded text-[15px] font-bold text-navy outline-none hover:underline focus-visible:ring-2 focus-visible:ring-navy/40"
+              >
+                Review them →
+              </Link>
+            </div>
           )}
 
           {waiting.length > 0 && (
-            <Link
-              href="/admin/submissions"
-              className="mt-4 inline-block rounded text-[15px] font-bold text-navy-soft outline-none hover:text-navy hover:underline focus-visible:ring-2 focus-visible:ring-navy/40"
-            >
-              {waiting.length > WAITING_LIST_LIMIT
-                ? `Open all ${waiting.length} pending submissions →`
-                : "Review them →"}
-            </Link>
+            <div className="mt-5 rounded-md border-[1.5px] border-card-line bg-white px-5 pb-1.5 pt-4">
+              <h2 className="mb-2 font-display text-lg font-bold text-ink">
+                {isSuperAdmin ? "Waiting for review" : "Waiting for your review"}
+              </h2>
+              <ul>
+                {waiting.slice(0, WAITING_LIST_LIMIT).map((item) => {
+                  const days = daysSince(item.created_at);
+                  const late = days >= LATE_AFTER_DAYS;
+                  return (
+                    <li
+                      key={item.id}
+                      className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-line py-3.5 sm:flex-nowrap"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-bold text-ink">{item.title}</p>
+                        <p className="text-sm text-ink-soft">
+                          {resourceTypeLabel(item.type)} by {item.submitter?.full_name || "a deleted account"}
+                          {isSuperAdmin && item.programme ? `, ${item.programme.name}` : ""}, sent {shortDate(item.created_at)}
+                        </p>
+                      </div>
+                      {/* Old ones stand out in dark gold with a clock */}
+                      <span
+                        className={`inline-flex shrink-0 items-center gap-1 text-sm ${late ? "font-bold text-gold-ink" : "text-ink-soft"}`}
+                      >
+                        {late && (
+                          <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" aria-hidden="true">
+                            <circle cx="12" cy="12" r="8.5" />
+                            <path d="M12 7.5V12l3 2" />
+                          </svg>
+                        )}
+                        {days === 0 ? "today" : `${days} ${days === 1 ? "day" : "days"}`}
+                      </span>
+                      <Link
+                        href="/admin/submissions"
+                        className="flex h-10 shrink-0 items-center rounded-md border-[1.5px] border-navy px-4 text-sm font-bold text-navy outline-none transition hover:bg-sky-wash focus-visible:ring-2 focus-visible:ring-navy/40"
+                      >
+                        Review
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+              {waiting.length > WAITING_LIST_LIMIT && (
+                <Link
+                  href="/admin/submissions"
+                  className="mb-2 mt-1 inline-block rounded text-[15px] font-bold text-navy outline-none hover:underline focus-visible:ring-2 focus-visible:ring-navy/40"
+                >
+                  Open all {waiting.length} pending submissions →
+                </Link>
+              )}
+            </div>
           )}
         </section>
 
@@ -670,64 +705,85 @@ export default function AdminPage() {
             )}
 
             <h2 className={sectionTitle}>Programmes</h2>
-            {/* overflow-x-auto: on a phone the table scrolls inside its box */}
-            <div className="overflow-x-auto rounded-2xl border border-line bg-white">
-              <table className="w-full text-left text-sm">
-                <thead className="border-b border-line font-display text-xs uppercase tracking-wide text-muted-blue">
+            {/* Part 21: normal-case column titles on a pale-blue bar, zeros as a
+                quiet dash, gold clock marks for "waiting" and "No admin yet"
+                (same as the dashboard summary), the admin with the key icon
+                from the Users page, and Assign as a link. Programmes without
+                an admin come first. overflow-x-auto: scrolls inside its box
+                on a phone. */}
+            <div className="overflow-x-auto rounded-md border-[1.5px] border-card-line bg-white">
+              <table className="w-full text-left text-[15px]">
+                <thead className="bg-sky-wash text-sm text-ink-soft">
                   <tr>
-                    <th className="px-5 py-3 font-bold">Programme</th>
-                    <th className="px-5 py-3 font-bold">Resources</th>
-                    <th className="px-5 py-3 font-bold">Pending submissions</th>
-                    <th className="px-5 py-3 font-bold">Programme admin</th>
+                    <th className="px-5 py-2.5 font-bold">Programme</th>
+                    <th className="px-5 py-2.5 text-right font-bold">Resources</th>
+                    <th className="px-5 py-2.5 font-bold">Waiting</th>
+                    <th className="px-5 py-2.5 font-bold">Programme admin</th>
+                    <th className="px-5 py-2.5"><span className="sr-only">Actions</span></th>
                   </tr>
                 </thead>
 
                 <tbody className="divide-y divide-line">
-                  {programmeOverview.map((programme) => (
-                    <tr key={programme.id} className="hover:bg-cream">
-                      <td className="px-5 py-3 font-semibold text-ink">{programme.name}</td>
-                      <td className="px-5 py-3">
-                        <span className={programme.resources > 0 ? "font-semibold text-ink" : "text-ink-soft"}>
-                          {programme.resources}
-                        </span>
+                  {[...programmeOverview]
+                    .sort((a, b) =>
+                      a.admins.length === 0 && b.admins.length > 0
+                        ? -1
+                        : b.admins.length === 0 && a.admins.length > 0
+                          ? 1
+                          : b.resources - a.resources
+                    )
+                    .map((programme) => (
+                    <tr key={programme.id}>
+                      <td className="px-5 py-3 font-display font-bold text-ink">{programme.name}</td>
+                      <td className="px-5 py-3 text-right tabular-nums">
+                        {programme.resources > 0 ? (
+                          <span className="text-ink">{programme.resources}</span>
+                        ) : (
+                          <span className="text-ink-soft/60" aria-label="none">–</span>
+                        )}
                       </td>
                       <td className="px-5 py-3">
                         {programme.pending > 0 ? (
                           <Link
                             href="/admin/submissions"
-                            className="rounded-full bg-gold-tint px-2.5 py-1 text-xs font-bold text-gold-ink hover:bg-gold/40"
+                            className="inline-flex items-center gap-1.5 whitespace-nowrap font-bold text-gold-ink hover:underline"
                           >
-                            {programme.pending} pending
+                            {clockIcon}
+                            {programme.pending} waiting
                           </Link>
                         ) : (
-                          <span className="text-ink-soft">0</span>
+                          <span className="text-ink-soft/60" aria-label="none">–</span>
                         )}
                       </td>
                       <td className="px-5 py-3">
-                        {/* 4 Nov: Assign is shown for every programme — a programme
-                            can have several admins. Names are listed one per line;
-                            grey "Not assigned" when there are none. The button is
-                            quiet (outlined) so ten of them in a column aren't loud. */}
-                        <div className="flex items-center gap-3">
-                          {programme.admins.length > 0 ? (
-                            <ul className="min-w-0 space-y-0.5">
-                              {programme.admins.map((name, index) => (
-                                <li key={`${name}-${index}`} className="text-ink">
-                                  {name || "Unnamed admin"}
-                                </li>
-                              ))}
-                            </ul>
-                          ) : (
-                            <span className="text-ink-soft">Not assigned</span>
-                          )}
-                          <Link
-                            href="/admin/users"
-                            aria-label={`Assign a programme admin for ${programme.name}`}
-                            className="ml-auto shrink-0 rounded-lg border-[1.5px] border-sky-line bg-white px-3 py-1 text-xs font-bold text-navy outline-none transition hover:bg-sky-wash focus-visible:ring-2 focus-visible:ring-navy/40"
-                          >
-                            Assign
-                          </Link>
-                        </div>
+                        {programme.admins.length > 0 ? (
+                          <ul className="space-y-0.5">
+                            {programme.admins.map((name, index) => (
+                              <li key={`${name}-${index}`} className="flex items-center gap-1.5 font-bold text-navy-soft">
+                                <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                  <path d="M8 19a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" />
+                                  <path d="M11 12l9-9M17 6l3 3" />
+                                </svg>
+                                {name || "Unnamed admin"}
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 whitespace-nowrap font-bold text-gold-ink">
+                            {clockIcon}
+                            No admin yet
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-5 py-3 text-right">
+                        {/* A programme can have several admins (4 Nov) */}
+                        <Link
+                          href="/admin/users"
+                          aria-label={`Assign a programme admin for ${programme.name}`}
+                          className="whitespace-nowrap rounded font-bold text-navy underline underline-offset-[3px] outline-none hover:text-navy-soft focus-visible:ring-2 focus-visible:ring-navy/40"
+                        >
+                          {programme.admins.length > 0 ? "Add another" : "Assign"}
+                        </Link>
                       </td>
                     </tr>
                   ))}

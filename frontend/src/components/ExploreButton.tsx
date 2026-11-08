@@ -31,10 +31,12 @@ export default function ExploreButton() {
   }, []);
 
   // Part 12: navy button from the theme (was black).
+  // Part 21: white with navy text, because it now sits on the campus photo.
+  // (bg-logo-tile / text-bar stay light / dark in dark mode too.)
   return (
     <Link
       href={href}
-      className="mt-10 rounded-xl bg-navy px-10 py-3.5 font-display text-base font-bold tracking-wide text-white shadow-md outline-none transition hover:bg-navy-soft focus-visible:ring-4 focus-visible:ring-sky-tint"
+      className="mt-8 rounded-md bg-logo-tile px-9 py-3.5 font-display text-base font-bold tracking-wide text-bar outline-none transition hover:bg-white focus-visible:ring-4 focus-visible:ring-gold"
     >
       Explore
     </Link>

@@ -6,6 +6,8 @@
 // Part 19: each row also shows the author credit ("By …" / "By a student")
 // and, for question papers and assignments, the Solved / Unsolved tag —
 // the same wording and colours as the browse cards (lib/author.ts).
+// Part 21: status as an icon + word (gold clock / green tick / red cross)
+// instead of coloured pills, underlined filter tabs, crisp rows.
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -14,7 +16,9 @@ import { supabase } from "@/lib/supabase";
 import { usePreview } from "@/components/PreviewProvider";
 import { rejectionReasonLabel } from "@/lib/rejectionReasons";
 import { resourceTypeLabel } from "@/lib/resourceTypes";
-import { authorCredit, isSolvableType, solvedTag } from "@/lib/author";
+import { authorCredit, isSolvableType } from "@/lib/author";
+import StatusMark from "@/components/StatusMark";
+import EmptyState from "@/components/EmptyState";
 
 // One row from resource_submissions, plus the programme name joined in.
 type Submission = {
@@ -34,11 +38,11 @@ type Submission = {
 
 type StatusFilter = "all" | "pending" | "approved" | "rejected";
 
-// Colours and wording for each status, kept in one place.
+// Wording of each status (the filter tabs; StatusMark draws the row mark).
 const STATUS_STYLES = {
-  pending: { label: "Pending review", className: "bg-gold-tint text-gold-ink" },
-  approved: { label: "Approved", className: "bg-green-100 text-green-800" },
-  rejected: { label: "Rejected", className: "bg-red-100 text-red-700" },
+  pending: { label: "Waiting" },
+  approved: { label: "Approved" },
+  rejected: { label: "Rejected" },
 };
 
 // "2026-10-07T16:20:00Z" -> "7 Oct 2026"
@@ -202,8 +206,12 @@ export default function MySubmissionsPage() {
 
       </div>
 
-      {/* Status filter buttons */}
-      <div className="mb-6 flex flex-wrap gap-2">
+      {/* Status filter tabs (Part 21: underlined tabs with counts) */}
+      <div
+        role="group"
+        aria-label="Status"
+        className="mb-6 flex flex-wrap gap-x-6 border-b-[1.5px] border-sky-line"
+      >
         {(["all", "pending", "approved", "rejected"] as StatusFilter[]).map(
           (option) => (
             <button
@@ -211,16 +219,14 @@ export default function MySubmissionsPage() {
               type="button"
               onClick={() => setFilter(option)}
               aria-pressed={filter === option}
-              className={
+              className={`-mb-[1.5px] border-b-[3px] px-0.5 py-2.5 text-[15px] font-bold outline-none transition focus-visible:ring-2 focus-visible:ring-navy/40 ${
                 filter === option
-                  ? "rounded-full bg-navy px-4 py-2 text-sm font-semibold text-white shadow-sm"
-                  : "rounded-full border border-line bg-white px-4 py-2 text-sm font-medium text-ink-soft transition hover:border-sky-line hover:bg-sky-wash"
-              }
+                  ? "border-gold text-navy"
+                  : "border-transparent text-ink-soft hover:text-navy"
+              }`}
             >
-              {option === "all"
-                ? "All"
-                : STATUS_STYLES[option].label.split(" ")[0]}{" "}
-              ({counts[option]})
+              {option === "all" ? "All" : STATUS_STYLES[option].label}{" "}
+              <span className="font-semibold text-ink-soft">{counts[option]}</span>
             </button>
           )
         )}
@@ -233,71 +239,53 @@ export default function MySubmissionsPage() {
       )}
 
       {loading ? (
-        <div className="rounded-2xl border border-line bg-white p-10 text-center text-sm text-ink-soft shadow-sm">
-          Loading your submissions...
-        </div>
+        <EmptyState title="Loading your submissions…" />
       ) : visible.length === 0 ? (
         // Empty state
-        <div className="rounded-2xl border border-line bg-white p-12 text-center shadow-sm">
-          <h3 className="text-lg font-semibold text-ink">
-            {submissions.length === 0
-              ? "You haven't uploaded anything yet"
-              : "Nothing with this status"}
-          </h3>
-          <p className="mt-2 text-sm text-ink-soft">
-            Uploaded notes appear here while they are reviewed.
-          </p>
-          {submissions.length === 0 && (
-            <Link
-              href="/submit-note"
-              className="mt-6 inline-block rounded-lg bg-navy px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-navy-soft focus:outline-none focus:ring-2 focus:ring-navy/30 focus:ring-offset-2"
-            >
-              Upload your first note
-            </Link>
-          )}
-        </div>
+        submissions.length === 0 ? (
+          <EmptyState
+            title="You haven't uploaded anything yet"
+            text="Share notes or past papers from your earlier semesters. An admin checks them before they go live."
+            actionLabel="Upload"
+            actionHref="/submit-note"
+          />
+        ) : (
+          <EmptyState title="Nothing with this status" />
+        )
       ) : (
         // List of submissions
         <div className="space-y-3">
           {visible.map((submission) => {
-            const status = STATUS_STYLES[submission.status];
             // Part 19: credit line and Solved tag, as on the browse cards
             const credit = authorCredit(submission.author_type, submission.author_name);
-            const solved = isSolvableType(submission.type) ? solvedTag(submission.is_solved) : null;
+            const solved = isSolvableType(submission.type)
+              ? submission.is_solved ? "solved" : "unsolved"
+              : null;
 
             return (
               <div
                 key={submission.id}
-                className="flex flex-col gap-4 rounded-2xl border border-line bg-white p-5 shadow-sm transition hover:border-sky-line sm:flex-row sm:items-center sm:justify-between"
+                className="flex flex-col gap-4 rounded-md border-[1.5px] border-card-line bg-white px-5 py-4 transition-colors hover:border-navy sm:flex-row sm:items-start sm:justify-between"
               >
                 <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="font-semibold text-ink">{submission.title}</h3>
-                    <span
-                      className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${status.className}`}
-                    >
-                      {status.label}
-                    </span>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                    <h3 className="font-display font-bold text-ink">{submission.title}</h3>
+                    <StatusMark kind={submission.status} />
                   </div>
 
                   <p className="mt-1 text-sm leading-6 text-ink-soft">
-                    {resourceTypeLabel(submission.type)}
-                    {" · "}
-                    {submission.programmes?.name ?? "Unknown programme"}
-                    {" · "}
-                    Submitted {formatDate(submission.created_at)}
+                    {/* Part 21: plain commas instead of middle dots */}
+                    {resourceTypeLabel(submission.type)} for{" "}
+                    {submission.programmes?.name ?? "an unknown programme"}, submitted{" "}
+                    {formatDate(submission.created_at)}
                     {submission.reviewed_at &&
-                      ` · Reviewed ${formatDate(submission.reviewed_at)}`}
+                      `, reviewed ${formatDate(submission.reviewed_at)}`}
                   </p>
 
                   {(credit || solved) && (
                     <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
                       {credit && <span className="font-medium text-ink">{credit}</span>}
-                      {solved && (
-                        <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${solved.className}`}>
-                          {solved.text}
-                        </span>
-                      )}
+                      {solved && <StatusMark kind={solved} />}
                     </div>
                   )}
 
@@ -313,9 +301,9 @@ export default function MySubmissionsPage() {
 
                 <button
                   onClick={() => openPdf(submission.file_path, submission.title)}
-                  className="shrink-0 rounded-lg border border-sky-line px-4 py-2 text-sm font-semibold text-navy transition hover:bg-sky-wash focus:outline-none focus:ring-2 focus:ring-navy/30"
+                  className="h-11 shrink-0 rounded-md border-[1.5px] border-navy px-5 text-sm font-bold text-navy transition hover:bg-sky-wash focus:outline-none focus:ring-2 focus:ring-navy/30"
                 >
-                  View
+                  Open
                 </button>
               </div>
             );

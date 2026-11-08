@@ -16,7 +16,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, Heart, Pencil, Search, Trash2 } from "lucide-react";
+import { CheckCircle2, Star, Pencil, Search, Trash2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { fetchLikeCounts } from "@/lib/likes";
 import { usePreview } from "@/components/PreviewProvider";
@@ -316,9 +316,9 @@ export default function AllResourcesPage() {
               const resourceMeta = (
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                   {programmeLink}
-                  <p className="flex items-center gap-1.5 text-sm font-semibold text-ink-soft" title="Likes from students">
-                    <Heart className="h-4 w-4 text-gold" aria-hidden="true" />
-                    {likes} {likes === 1 ? "like" : "likes"}
+                  <p className="flex items-center gap-1.5 text-sm font-semibold text-ink-soft" title="Stars from students">
+                    <Star className="h-4 w-4 fill-gold text-gold" aria-hidden="true" />
+                    {likes} {likes === 1 ? "star" : "stars"}
                   </p>
                 </div>
               );

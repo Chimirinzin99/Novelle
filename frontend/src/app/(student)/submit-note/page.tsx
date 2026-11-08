@@ -476,7 +476,7 @@ export default function SubmitNotePage() {
                   </select>
                 ) : (
                   <p className="rounded-xl border border-sky-line bg-sky-wash px-4 py-3 text-sm text-ink-soft">
-                    No modules are set up for Year {year} · Sem {semester} yet. That&apos;s fine: an admin will place it.
+                    No modules are set up for Year {year}, Semester {semester} yet. That&apos;s fine: an admin will place it.
                   </p>
                 )}
               </div>
@@ -510,7 +510,7 @@ export default function SubmitNotePage() {
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-semibold text-ink">{file.name}</p>
-                  <p className="text-sm text-ink-soft">{fileSize(file.size)} · PDF</p>
+                  <p className="text-sm text-ink-soft">PDF, {fileSize(file.size)}</p>
                 </div>
                 <button
                   type="button"
@@ -546,7 +546,7 @@ export default function SubmitNotePage() {
                   <path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" strokeLinecap="round" />
                 </svg>
                 <span className="font-bold text-ink">Drop your PDF here, or click to choose</span>
-                <span className="text-sm text-ink-soft">PDF only · {MAX_UPLOAD_MB} MB maximum</span>
+                <span className="text-sm text-ink-soft">PDF only, up to {MAX_UPLOAD_MB} MB</span>
               </label>
             )}
           </div>

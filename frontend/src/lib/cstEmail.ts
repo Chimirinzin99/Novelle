@@ -28,3 +28,14 @@ export function cleanEmail(email: string): string {
 export function isCstEmail(email: string): boolean {
   return CST_EMAIL_PATTERN.test(cleanEmail(email));
 }
+
+// Part 21: a CST address with a name instead of a student ID belongs to a
+// lecturer/staff member (students always use their ID). Used only for labels
+// and hints — in the database lecturers are students until a super admin
+// makes them programme admins, so no role or migration is involved.
+export const NOVELLE_CONTACT_EMAIL = "novelle.cst@gmail.com";
+
+export function isStaffEmail(email: string | null | undefined): boolean {
+  const clean = cleanEmail(email ?? "");
+  return isCstEmail(clean) && !/^[0-9]+\./.test(clean);
+}

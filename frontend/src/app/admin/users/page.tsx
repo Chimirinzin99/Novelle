@@ -3,6 +3,13 @@
 // Part 12: hard-coded colours (gray/blue/black and old hexes) switched to the
 // theme colours from app/globals.css (navy, ink, line, sky-…, gold-…).
 // Nothing else on this page changed.
+// Part 21 (option B): users grouped by programme (super admins first), each
+// group heading counts admins / lecturers / students and warns when a
+// programme has no programme admin yet; roles shown as an icon + word, not
+// pills. "Lecturer" is worked out from the email (a name, not a student ID —
+// lib/cstEmail.ts); in the database they are students until made an admin.
+// How the page works (Change role window, Deactivate confirm, nothing on
+// your own row) is unchanged.
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -14,8 +21,8 @@ import {
   ROLE_OPTIONS,
   isAdminRole,
   isSuperAdminRole,
-  roleLabel,
 } from "@/lib/roles";
+import { isStaffEmail } from "@/lib/cstEmail";
 
 // One row from GET /api/users (backend/src/controllers/users.controller.ts).
 type User = {
@@ -34,12 +41,69 @@ type Programme = {
   name: string;
 };
 
-// Badge colour per role (lib/roles.ts has the codes).
-const ROLE_BADGE: Record<string, string> = {
-  [ROLES.student]: "bg-sky-wash text-ink-nav",
-  [ROLES.programmeAdmin]: "bg-sky-tint text-navy-soft",
-  [ROLES.superAdmin]: "bg-gold-tint text-gold-ink",
+// Part 21: role shown as an icon + word. "lecturer" is not a real role: it
+// is a student account with a name-style CST email (see isStaffEmail).
+type RoleMarkKind = "super_admin" | "programme_admin" | "lecturer" | "student";
+
+const ROLE_MARKS: Record<RoleMarkKind, { label: string; className: string; paths: string[] }> = {
+  super_admin: {
+    label: "Super admin",
+    className: "text-gold-ink",
+    paths: ["M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"],
+  },
+  programme_admin: {
+    label: "Programme admin",
+    className: "text-navy-soft",
+    paths: ["M8 19a4 4 0 1 0 0-8 4 4 0 0 0 0 8z", "M11 12l9-9M17 6l3 3"],
+  },
+  lecturer: {
+    label: "Lecturer",
+    className: "text-green-700",
+    paths: ["M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z", "M4 21V5"],
+  },
+  student: {
+    label: "Student",
+    className: "text-ink-soft",
+    paths: ["M2 9l10-5 10 5-10 5z", "M6 11v5c3 2 9 2 12 0v-5"],
+  },
 };
+
+function roleMarkKind(user: { role: string; email: string }): RoleMarkKind {
+  if (isSuperAdminRole(user.role)) return "super_admin";
+  if (user.role === ROLES.programmeAdmin) return "programme_admin";
+  return isStaffEmail(user.email) ? "lecturer" : "student";
+}
+
+function RoleMark({ kind }: { kind: RoleMarkKind }) {
+  const mark = ROLE_MARKS[kind];
+  return (
+    <span className={`inline-flex items-center gap-1.5 whitespace-nowrap text-sm font-bold ${mark.className}`}>
+      <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        {mark.paths.map((d) => (
+          <path key={d} d={d} />
+        ))}
+      </svg>
+      {mark.label}
+    </span>
+  );
+}
+
+// "1 admin · 2 lecturers · 30 students" (parts that are 0 are left out,
+// except admins, which always show so "0 admins" is visible).
+function groupSummary(users: { role: string; email: string }[]) {
+  const count = (kind: RoleMarkKind) => users.filter((u) => roleMarkKind(u) === kind).length;
+  const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+  const admins = count("programme_admin");
+  const lecturers = count("lecturer");
+  const students = count("student");
+  return [
+    plural(admins, "admin"),
+    lecturers ? plural(lecturers, "lecturer") : null,
+    students ? plural(students, "student") : null,
+  ]
+    .filter(Boolean)
+    .join(", ");
+}
 
 export default function UsersPage() {
   const router = useRouter();
@@ -341,194 +405,255 @@ export default function UsersPage() {
     setStatusFilter("");
   };
 
+  // Part 21: one group per programme, super admins first; programmes with
+  // no users (after filtering) are left out.
+  const superAdmins = visibleUsers.filter((u) => isSuperAdminRole(u.role));
+  const programmeGroups = programmes
+    .map((programme) => ({
+      programme,
+      users: visibleUsers.filter(
+        (u) => !isSuperAdminRole(u.role) && u.programme_id === programme.id
+      ),
+    }))
+    .filter((group) => group.users.length > 0);
+  const noProgramme = visibleUsers.filter(
+    (u) => !isSuperAdminRole(u.role) && !programmes.some((p) => p.id === u.programme_id)
+  );
+
+  // Summary line over all users (not only the filtered ones).
+  const totals = {
+    superAdmins: users.filter((u) => roleMarkKind(u) === "super_admin").length,
+    admins: users.filter((u) => roleMarkKind(u) === "programme_admin").length,
+    lecturers: users.filter((u) => roleMarkKind(u) === "lecturer").length,
+    students: users.filter((u) => roleMarkKind(u) === "student").length,
+    deactivated: users.filter((u) => !u.is_active).length,
+  };
+
   const selectClass =
-    "rounded-lg border border-sky-line bg-white px-3 py-2 text-sm outline-none focus:border-navy-soft";
+    "h-11 rounded-md border-[1.5px] border-sky-line bg-white px-3 text-[15px] outline-none focus:border-navy";
+
+  // One user row: name + email, role, actions (never on your own account —
+  // the backend blocks it too).
+  const renderRow = (user: User) => {
+    const isMe = user.id === myId;
+    return (
+      <li
+        key={user.id}
+        className="flex flex-col gap-3 border-t border-line px-5 py-3.5 md:flex-row md:items-center md:gap-5"
+      >
+        <div className={`min-w-0 flex-1 ${user.is_active ? "" : "opacity-60"}`}>
+          <p className="flex flex-wrap items-center gap-x-2.5 font-display font-bold text-ink">
+            {user.full_name}
+            {isMe && <span className="font-sans font-normal text-ink-soft">(you)</span>}
+            {!user.is_active && (
+              <span className="inline-flex items-center gap-1 font-sans text-[13px] font-bold text-red-700">
+                <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" aria-hidden="true">
+                  <path d="M6.5 6.5l11 11M17.5 6.5l-11 11" />
+                </svg>
+                Deactivated
+              </span>
+            )}
+          </p>
+          <p className="truncate text-sm text-ink-soft">{user.email}</p>
+        </div>
+
+        <div className={`md:w-44 ${user.is_active ? "" : "opacity-60"}`}>
+          <RoleMark kind={roleMarkKind(user)} />
+        </div>
+
+        <div className="flex items-center gap-4 md:w-64 md:justify-end">
+          {isMe ? (
+            <span className="text-sm text-ink-soft">This is you</span>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => openChangeRole(user)}
+                className="h-10 rounded-md border-[1.5px] border-navy bg-white px-4 text-sm font-bold text-navy transition hover:bg-sky-wash"
+              >
+                Change role
+              </button>
+              {user.is_active ? (
+                <button
+                  type="button"
+                  onClick={() => handleSetActive(user, false)}
+                  className="text-sm font-bold text-red-700 underline underline-offset-[3px]"
+                >
+                  Deactivate
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => handleSetActive(user, true)}
+                  className="text-sm font-bold text-green-700 underline underline-offset-[3px]"
+                >
+                  Reactivate
+                </button>
+              )}
+            </>
+          )}
+        </div>
+      </li>
+    );
+  };
+
+  // One box per group, with a heading row.
+  const renderGroup = (key: string, title: string, sub: string, rows: User[], warn?: string) => (
+    <section key={key} className="overflow-hidden rounded-md border-[1.5px] border-card-line bg-white">
+      <div className="flex flex-wrap items-center gap-3 border-b border-sky-line bg-sky-wash px-5 py-3">
+        <h2 className="flex-1 font-display text-[17px] font-bold text-navy">
+          {title} <span className="font-sans text-sm font-semibold text-ink-soft">{sub}</span>
+        </h2>
+        {warn && (
+          <span className="inline-flex items-center gap-1.5 text-sm font-bold text-gold-ink">
+            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="8.5" />
+              <path d="M12 7.5V12l3 2" />
+            </svg>
+            {warn}
+          </span>
+        )}
+      </div>
+      <ul className="-mt-px">{rows.map(renderRow)}</ul>
+    </section>
+  );
 
   return (
-    // text-gray-900: otherwise text takes the near-white dark-mode colour
-    // from globals.css (same fix as the Modules page).
     <main className="min-h-screen bg-cream px-4 py-8 text-ink sm:px-8">
-      <div className="mx-auto max-w-6xl">
+      <div className="mx-auto flex max-w-6xl flex-col gap-5">
         {/* Header */}
-        <div className="mb-8">
-
-          <p className="text-sm font-medium text-navy-soft">User Management</p>
-
-          <h1 className="mt-1 text-3xl font-bold text-ink">Users</h1>
-
+        <div>
+          <h1 className="text-3xl font-extrabold text-navy">Users</h1>
           <p className="mt-2 text-ink-soft">
-            Assign programme admins, change user roles and deactivate
-            accounts. Everyone signs up as a student.
+            Everyone signs up as a student. Make someone a programme admin here,
+            or deactivate an account (accounts are never deleted).
           </p>
         </div>
 
+        <p className="text-base text-ink">
+          <strong>
+            {users.length} {users.length === 1 ? "user" : "users"}:
+          </strong>
+          {` ${totals.superAdmins} super admin${totals.superAdmins === 1 ? "" : "s"}`}
+          {`, ${totals.admins} programme admin${totals.admins === 1 ? "" : "s"}`}
+          {totals.lecturers > 0 && `, ${totals.lecturers} lecturer${totals.lecturers === 1 ? "" : "s"}`}
+          {`, ${totals.students} student${totals.students === 1 ? "" : "s"}`}
+          {totals.deactivated > 0 && (
+            <span className="font-bold text-red-700">, {totals.deactivated} deactivated</span>
+          )}
+        </p>
+
         {/* Error */}
         {error && !editingUser && (
-          <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             {error}
           </div>
         )}
 
         {/* Success */}
         {success && (
-          <div className="mb-6 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+          <div className="rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
             {success}
           </div>
         )}
 
-        {/* User list */}
-        <div className="rounded-xl border border-line bg-white shadow-sm">
-          <div className="border-b border-line px-6 py-5">
-            <h2 className="text-lg font-semibold text-ink">User List</h2>
+        {/* Filters */}
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="sr-only" htmlFor="user-search">Search name or email</label>
+          <input
+            id="user-search"
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search name or email"
+            className="h-11 w-full rounded-md border-[1.5px] border-sky-line bg-white px-3 text-[15px] outline-none focus:border-navy sm:w-72"
+          />
 
-            <p className="mt-1 text-sm text-ink-soft">
-              {visibleUsers.length} of {users.length} user
-              {users.length !== 1 ? "s" : ""}
-            </p>
+          <select
+            aria-label="Role"
+            value={roleFilter}
+            onChange={(e) => setRoleFilter(e.target.value)}
+            className={selectClass}
+          >
+            <option value="">All roles</option>
+            {ROLE_OPTIONS.map((r) => (
+              <option key={r.code} value={r.code}>
+                {r.label}
+              </option>
+            ))}
+          </select>
 
-            {/* Filters */}
-            <div className="mt-4 flex flex-wrap gap-3">
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search name or email"
-                className="w-full rounded-lg border border-sky-line px-3 py-2 text-sm outline-none focus:border-navy-soft sm:w-64"
-              />
+          <select
+            aria-label="Programme"
+            value={programmeFilter}
+            onChange={(e) => setProgrammeFilter(e.target.value)}
+            className={selectClass}
+          >
+            <option value="">All programmes</option>
+            {programmes.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
 
-              <select
-                value={roleFilter}
-                onChange={(e) => setRoleFilter(e.target.value)}
-                className={selectClass}
-              >
-                <option value="">All roles</option>
-                {ROLE_OPTIONS.map((r) => (
-                  <option key={r.code} value={r.code}>
-                    {r.label}
-                  </option>
-                ))}
-              </select>
+          <select
+            aria-label="Status"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className={selectClass}
+          >
+            <option value="">Any status</option>
+            <option value="active">Active</option>
+            <option value="deactivated">Deactivated</option>
+          </select>
 
-              <select
-                value={programmeFilter}
-                onChange={(e) => setProgrammeFilter(e.target.value)}
-                className={selectClass}
-              >
-                <option value="">All programmes</option>
-                {programmes.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className={selectClass}
-              >
-                <option value="">Any status</option>
-                <option value="active">Active</option>
-                <option value="deactivated">Deactivated</option>
-              </select>
-
-              {hasFilters && (
-                <button
-                  onClick={clearFilters}
-                  className="text-sm text-navy-soft hover:underline"
-                >
-                  Clear filters
-                </button>
-              )}
-            </div>
-          </div>
-
-          {visibleUsers.length === 0 ? (
-            <div className="px-6 py-12 text-center">
-              <p className="text-ink-soft">No users match these filters.</p>
-            </div>
-          ) : (
-            <div className="divide-y divide-line">
-              {visibleUsers.map((user) => {
-                const isMe = user.id === myId;
-
-                return (
-                  <div
-                    key={user.id}
-                    className="flex flex-col gap-4 px-6 py-5 md:flex-row md:items-center md:justify-between"
-                  >
-                    {/* User information */}
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="font-semibold text-ink">
-                          {user.full_name}
-                          {isMe && (
-                            <span className="ml-1 font-normal text-ink-soft">
-                              (you)
-                            </span>
-                          )}
-                        </h3>
-
-                        <span
-                          className={`rounded-full px-2.5 py-1 text-xs font-medium ${
-                            ROLE_BADGE[user.role] ?? "bg-sky-wash text-ink-nav"
-                          }`}
-                        >
-                          {roleLabel(user.role)}
-                        </span>
-
-                        {!user.is_active && (
-                          <span className="rounded-full bg-red-100 px-2.5 py-1 text-xs font-medium text-red-700">
-                            Deactivated
-                          </span>
-                        )}
-                      </div>
-
-                      <p className="mt-1 truncate text-sm text-ink-soft">
-                        {user.email}
-                      </p>
-
-                      <p className="mt-1 text-xs text-ink-soft">
-                        {user.programme?.name ??
-                          (isSuperAdminRole(user.role)
-                            ? "All programmes"
-                            : "No programme")}
-                      </p>
-                    </div>
-
-                    {/* Actions: never on your own account (backend blocks it too) */}
-                    {!isMe && (
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => openChangeRole(user)}
-                          className="rounded-lg border border-sky-line px-4 py-2 text-sm font-medium text-ink-nav hover:bg-cream"
-                        >
-                          Change role
-                        </button>
-
-                        {user.is_active ? (
-                          <button
-                            onClick={() => handleSetActive(user, false)}
-                            className="rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
-                          >
-                            Deactivate
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => handleSetActive(user, true)}
-                            className="rounded-lg border border-green-200 px-4 py-2 text-sm font-medium text-green-600 hover:bg-green-50"
-                          >
-                            Reactivate
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+          {hasFilters && (
+            <button
+              type="button"
+              onClick={clearFilters}
+              className="text-sm font-bold text-navy underline underline-offset-[3px]"
+            >
+              Clear filters
+            </button>
           )}
         </div>
+
+        {visibleUsers.length === 0 ? (
+          <div className="rounded-md border-[1.5px] border-dashed border-sky-line bg-white px-6 py-10 text-ink-soft">
+            No users match these filters.
+          </div>
+        ) : (
+          <>
+            {superAdmins.length > 0 &&
+              renderGroup(
+                "super",
+                "Super admins",
+                `${superAdmins.length}, all programmes`,
+                superAdmins
+              )}
+            {programmeGroups.map(({ programme, users: rows }) =>
+              renderGroup(
+                String(programme.id),
+                programme.name,
+                groupSummary(rows),
+                rows,
+                // warn only when the whole programme (not just this filter) has no admin
+                users.some(
+                  (u) => u.role === ROLES.programmeAdmin && u.programme_id === programme.id
+                )
+                  ? undefined
+                  : "No programme admin yet"
+              )
+            )}
+            {noProgramme.length > 0 &&
+              renderGroup("none", "No programme", groupSummary(noProgramme), noProgramme)}
+            <p className="text-sm text-ink-soft">
+              Programmes with no users are hidden. &ldquo;Lecturer&rdquo; means a CST email with a
+              name instead of a student ID; make them a programme admin with Change role.
+            </p>
+          </>
+        )}
       </div>
 
       {/* Change role window */}
@@ -543,7 +668,7 @@ export default function UsersPage() {
             </h2>
 
             <p className="mt-1 text-sm text-ink-soft">
-              {editingUser.full_name} · {editingUser.email}
+              {editingUser.full_name} ({editingUser.email})
             </p>
 
             {error && (

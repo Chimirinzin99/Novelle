@@ -24,6 +24,7 @@ import WelcomeHeader from "@/components/WelcomeHeader";
 import PdfCard from "@/components/PdfCard";
 import VideoCard from "@/components/VideoCard";
 import CardSkeleton from "@/components/CardSkeleton";
+import EmptyState from "@/components/EmptyState";
 import { programmeHref } from "@/lib/programmes";
 
 type PdfResource = {
@@ -64,6 +65,9 @@ export default function Home() {
   const [questionPapers, setQuestionPapers] = useState<PdfResource[]>([]);
   const [assignments, setAssignments] = useState<PdfResource[]>([]);
   const [videos, setVideos] = useState<Video[]>([]);
+  // Part 21: how many of each type the programme has in total, for the
+  // "All 24 notes" links (counted by the same queries, no extra request).
+  const [totals, setTotals] = useState<Record<string, number>>({});
   const [favourites, setFavourites] = useState<number[]>([]);
   const [likeCounts, setLikeCounts] = useState<Record<number, number>>({});
   const [loading, setLoading] = useState(true);
@@ -114,7 +118,8 @@ export default function Home() {
       supabase
         .from("resources")
         .select(
-          "id, title, topic, type, module_name, year, semester, file_path, author_type, author_name, is_solved"
+          "id, title, topic, type, module_name, year, semester, file_path, author_type, author_name, is_solved",
+          { count: "exact" }
         )
         .eq("programme_id", profile.programme_id)
         .eq("type", type)
@@ -129,7 +134,7 @@ export default function Home() {
         newestOfType("assignment"),
         supabase
           .from("resources")
-          .select("id, title, topic, module_name, year, semester, video_id")
+          .select("id, title, topic, module_name, year, semester, video_id", { count: "exact" })
           .eq("programme_id", profile.programme_id)
           .eq("type", "video")
           .order("created_at", { ascending: false })
@@ -150,6 +155,12 @@ export default function Home() {
     const loadedAssignments: PdfResource[] = assignmentsResult.data || [];
 
     setNotes(loadedNotes);
+    setTotals({
+      notes: notesResult.count ?? loadedNotes.length,
+      "question papers": papersResult.count ?? loadedPapers.length,
+      assignments: assignmentsResult.count ?? loadedAssignments.length,
+      videos: videosResult.count ?? (videosResult.data || []).length,
+    });
     setQuestionPapers(loadedPapers);
     setAssignments(loadedAssignments);
 
@@ -187,7 +198,7 @@ export default function Home() {
     if (!(await downloadFile(filePath))) alert("Unable to download this file.");
   }
 
-  // Like / unlike. The heart and count change straight away ("optimistic"),
+  // Like / unlike. The star (Part 21; was a heart) and count change straight away ("optimistic"),
   // then lib/likes.ts saves it; if saving fails, both are put back.
   async function handleFavourite(resourceId: number) {
     const like = !favourites.includes(resourceId);
@@ -212,27 +223,37 @@ export default function Home() {
   }
 
   // Section heading + "View all →" link (same for every section).
+  // "All 24 notes" (or "All notes" until the count is known).
+  const allLabel = (label: string) =>
+    !totals[label]
+      ? `All ${label}` // not known yet, or none
+      : totals[label] === 1
+        ? `Only 1 ${label.replace(/s$/, "")}`
+        : `All ${totals[label]} ${label}`;
+
   function sectionHeader(title: string, description: string, viewAllPath: string, viewAllLabel: string) {
     return (
       <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-[19px] font-bold text-navy">{title}</h2>
+          <h2 className="font-display text-[22px] font-bold text-ink">{title}</h2>
           <p className="mt-1 text-sm text-ink-soft">{description}</p>
         </div>
 
         {/* Part 20: until the programme name loads, an invisible stand-in of
             the same size keeps the button's space, so the cards below don't
             jump when it appears (it used to pop in later). */}
+        {/* Part 21: "All 24 notes" with a gold underline, instead of the
+            template-style "View all notes →". */}
         {programmeName ? (
           <Link
             href={`${programmeHref(programmeName)}/${viewAllPath}`}
-            className="w-fit rounded-xl border border-line bg-white px-3.5 py-2 text-sm font-bold text-navy-soft shadow-sm outline-none transition hover:bg-sky-wash hover:text-navy focus-visible:ring-2 focus-visible:ring-navy/40"
+            className="w-fit py-2 text-[15px] font-bold text-navy underline decoration-gold decoration-2 underline-offset-[5px] outline-none transition hover:text-navy-soft focus-visible:ring-2 focus-visible:ring-navy/40"
           >
-            View all {viewAllLabel} →
+            {allLabel(viewAllLabel)}
           </Link>
         ) : (
-          <span aria-hidden="true" className="invisible w-fit rounded-xl border px-3.5 py-2 text-sm font-bold">
-            View all {viewAllLabel} →
+          <span aria-hidden="true" className="invisible w-fit py-2 text-[15px] font-bold">
+            {allLabel(viewAllLabel)}
           </span>
         )}
       </div>
@@ -262,10 +283,13 @@ export default function Home() {
         {loading ? (
           <CardSkeleton count={HOME_SECTION_LIMIT} label={`Loading ${section.viewAllLabel}…`} />
         ) : items.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-sky-line bg-white px-6 py-10 text-center">
-            <p className="font-semibold text-ink">{section.emptyTitle}</p>
-            <p className="mt-1 text-sm text-ink-soft">{section.emptyText}</p>
-          </div>
+          // Part 21: says what to do next (upload) instead of only "none yet"
+          <EmptyState
+            title={section.emptyTitle}
+            text={section.emptyText}
+            actionLabel="Upload"
+            actionHref="/submit-note"
+          />
         ) : (
           <div className={grid}>
             {items.map((resource) => (
@@ -303,8 +327,8 @@ export default function Home() {
           items: notes,
           viewAllPath: "notes",
           viewAllLabel: "notes",
-          emptyTitle: "No notes available yet.",
-          emptyText: "Approved notes for your programme will appear here.",
+          emptyTitle: "No notes yet",
+          emptyText: "Have notes from an earlier semester? Upload them and help the next batch.",
         })}
 
         {renderPdfSection({
@@ -313,8 +337,8 @@ export default function Home() {
           items: questionPapers,
           viewAllPath: "question-papers",
           viewAllLabel: "question papers",
-          emptyTitle: "No question papers available yet.",
-          emptyText: "Approved question papers for your programme will appear here.",
+          emptyTitle: "No question papers yet",
+          emptyText: "Sat an exam? Upload the paper and help the next batch.",
         })}
 
         {renderPdfSection({
@@ -323,8 +347,8 @@ export default function Home() {
           items: assignments,
           viewAllPath: "assignments",
           viewAllLabel: "assignments",
-          emptyTitle: "No assignments available yet.",
-          emptyText: "Approved assignments for your programme will appear here.",
+          emptyTitle: "No assignments yet",
+          emptyText: "Have an old assignment brief? Upload it and help the next batch.",
         })}
 
         {/* Videos: the whole section is hidden when there are none */}

@@ -37,6 +37,25 @@ type Programme = {
   name: string;
 };
 
+// Part 21: modules grouped under "Year 1, Semester 1" headings, in order.
+function moduleGroups<T extends { year: number; semester: number }>(modules: T[]) {
+  const groups = new Map<string, { key: string; title: string; year: number; semester: number; modules: T[] }>();
+  for (const module of modules) {
+    const key = `${module.year}-${module.semester}`;
+    if (!groups.has(key)) {
+      groups.set(key, {
+        key,
+        title: `Year ${module.year}, Semester ${module.semester}`,
+        year: module.year,
+        semester: module.semester,
+        modules: [],
+      });
+    }
+    groups.get(key)!.modules.push(module);
+  }
+  return [...groups.values()].sort((a, b) => a.year - b.year || a.semester - b.semester);
+}
+
 export default function ModulesPage() {
   const router = useRouter();
 
@@ -736,8 +755,9 @@ export default function ModulesPage() {
         </div>
         )}
 
-        {/* Module List */}
-        <div className="rounded-xl border border-line bg-white shadow-sm">
+        {/* Module List (Part 21: crisp box, modules grouped by year and
+            semester, code in a small tag, only inactive modules marked) */}
+        <div className="overflow-hidden rounded-md border-[1.5px] border-card-line bg-white">
           <div className="border-b border-line px-6 py-5">
             <h2 className="text-lg font-semibold text-ink">
               Module List
@@ -774,84 +794,78 @@ export default function ModulesPage() {
               </p>
             </div>
           ) : (
-            <div className="divide-y divide-line">
-              {visibleModules.map((module) => (
-                <div
-                  key={module.id}
-                  className="flex flex-col gap-4 px-6 py-5 md:flex-row md:items-center md:justify-between"
-                >
-                  {/* Module Information */}
-                  <div>
-                    <div className="flex items-center gap-3">
-                      <h3 className="font-semibold text-ink">
-                        {module.module_code}
-                      </h3>
-
-                      <span
-                        className={`rounded-full px-2.5 py-1 text-xs font-medium ${
-                          module.active
-                            ? "bg-green-100 text-green-700"
-                            : "bg-sky-wash text-ink-soft"
-                        }`}
+            <div>
+              {moduleGroups(visibleModules).map((group) => (
+                <section key={group.key} aria-label={group.title}>
+                  <h3 className="border-t border-sky-line bg-sky-wash px-6 py-2.5 font-display font-bold text-navy">
+                    {group.title}{" "}
+                    <span className="font-sans text-sm font-semibold text-ink-soft">
+                      {group.modules.length} {group.modules.length === 1 ? "module" : "modules"}
+                    </span>
+                  </h3>
+                  <ul>
+                    {group.modules.map((module) => (
+                      <li
+                        key={module.id}
+                        className="flex flex-col gap-3 border-t border-line px-6 py-3.5 md:flex-row md:items-center md:gap-4"
                       >
-                        {module.active
-                          ? "Active"
-                          : "Inactive"}
-                      </span>
-                    </div>
+                        <div className={`flex min-w-0 flex-1 items-center gap-4 ${module.active ? "" : "opacity-60"}`}>
+                          {/* Module code in a small tag, like the card tabs */}
+                          <span className="w-24 shrink-0 rounded bg-sky-tint py-1 text-center font-display text-[13px] font-extrabold tracking-wide text-navy-soft">
+                            {module.module_code}
+                          </span>
+                          <div className="min-w-0">
+                            <p className="flex flex-wrap items-center gap-x-2 font-bold text-ink">
+                              {module.module_name}
+                              {!module.active && (
+                                <span className="inline-flex items-center gap-1 text-[13px] font-bold text-ink-soft">
+                                  <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2.6} aria-hidden="true">
+                                    <circle cx="12" cy="12" r="8.5" />
+                                  </svg>
+                                  Inactive
+                                </span>
+                              )}
+                            </p>
+                            {/* The super admin sees modules of every programme */}
+                            {canManage && (
+                              <p className="text-sm text-ink-soft">{programmeNameById(module.programme_id)}</p>
+                            )}
+                          </div>
+                        </div>
 
-                    <p className="mt-1 text-sm text-ink-soft">
-                      {module.module_name}
-                    </p>
-
-                    <p className="mt-1 text-xs text-ink-soft">
-                      Year {module.year} ·
-                      Semester{" "}
-                      {module.semester}
-                      {/* The super admin sees modules of every programme */}
-                      {canManage &&
-                        ` · ${programmeNameById(module.programme_id)}`}
-                    </p>
-                  </div>
-
-                  {/* Actions (super admin only) */}
-                  {canManage && (
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() =>
-                        handleEdit(module)
-                      }
-                      className="rounded-lg border border-sky-line px-4 py-2 text-sm font-medium text-ink-nav hover:bg-cream"
-                    >
-                      Edit
-                    </button>
-
-                    {module.active ? (
-                      <button
-                        onClick={() =>
-                          handleDeactivate(
-                            module
-                          )
-                        }
-                        className="rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
-                      >
-                        Deactivate
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() =>
-                          handleReactivate(
-                            module
-                          )
-                        }
-                        className="rounded-lg border border-green-200 px-4 py-2 text-sm font-medium text-green-600 hover:bg-green-50"
-                      >
-                        Reactivate
-                      </button>
-                    )}
-                  </div>
-                  )}
-                </div>
+                        {/* Actions (super admin only) */}
+                        {canManage && (
+                          <div className="flex items-center gap-4">
+                            <button
+                              type="button"
+                              onClick={() => handleEdit(module)}
+                              className="h-10 rounded-md border-[1.5px] border-navy bg-white px-4 text-sm font-bold text-navy transition hover:bg-sky-wash"
+                            >
+                              Edit
+                            </button>
+                            {module.active ? (
+                              <button
+                                type="button"
+                                onClick={() => handleDeactivate(module)}
+                                className="text-sm font-bold text-red-700 underline underline-offset-[3px]"
+                              >
+                                Deactivate
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleReactivate(module)}
+                                className="text-sm font-bold text-green-700 underline underline-offset-[3px]"
+                              >
+                                Reactivate
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </section>
               ))}
             </div>
           )}

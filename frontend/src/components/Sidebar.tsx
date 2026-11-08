@@ -28,6 +28,8 @@ import {
 
 // Part 13c: status word + colour per notification kind
 // (gold = pending, green = success, red = rejected — the app's colour rules).
+// Part 21: white sidebar with a firmer border (option B, 8 Nov — was cream),
+// and a gold star next to Upload.
 const KIND_LABEL: Record<NotificationKind, { text: string; className: string }> = {
   pending: { text: "Pending", className: "text-gold-ink" },
   approved: { text: "Approved", className: "text-green-700" },
@@ -444,7 +446,7 @@ export default function Sidebar() {
   return (
     <>
       {/* Phones/tablets (below lg): top bar with ☰, logo and bell */}
-      <header className="z-30 flex h-16 shrink-0 items-center justify-between gap-3 border-b border-line bg-cream px-3 lg:hidden">
+      <header className="z-30 flex h-16 shrink-0 items-center justify-between gap-3 border-b-[1.5px] border-card-line bg-white px-3 lg:hidden">
         <div className="flex min-w-0 items-center gap-2">
           <button
             type="button"
@@ -481,7 +483,7 @@ export default function Sidebar() {
           if ((event.target as HTMLElement).closest("a")) setMenuOpen(false);
         }}
         className={[
-          "fixed inset-y-0 left-0 z-50 flex h-screen w-72 max-w-[85vw] shrink-0 flex-col border-r border-line bg-cream px-4 py-6",
+          "fixed inset-y-0 left-0 z-50 flex h-screen w-72 max-w-[85vw] shrink-0 flex-col border-r-[1.5px] border-card-line bg-white px-4 py-6",
           "transition-transform duration-200 lg:z-40 lg:translate-x-0",
           menuOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full max-lg:invisible",
         ].join(" ")}
@@ -530,9 +532,10 @@ export default function Sidebar() {
               pathname === "/submit-note" ? "bg-gold-tint" : "",
             ].join(" ")}
           >
-            <span className="text-gold">
-              <Icon name="plus" className="h-5 w-5" />
-            </span>
+            {/* Part 21: the logo's gold star instead of "+" */}
+            <svg viewBox="0 0 24 24" className="h-5 w-5 fill-gold stroke-gold" strokeWidth={1.7} strokeLinejoin="round" aria-hidden="true">
+              <path d="M12 2.8l2.8 5.8 6.4.9-4.6 4.5 1.1 6.3L12 17.3l-5.7 3 1.1-6.3L2.8 9.5l6.4-.9z" />
+            </svg>
             <span>Upload</span>
           </Link>
         </nav>
