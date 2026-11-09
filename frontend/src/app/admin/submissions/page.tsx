@@ -596,7 +596,7 @@ export default function AdminSubmissionsPage() {
                         {/* Only super admins need the programme name (lib/roles.ts) */}
                         {isSuperAdminRole(profile?.role) &&
                           submission.programme &&
-                          `, ${submission.programme.name}`}
+                          submission.programme.name}
                       </p>
 
                       {/* Feedback (27 Oct): where the student placed it */}
