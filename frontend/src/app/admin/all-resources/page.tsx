@@ -29,6 +29,7 @@ import PdfCard from "@/components/PdfCard";
 import VideoCard from "@/components/VideoCard";
 import EmptyState from "@/components/EmptyState";
 import EditResourceDialog from "@/components/EditResourceDialog";
+import FilterBar from "@/components/FilterBar";
 
 type Resource = {
   id: number;
@@ -67,6 +68,12 @@ export default function AllResourcesPage() {
   const [likeCounts, setLikeCounts] = useState<Record<number, number>>({});
   const [filter, setFilter] = useState("all");
   const [query, setQuery] = useState("");
+  // Part 22: the same Year / Semester / Module filter as the student pages,
+  // plus Programme for the super admin.
+  const [selectedProgramme, setSelectedProgramme] = useState("All Programmes");
+  const [selectedYear, setSelectedYear] = useState("All Years");
+  const [selectedSemester, setSelectedSemester] = useState("All Semesters");
+  const [selectedModule, setSelectedModule] = useState("All Modules");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [openingId, setOpeningId] = useState<number | null>(null);
@@ -140,18 +147,94 @@ export default function AllResourcesPage() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [pendingDelete, deletingId]);
 
+  // Part 22: programme / year / semester checks on their own, so the module
+  // dropdown can list only modules that would show something.
+  const matchesPlace = useCallback(
+    (resource: Resource) =>
+      (selectedProgramme === "All Programmes" ||
+        resource.programmes?.name === selectedProgramme) &&
+      (selectedYear === "All Years" ||
+        resource.year?.toString() === selectedYear.replace("Year ", "")) &&
+      (selectedSemester === "All Semesters" ||
+        resource.semester?.toString() === selectedSemester.replace("Semester ", "")),
+    [selectedProgramme, selectedYear, selectedSemester]
+  );
+
+  const programmeOptions = useMemo(
+    () =>
+      [...new Set(resources.map((r) => r.programmes?.name).filter((n): n is string => !!n))].sort(
+        (a, b) => a.localeCompare(b)
+      ),
+    [resources]
+  );
+
+  const moduleOptions = useMemo(
+    () =>
+      [...new Set(resources.filter(matchesPlace).map((r) => r.module_name || "Unknown Module"))].sort(
+        (a, b) => a.localeCompare(b)
+      ),
+    [resources, matchesPlace]
+  );
+
+  // Changing programme, year or semester resets the module (it may not exist there).
+  function changePlace(setter: (value: string) => void) {
+    return (value: string) => {
+      setter(value);
+      setSelectedModule("All Modules");
+    };
+  }
+
+  function clearFilters() {
+    setSelectedProgramme("All Programmes");
+    setSelectedYear("All Years");
+    setSelectedSemester("All Semesters");
+    setSelectedModule("All Modules");
+  }
+
   const visibleResources = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
     return resources.filter((resource) => {
       const matchesType = filter === "all" || resource.type === filter;
+      const matchesFilters =
+        matchesPlace(resource) &&
+        (selectedModule === "All Modules" ||
+          (resource.module_name || "Unknown Module") === selectedModule);
       const programme = resource.programmes?.name || "";
       const searchable = [resource.title, resource.topic, resource.module_name, programme]
         .filter(Boolean)
         .join(" ")
         .toLowerCase();
-      return matchesType && (!normalizedQuery || searchable.includes(normalizedQuery));
+      return (
+        matchesType && matchesFilters && (!normalizedQuery || searchable.includes(normalizedQuery))
+      );
     });
-  }, [filter, query, resources]);
+  }, [filter, query, resources, matchesPlace, selectedModule]);
+
+  // Part 22: with a year AND a semester chosen (and no single module), the
+  // cards are grouped under one heading per module. The super admin looking
+  // at all programmes gets one group per programme + module, with the
+  // programme named in the heading.
+  const groupByModule =
+    selectedYear !== "All Years" &&
+    selectedSemester !== "All Semesters" &&
+    selectedModule === "All Modules";
+
+  const moduleGroups = useMemo(() => {
+    if (!groupByModule) return [];
+    const groups = new Map<string, { module: string; programme: string; items: Resource[] }>();
+    for (const resource of visibleResources) {
+      const moduleName = resource.module_name || "Unknown Module";
+      const programme = resource.programmes?.name || "";
+      const key = `${programme}|${moduleName}`;
+      if (!groups.has(key)) groups.set(key, { module: moduleName, programme, items: [] });
+      groups.get(key)!.items.push(resource);
+    }
+    return [...groups.values()].sort(
+      (a, b) => a.programme.localeCompare(b.programme) || a.module.localeCompare(b.module)
+    );
+  }, [groupByModule, visibleResources]);
+
+  const showProgrammeInHeading = isSuperAdmin && selectedProgramme === "All Programmes";
 
   const { openPdf } = usePreview();
 
@@ -239,6 +322,83 @@ export default function AllResourcesPage() {
   const iconButton =
     "flex h-9 w-9 items-center justify-center rounded-[10px] border-[1.5px] border-sky-line bg-white text-navy outline-none transition hover:bg-sky-wash focus-visible:ring-2 focus-visible:ring-navy/40 disabled:cursor-wait disabled:opacity-50";
 
+  // Part 22: one card, used by both the flat list and the grouped view.
+  const renderCard = (resource: Resource) => {
+    const title = resource.title || resource.topic || "Untitled resource";
+    const likes = likeCounts[resource.id] || 0;
+
+    // Programme link (useful for the super admin, who sees all).
+    const programmeLink = resource.programmes?.name && (
+      <p className="text-sm font-semibold text-navy-soft">{resource.programmes.name}</p>
+    );
+    const resourceMeta = (
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        {programmeLink}
+        <p className="flex items-center gap-1.5 text-sm font-semibold text-ink-soft" title="Stars from students">
+          <Star className="h-4 w-4 fill-gold text-gold" aria-hidden="true" />
+          {likes} {likes === 1 ? "star" : "stars"}
+        </p>
+      </div>
+    );
+
+    // Edit and Delete sit in the same action row as View/Download.
+    const footer = (
+      <span className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => {
+            setSuccess("");
+            setEditing(resource);
+          }}
+          title="Edit resource"
+          aria-label={`Edit ${title}`}
+          className={iconButton}
+        >
+          <Pencil className="h-4 w-4" />
+        </button>
+        <button
+          type="button"
+            onClick={() => setPendingDelete(resource)}
+          disabled={deletingId === resource.id}
+          title="Delete resource"
+          aria-label={`Delete ${title}`}
+          className={`${iconButton} hover:border-red-200 hover:bg-red-50 hover:text-red-700`}
+        >
+          <Trash2 className="h-4 w-4" />
+        </button>
+      </span>
+    );
+
+    return resource.type === "video" && resource.video_id ? (
+      <VideoCard
+        key={resource.id}
+        title={title}
+        videoId={resource.video_id}
+        moduleName={resource.module_name}
+        year={resource.year}
+        semester={resource.semester}
+        extra={resourceMeta}
+        footer={footer}
+      />
+    ) : (
+      <PdfCard
+        key={resource.id}
+        title={title}
+        type={resource.type}
+        moduleName={resource.module_name}
+        year={resource.year}
+        semester={resource.semester}
+        authorType={resource.author_type}
+        authorName={resource.author_name}
+        isSolved={resource.is_solved}
+        extra={resourceMeta}
+        onView={() => openFile(resource, false)}
+        onDownload={() => openFile(resource, true)}
+        footer={footer}
+      />
+    );
+  };
+
   return (
     <main className="min-h-full bg-cream px-4 py-8 sm:px-8 sm:py-10 lg:px-12">
       <div className="mx-auto max-w-7xl">
@@ -287,6 +447,21 @@ export default function AllResourcesPage() {
           </label>
         </div>
 
+        {/* Part 22: Programme (super admin only) / Year / Semester / Module */}
+        <FilterBar
+          programmes={isSuperAdmin ? programmeOptions : undefined}
+          programme={selectedProgramme}
+          onProgrammeChange={changePlace(setSelectedProgramme)}
+          year={selectedYear}
+          onYearChange={changePlace(setSelectedYear)}
+          semester={selectedSemester}
+          onSemesterChange={changePlace(setSelectedSemester)}
+          modules={moduleOptions}
+          module={selectedModule}
+          onModuleChange={setSelectedModule}
+          onClear={clearFilters}
+        />
+
         {error && <div role="alert" className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
         {success && (
           <div
@@ -302,84 +477,29 @@ export default function AllResourcesPage() {
         {loading ? (
           <EmptyState title="Loading resources…" />
         ) : visibleResources.length === 0 ? (
-          <EmptyState title="No resources found" text="Try another search or resource type." />
+          <EmptyState title="No resources found" text="Try another search, type or filter." />
+        ) : groupByModule ? (
+          <div className="flex flex-col gap-10">
+            {moduleGroups.map((group) => (
+              <section key={`${group.programme}|${group.module}`} aria-label={group.module}>
+                <h2 className="mb-4 flex flex-wrap items-baseline gap-x-3 border-b border-line pb-2 text-xl font-bold text-navy">
+                  {group.module}
+                  {showProgrammeInHeading && group.programme && (
+                    <span className="text-sm font-semibold text-navy-soft">{group.programme}</span>
+                  )}
+                  <span className="text-sm font-medium text-ink-soft">
+                    {group.items.length} {group.items.length === 1 ? "resource" : "resources"}
+                  </span>
+                </h2>
+                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+                  {group.items.map(renderCard)}
+                </div>
+              </section>
+            ))}
+          </div>
         ) : (
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
-            {visibleResources.map((resource) => {
-              const title = resource.title || resource.topic || "Untitled resource";
-              const likes = likeCounts[resource.id] || 0;
-
-              // Programme link (useful for the super admin, who sees all).
-              const programmeLink = resource.programmes?.name && (
-                <p className="text-sm font-semibold text-navy-soft">{resource.programmes.name}</p>
-              );
-              const resourceMeta = (
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                  {programmeLink}
-                  <p className="flex items-center gap-1.5 text-sm font-semibold text-ink-soft" title="Stars from students">
-                    <Star className="h-4 w-4 fill-gold text-gold" aria-hidden="true" />
-                    {likes} {likes === 1 ? "star" : "stars"}
-                  </p>
-                </div>
-              );
-
-              // Edit and Delete sit in the same action row as View/Download.
-              const footer = (
-                <span className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSuccess("");
-                      setEditing(resource);
-                    }}
-                    title="Edit resource"
-                    aria-label={`Edit ${title}`}
-                    className={iconButton}
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </button>
-                  <button
-                    type="button"
-                      onClick={() => setPendingDelete(resource)}
-                    disabled={deletingId === resource.id}
-                    title="Delete resource"
-                    aria-label={`Delete ${title}`}
-                    className={`${iconButton} hover:border-red-200 hover:bg-red-50 hover:text-red-700`}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </span>
-              );
-
-              return resource.type === "video" && resource.video_id ? (
-                <VideoCard
-                  key={resource.id}
-                  title={title}
-                  videoId={resource.video_id}
-                  moduleName={resource.module_name}
-                  year={resource.year}
-                  semester={resource.semester}
-                  extra={resourceMeta}
-                  footer={footer}
-                />
-              ) : (
-                <PdfCard
-                  key={resource.id}
-                  title={title}
-                  type={resource.type}
-                  moduleName={resource.module_name}
-                  year={resource.year}
-                  semester={resource.semester}
-                  authorType={resource.author_type}
-                  authorName={resource.author_name}
-                  isSolved={resource.is_solved}
-                  extra={resourceMeta}
-                  onView={() => openFile(resource, false)}
-                  onDownload={() => openFile(resource, true)}
-                  footer={footer}
-                />
-              );
-            })}
+            {visibleResources.map(renderCard)}
           </div>
         )}
       </div>

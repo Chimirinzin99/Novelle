@@ -12,6 +12,12 @@ type FilterBarProps = {
   semester: string;
   onSemesterChange: (value: string) => void;
   onClear: () => void;
+  // Optional (Part 22): the super admin's All Resources page passes these
+  // three to get a Programme dropdown in front of Year.
+  programmes?: string[];
+  programme?: string;
+  onProgrammeChange?: (value: string) => void;
+
   // Optional: pages that filter by module pass these three.
   // The "?" means the prop may be left out.
   modules?: string[];
@@ -35,18 +41,37 @@ export default function FilterBar({
   modules,
   module,
   onModuleChange,
+  programmes,
+  programme,
+  onProgrammeChange,
 }: FilterBarProps) {
   // Only show "Clear filters" when something is actually filtered.
   const isFiltered =
     year !== "All Years" ||
     semester !== "All Semesters" ||
-    (module !== undefined && module !== "All Modules");
+    (module !== undefined && module !== "All Modules") ||
+    (programme !== undefined && programme !== "All Programmes");
 
   return (
     // flex-wrap: on narrow screens the dropdowns drop to a second line
     // instead of squashing together.
     <div className="mb-7 flex flex-wrap items-center gap-3 rounded-2xl border border-line bg-white p-4">
       <span className="font-display text-sm font-bold text-navy">Filter</span>
+
+      {/* Programme dropdown appears only if the page gave us a programme list */}
+      {programmes && onProgrammeChange && (
+        <select
+          value={programme}
+          onChange={(e) => onProgrammeChange(e.target.value)}
+          className={`${selectClass} max-w-full`}
+          aria-label="Programme"
+        >
+          <option>All Programmes</option>
+          {programmes.map((p) => (
+            <option key={p}>{p}</option>
+          ))}
+        </select>
+      )}
 
       <select
         value={year}
