@@ -256,6 +256,25 @@ export const updateModule = async (
       });
     }
 
+    // Part 22: resources keep their own copy of the module's name, year and
+    // semester (so lists don't need a join). Update those copies too,
+    // otherwise they would still show the old values after an edit.
+    const { error: copyError } = await supabase
+      .from("resources")
+      .update({ module_name, year, semester })
+      .eq("module_id", moduleId);
+
+    if (copyError) {
+      console.error("Update module copies error:", copyError);
+
+      return res.status(500).json({
+        success: false,
+        message:
+          "Module saved, but its resources could not be updated. Please try saving again.",
+        error: copyError.message,
+      });
+    }
+
     return res.json({
       success: true,
       message: "Module updated successfully.",

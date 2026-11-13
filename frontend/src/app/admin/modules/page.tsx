@@ -4,7 +4,7 @@
 // theme colours from app/globals.css (navy, ink, line, sky-…, gold-…).
 // Nothing else on this page changed.
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { BACKEND_URL } from "@/lib/config";
@@ -70,6 +70,11 @@ export default function ModulesPage() {
   const [success, setSuccess] = useState("");
 
   const [editingId, setEditingId] = useState<number | null>(null);
+
+  // Part 22: the Add/Edit form box, so Edit can scroll it into view.
+  // (window.scrollTo did nothing: the admin layout scrolls an inner box,
+  // not the window — so Edit filled the form off-screen and looked dead.)
+  const formRef = useRef<HTMLDivElement>(null);
 
   // Super admin only: programme list, the programme a NEW module goes to,
   // and the programme filter above the module list ("" = all programmes).
@@ -154,6 +159,15 @@ export default function ModulesPage() {
 
       if (programmeData) {
         setProgrammeName(programmeData.name);
+
+        // Part 22: a programme admin's form only offers (and is locked to)
+        // their own programme.
+        if (isProgrammeAdminRole(profileData.role)) {
+          setProgrammes([
+            { id: profileData.programme_id, name: programmeData.name },
+          ]);
+          setFormProgrammeId(String(profileData.programme_id));
+        }
       }
     }
 
@@ -402,9 +416,9 @@ export default function ModulesPage() {
     setError("");
     setSuccess("");
 
-    window.scrollTo({
-      top: 0,
+    formRef.current?.scrollIntoView({
       behavior: "smooth",
+      block: "start",
     });
   };
 
@@ -534,9 +548,9 @@ export default function ModulesPage() {
     );
   }
 
-  // Only the super admin may add or change modules (rule in lib/roles.ts;
-  // the backend enforces it too). Programme admins just view the list.
-  const canManage = isSuperAdminRole(profile?.role);
+  // Part 22: every admin may add or change modules. Programme admins only in
+  // their own programme (the backend checks that too); super admin: all.
+  const canManage = isAdminRole(profile?.role);
 
   // Programme id -> name, for the labels in the super admin's list.
   const programmeNameById = (id: number) =>
@@ -568,8 +582,7 @@ export default function ModulesPage() {
             {/* Heading depends on the role (helpers in lib/roles.ts) */}
             {isProgrammeAdminRole(profile?.role) && (
               <p className="mt-2 text-ink-soft">
-                Modules for {programmeName}. Only the super admin can add
-                or change modules.
+                Managing modules for {programmeName}
               </p>
             )}
 
@@ -596,9 +609,9 @@ export default function ModulesPage() {
           </div>
         )}
 
-        {/* Add / Edit Form (super admin only) */}
+        {/* Add / Edit Form (any admin; programme admins locked to their programme) */}
         {canManage && (
-        <div className="mb-8 rounded-xl border border-line bg-white p-6 shadow-sm">
+        <div ref={formRef} className="mb-8 scroll-mt-6 rounded-xl border border-line bg-white p-6 shadow-sm">
           <div className="mb-5">
             <h2 className="text-lg font-semibold text-ink">
               {editingId !== null
@@ -615,7 +628,8 @@ export default function ModulesPage() {
             onSubmit={handleSubmit}
             className="grid grid-cols-1 gap-4 md:grid-cols-2"
           >
-            {/* Programme: chosen when adding; locked when editing */}
+            {/* Programme: chosen when adding; locked when editing,
+                and always locked for a programme admin (Part 22) */}
             <div className="md:col-span-2">
               <label className="mb-2 block text-sm font-medium text-ink-nav">
                 Programme
@@ -624,7 +638,7 @@ export default function ModulesPage() {
               <select
                 value={formProgrammeId}
                 onChange={(e) => setFormProgrammeId(e.target.value)}
-                disabled={editingId !== null}
+                disabled={editingId !== null || !isSuperAdminRole(profile?.role)}
                 className="w-full rounded-lg border border-sky-line bg-white px-4 py-2.5 outline-none focus:border-navy-soft focus:ring-2 focus:ring-sky-tint disabled:bg-cream disabled:text-ink-soft"
               >
                 <option value="">Select programme</option>
