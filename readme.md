@@ -50,7 +50,7 @@ the frontend: `npm run build` (stop `npm run dev` first).
 | backend | `SUPABASE_URL` | Supabase project URL |
 | backend | `SUPABASE_SERVICE_ROLE_KEY` | **Secret** service role key (backend only, never in the frontend) |
 | backend | `FRONTEND_URL` | Frontend address(es) allowed to call the API, comma-separated. The **first** one is used in the lockout email's reset link |
-| backend | `GMAIL_USER`, `GMAIL_APP_PASSWORD` | Optional — Gmail app password "Novelle backend" for lockout alert emails |
+| backend | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` | Optional — mail server for lockout alert emails (Brevo: `smtp-relay.brevo.com`, port 587, Brevo SMTP login + SMTP key, sender `novelle.cst@gmail.com`). Old `GMAIL_USER` / `GMAIL_APP_PASSWORD` still work as a fallback |
 | backend | `PORT` | Optional — 5000 locally; hosts set it themselves |
 | frontend | `NEXT_PUBLIC_BACKEND_URL` | Backend address |
 | frontend | `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
@@ -70,7 +70,7 @@ Both parts run on **Vercel** (free Hobby plan) as **two Vercel projects** from t
 | Framework | Express (detected from `src/server.ts`) | Next.js |
 | Production branch | `develop` | `develop` |
 | Function region | **Tokyo (`hnd1`)** — next to the Supabase database | Tokyo (`hnd1`) |
-| Environment variables | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `FRONTEND_URL` (live frontend address first), `GMAIL_USER`, `GMAIL_APP_PASSWORD` | `NEXT_PUBLIC_BACKEND_URL` (live backend address), `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` |
+| Environment variables | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `FRONTEND_URL` (live frontend address first), `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` | `NEXT_PUBLIC_BACKEND_URL` (live backend address), `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` |
 
 Things to know:
 

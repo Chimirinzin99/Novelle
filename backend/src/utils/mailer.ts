@@ -1,13 +1,21 @@
 // utils/mailer.ts — Part 13f: sends the "your account was locked" alert
-// email from the backend, through Gmail (the same novelle.cst@gmail.com
-// account Supabase uses since Part 10, but with its OWN app password
-// "Novelle backend", kept in backend/.env — never in code or on GitHub):
+// email from the backend.
 //
-//   GMAIL_USER=novelle.cst@gmail.com
-//   GMAIL_APP_PASSWORD=xxxx xxxx xxxx xxxx
+// Part 22: the mail server is no longer hard-coded to Gmail. Gmail-sent mail
+// landed in Spam in RUB mailboxes, so we send through Brevo's SMTP relay
+// (same as Supabase's auth emails). Everything comes from backend/.env
+// (never in code or on GitHub):
 //
-// If those two lines are missing, alerts are skipped with a warning in the
-// terminal — logins and the lockout still work.
+//   SMTP_HOST=smtp-relay.brevo.com
+//   SMTP_PORT=587                     (465 also works: secure connection)
+//   SMTP_USER=<Brevo SMTP login, e.g. xxxx@smtp-brevo.com>
+//   SMTP_PASS=<Brevo SMTP key>
+//   MAIL_FROM=novelle.cst@gmail.com   (the sender added in Brevo)
+//
+// Old setup still works: if the SMTP_ lines are missing but GMAIL_USER and
+// GMAIL_APP_PASSWORD are set, it sends through Gmail as before.
+// If nothing is set, alerts are skipped with a warning in the terminal —
+// logins and the lockout still work.
 
 import nodemailer, { type Transporter } from "nodemailer";
 
@@ -15,6 +23,13 @@ import { supabase } from "../config/supabase";
 
 const GMAIL_USER = process.env.GMAIL_USER;
 const GMAIL_APP_PASSWORD = process.env.GMAIL_APP_PASSWORD;
+
+// New SMTP settings first; the Gmail ones are the fallback.
+const SMTP_HOST = process.env.SMTP_HOST || (GMAIL_USER ? "smtp.gmail.com" : undefined);
+const SMTP_PORT = Number(process.env.SMTP_PORT || (process.env.SMTP_HOST ? 587 : 465));
+const SMTP_USER = process.env.SMTP_USER || GMAIL_USER;
+const SMTP_PASS = process.env.SMTP_PASS || GMAIL_APP_PASSWORD;
+const MAIL_FROM = process.env.MAIL_FROM || GMAIL_USER || SMTP_USER;
 
 // First address in FRONTEND_URL (same setting as CORS in server.ts).
 const FRONTEND_URL = (process.env.FRONTEND_URL ?? "http://localhost:3000")
@@ -25,13 +40,15 @@ const FRONTEND_URL = (process.env.FRONTEND_URL ?? "http://localhost:3000")
 let transporter: Transporter | null = null;
 
 function getTransporter(): Transporter | null {
-  if (!GMAIL_USER || !GMAIL_APP_PASSWORD) return null;
+  if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) return null;
   if (!transporter) {
     transporter = nodemailer.createTransport({
-      host: "smtp.gmail.com",
-      port: 465, // same as the Supabase SMTP settings (Part 10)
-      secure: true,
-      auth: { user: GMAIL_USER, pass: GMAIL_APP_PASSWORD },
+      host: SMTP_HOST,
+      port: SMTP_PORT,
+      // 465 = encrypted from the start; 587 = starts plain, then upgrades
+      // to encrypted (STARTTLS) — nodemailer does that by itself.
+      secure: SMTP_PORT === 465,
+      auth: { user: SMTP_USER, pass: SMTP_PASS },
     });
   }
   return transporter;
@@ -69,7 +86,7 @@ export async function sendLockoutAlert(
   try {
     const mail = getTransporter();
     if (!mail) {
-      console.warn("Lockout alert not sent: GMAIL_USER / GMAIL_APP_PASSWORD missing in backend/.env");
+      console.warn("Lockout alert not sent: SMTP_HOST / SMTP_USER / SMTP_PASS missing in backend/.env");
       return;
     }
 
@@ -91,7 +108,7 @@ export async function sendLockoutAlert(
     const resetLink = `${FRONTEND_URL}/reset-password`;
 
     await mail.sendMail({
-      from: `"Novelle" <${GMAIL_USER}>`,
+      from: `"Novelle" <${MAIL_FROM}>`,
       to: email,
       subject: "Novelle: sign-in paused after wrong passwords",
       text: [
