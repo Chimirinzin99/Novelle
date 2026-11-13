@@ -192,18 +192,40 @@ export default function ResourceList({
     }
   }
 
-  const modules = [...new Set(resources.map((r) => r.module_name))];
+  // Year / semester checks on their own, so the module dropdown can use them.
+  const yearMatches = (resource: Resource) =>
+    selectedYear === "All Years" ||
+    resource.year?.toString() === selectedYear.replace("Year ", "");
+
+  const semesterMatches = (resource: Resource) =>
+    selectedSemester === "All Semesters" ||
+    resource.semester?.toString() === selectedSemester.replace("Semester ", "");
+
+  // Part 22: the module dropdown only lists modules of the chosen year and
+  // semester (A–Z), so it never offers a module that would show nothing.
+  const modules = [
+    ...new Set(
+      resources
+        .filter((r) => yearMatches(r) && semesterMatches(r))
+        .map((r) => r.module_name)
+    ),
+  ].sort((a, b) => a.localeCompare(b));
+
+  // Changing year or semester resets the module (it may not exist there).
+  function changeYear(value: string) {
+    setSelectedYear(value);
+    setSelectedModule("All Modules");
+  }
+
+  function changeSemester(value: string) {
+    setSelectedSemester(value);
+    setSelectedModule("All Modules");
+  }
 
   // Matches every filter except Solved/Unsolved (the tabs show these counts).
   const matchesOtherFilters = (resource: Resource) => {
-    const yearMatch =
-      selectedYear === "All Years" ||
-      resource.year?.toString() === selectedYear.replace("Year ", "");
-
-    const semesterMatch =
-      selectedSemester === "All Semesters" ||
-      resource.semester?.toString() ===
-        selectedSemester.replace("Semester ", "");
+    const yearMatch = yearMatches(resource);
+    const semesterMatch = semesterMatches(resource);
 
     const moduleMatch =
       selectedModule === "All Modules" ||
@@ -223,6 +245,39 @@ export default function ResourceList({
     (resource) =>
       solvedFilter === "all" || (solvedFilter === "solved") === resource.is_solved
   );
+
+  // Part 22: one card, used by both the flat list and the grouped view.
+  const renderCard = (resource: Resource) => (
+    <PdfCard
+      key={resource.id}
+      title={resource.name}
+      type={type}
+      moduleName={resource.module_name}
+      year={resource.year}
+      semester={resource.semester}
+      authorType={resource.author_type}
+      authorName={resource.author_name}
+      isSolved={resource.is_solved}
+      onView={() => openFile(resource.file_path, false, resource.name)}
+      onDownload={() => openFile(resource.file_path, true, resource.name)}
+      liked={favourites.includes(resource.id)}
+      likes={likeCounts[resource.id] || 0}
+      onLike={() => handleFavourite(resource.id)}
+    />
+  );
+
+  // Group only when a year AND a semester are chosen and no single module;
+  // "All" stays one flat list. Modules in A–Z order.
+  const groupByModule =
+    selectedYear !== "All Years" &&
+    selectedSemester !== "All Semesters" &&
+    selectedModule === "All Modules";
+
+  const moduleGroups: [string, Resource[]][] = groupByModule
+    ? [...new Set(filtered.map((r) => r.module_name))]
+        .sort((a, b) => a.localeCompare(b))
+        .map((name) => [name, filtered.filter((r) => r.module_name === name)])
+    : [];
 
   // Part 21: an empty list says what to do next. With no filters set, the
   // programme simply has nothing yet, so it invites an upload; with filters,
@@ -260,9 +315,9 @@ export default function ResourceList({
 
         <FilterBar
           year={selectedYear}
-          onYearChange={setSelectedYear}
+          onYearChange={changeYear}
           semester={selectedSemester}
-          onSemesterChange={setSelectedSemester}
+          onSemesterChange={changeSemester}
           modules={modules}
           module={selectedModule}
           onModuleChange={setSelectedModule}
@@ -330,27 +385,28 @@ export default function ResourceList({
               actionHref="/submit-note"
             />
           )
+        ) : groupByModule ? (
+          // Part 22 (supervisor's "folder per module" idea): with a year AND a
+          // semester chosen, the cards sit under one heading per module.
+          <div className="flex flex-col gap-10">
+            {moduleGroups.map(([moduleName, items]) => (
+              <section key={moduleName} aria-label={moduleName}>
+                <h2 className="mb-4 flex items-baseline gap-3 border-b border-line pb-2 text-xl font-bold text-navy">
+                  {moduleName}
+                  <span className="text-sm font-medium text-ink-soft">
+                    {items.length} {items.length === 1 ? singular : plural}
+                  </span>
+                </h2>
+                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+                  {items.map(renderCard)}
+                </div>
+              </section>
+            ))}
+          </div>
         ) : (
           // 1 / 2 / 3 / 4 columns, same as /home
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
-            {filtered.map((resource) => (
-              <PdfCard
-                key={resource.id}
-                title={resource.name}
-                type={type}
-                moduleName={resource.module_name}
-                year={resource.year}
-                semester={resource.semester}
-                authorType={resource.author_type}
-                authorName={resource.author_name}
-                isSolved={resource.is_solved}
-                onView={() => openFile(resource.file_path, false, resource.name)}
-                onDownload={() => openFile(resource.file_path, true, resource.name)}
-                liked={favourites.includes(resource.id)}
-                likes={likeCounts[resource.id] || 0}
-                onLike={() => handleFavourite(resource.id)}
-              />
-            ))}
+            {filtered.map(renderCard)}
           </div>
         )}
       </div>
