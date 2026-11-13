@@ -458,7 +458,7 @@ export default function Sidebar() {
           >
             <Icon name="menu" className="h-6 w-6" />
           </button>
-          <Logo href="/home" />
+          <Logo href="/" />
         </div>
 
         {renderBell(mobileBellRef, "", "right-0 top-[calc(100%+0.5rem)] max-w-[calc(100vw-1.5rem)]")}
@@ -502,7 +502,7 @@ export default function Sidebar() {
             (it sat beside "My Account", which made it look like part of that
             section); same place as on the admin sidebar. */}
         <div className="mb-7 flex shrink-0 items-start justify-between gap-2 px-2">
-          <Logo href="/home" />
+          <Logo href="/" />
           {renderBell(
             notificationsRef,
             "max-lg:hidden",

@@ -304,7 +304,7 @@ export default function AdminSidebar() {
         >
           <Menu className="h-6 w-6" />
         </button>
-        <Logo tone="dark" href="/admin" tagline={profile ? roleLabel(profile.role) : "\u00a0"} />
+        <Logo tone="dark" href="/" tagline={profile ? roleLabel(profile.role) : "\u00a0"} />
         {/* Part 19: bell on the right of the top bar */}
         {renderBell(topBarBellRef, "ml-auto", "right-0 top-[calc(100%+0.5rem)] max-w-[calc(100vw-1.5rem)]")}
       </header>
@@ -344,7 +344,7 @@ export default function AdminSidebar() {
 
         {/* Logo; the tagline shows the role ("Programme admin" / "Super admin") */}
         <div className="flex items-start justify-between gap-2 px-5 pb-4 pt-6">
-          <Logo tone="dark" href="/admin" tagline={profile ? roleLabel(profile.role) : "\u00a0"} />
+          <Logo tone="dark" href="/" tagline={profile ? roleLabel(profile.role) : "\u00a0"} />
           {/* Part 19: laptops only (phones use the top-bar bell) */}
           {renderBell(sidebarBellRef, "max-lg:hidden", "left-[calc(100%+0.75rem)] top-0 max-w-[calc(100vw-20rem)]")}
         </div>

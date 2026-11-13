@@ -36,7 +36,7 @@ const steps = [
 // Shared classes for the header links.
 // (on the photo: always-light text, see --color-on-bar in globals.css)
 const headerLink =
-  "rounded-md px-4 py-2 text-[15px] font-semibold text-on-bar outline-none transition hover:bg-on-bar/10 focus-visible:ring-2 focus-visible:ring-gold";
+  "rounded-md px-4 py-2 text-[15px] font-semibold text-on-bar underline-offset-[6px] decoration-2 outline-none transition hover:underline focus-visible:ring-2 focus-visible:ring-gold";
 
 export default function LandingPage() {
   return (
@@ -69,10 +69,8 @@ export default function LandingPage() {
             <Link href="/login" className={headerLink}>
               Login
             </Link>
-            <Link
-              href="/register"
-              className="rounded-md bg-gold px-4 py-2 text-[15px] font-bold text-bar outline-none transition hover:brightness-105 focus-visible:ring-2 focus-visible:ring-on-bar"
-            >
+            {/* Part 22: Sign Up is plain white text like the other links (no gold button) */}
+            <Link href="/register" className={headerLink}>
               Sign Up
             </Link>
           </nav>
@@ -88,7 +86,7 @@ export default function LandingPage() {
             NOVELLE
           </h1>
 
-          <p className="mt-3 font-display text-sm font-semibold tracking-[0.2em] text-gold md:text-base">
+          <p className="mt-3 font-display text-base font-semibold tracking-[0.2em] text-gold md:text-xl">
             SHARE · LEARN · GROW
           </p>
 
@@ -109,7 +107,7 @@ export default function LandingPage() {
       <section id="how" className="border-b-[1.5px] border-sky-line bg-white px-6 py-20 md:px-10">
         <div className="mx-auto max-w-5xl">
           <h2 className="text-3xl font-extrabold text-navy">How Novelle works</h2>
-          <p className="mt-2 max-w-3xl text-base leading-7 text-ink-soft">
+          <p className="mt-2 max-w-3xl text-lg leading-8 text-ink-soft md:text-xl">
             Instead of hunting through group chats for last year&apos;s notes, CST
             students find study material for their modules in one place. Every
             resource goes through three hands before it reaches you.
@@ -123,8 +121,8 @@ export default function LandingPage() {
                   <span className="flex h-11 w-11 items-center justify-center rounded-md bg-navy font-display text-xl font-extrabold text-white">
                     {index + 1}
                   </span>
-                  <h3 className="mt-1 text-xl font-bold text-ink">{step.title}</h3>
-                  <p className="text-base leading-relaxed text-ink-soft">{step.text}</p>
+                  <h3 className="mt-1 text-2xl font-bold text-ink">{step.title}</h3>
+                  <p className="text-lg leading-relaxed text-ink-soft">{step.text}</p>
                 </div>
                 {index < steps.length - 1 && (
                   <svg

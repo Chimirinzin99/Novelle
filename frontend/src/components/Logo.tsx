@@ -9,7 +9,7 @@ import Link from "next/link";
 //   tone="dark"  — on the navy admin sidebar: the mark sits in a cream tile
 //                  (a navy "N" on navy would disappear) and the text is white
 //   tagline      — the small line under NOVELLE (e.g. "Programme admin")
-//   href         — makes the whole logo a link (e.g. to /home)
+//   href         — makes the whole logo a link (Part 22: always "/", the landing page)
 
 type LogoProps = {
   tone?: "light" | "dark";
