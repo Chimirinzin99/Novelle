@@ -140,23 +140,70 @@ export default function VideosPage() {
     }
   }
 
-  // Module dropdown options, taken from the loaded videos.
-  const modules = [...new Set(videos.map((video) => video.module_name))];
+  // Year / semester checks on their own, so the module dropdown can use them.
+  const yearMatches = (video: Video) =>
+    selectedYear === "All Years" ||
+    video.year.toString() === selectedYear.replace("Year ", "");
 
-  const filteredVideos = videos.filter((video) => {
-    const yearMatch =
-      selectedYear === "All Years" ||
-      video.year.toString() === selectedYear.replace("Year ", "");
+  const semesterMatches = (video: Video) =>
+    selectedSemester === "All Semesters" ||
+    video.semester.toString() === selectedSemester.replace("Semester ", "");
 
-    const semesterMatch =
-      selectedSemester === "All Semesters" ||
-      video.semester.toString() === selectedSemester.replace("Semester ", "");
+  // Part 22: module dropdown options — only modules of the chosen year and
+  // semester, A–Z (same as Notes / Question Papers / Assignments).
+  const modules = [
+    ...new Set(
+      videos
+        .filter((video) => yearMatches(video) && semesterMatches(video))
+        .map((video) => video.module_name)
+    ),
+  ].sort((a, b) => a.localeCompare(b));
 
-    const moduleMatch =
-      selectedModule === "All Modules" || video.module_name === selectedModule;
+  // Changing year or semester resets the module (it may not exist there).
+  function changeYear(value: string) {
+    setSelectedYear(value);
+    setSelectedModule("All Modules");
+  }
 
-    return yearMatch && semesterMatch && moduleMatch;
-  });
+  function changeSemester(value: string) {
+    setSelectedSemester(value);
+    setSelectedModule("All Modules");
+  }
+
+  const filteredVideos = videos.filter(
+    (video) =>
+      yearMatches(video) &&
+      semesterMatches(video) &&
+      (selectedModule === "All Modules" || video.module_name === selectedModule)
+  );
+
+  // Part 22: with a year AND a semester chosen (and no single module), the
+  // videos are grouped under one heading per module, A–Z.
+  const groupByModule =
+    selectedYear !== "All Years" &&
+    selectedSemester !== "All Semesters" &&
+    selectedModule === "All Modules";
+
+  const moduleGroups: [string, Video[]][] = groupByModule
+    ? [...new Set(filteredVideos.map((v) => v.module_name))]
+        .sort((a, b) => a.localeCompare(b))
+        .map((name) => [name, filteredVideos.filter((v) => v.module_name === name)])
+    : [];
+
+  // One card, used by both the flat list and the grouped view.
+  const renderCard = (video: Video) => (
+    <VideoCard
+      key={video.id}
+      title={video.topic}
+      videoId={video.video_id}
+      moduleName={video.module_name}
+      year={video.year}
+      semester={video.semester}
+      liked={favourites.includes(video.id)}
+      likes={likeCounts[video.id] || 0}
+      onLike={() => handleFavourite(video.id)}
+    />
+  );
 
   function clearFilters() {
     setSelectedYear("All Years");
@@ -184,9 +231,9 @@ export default function VideosPage() {
 
         <FilterBar
           year={selectedYear}
-          onYearChange={setSelectedYear}
+          onYearChange={changeYear}
           semester={selectedSemester}
-          onSemesterChange={setSelectedSemester}
+          onSemesterChange={changeSemester}
           modules={modules}
           module={selectedModule}
           onModuleChange={setSelectedModule}
@@ -211,21 +258,25 @@ export default function VideosPage() {
             actionLabel="Clear filters"
             onAction={clearFilters}
           />
+        ) : groupByModule ? (
+          <div className="flex flex-col gap-10">
+            {moduleGroups.map(([moduleName, items]) => (
+              <section key={moduleName} aria-label={moduleName}>
+                <h2 className="mb-4 flex items-baseline gap-3 border-b border-line pb-2 text-xl font-bold text-navy">
+                  {moduleName}
+                  <span className="text-sm font-medium text-ink-soft">
+                    {items.length} {items.length === 1 ? "video" : "videos"}
+                  </span>
+                </h2>
+                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+                  {items.map(renderCard)}
+                </div>
+              </section>
+            ))}
+          </div>
         ) : (
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
-            {filteredVideos.map((video) => (
-              <VideoCard
-                key={video.id}
-                title={video.topic}
-                videoId={video.video_id}
-                moduleName={video.module_name}
-                year={video.year}
-                semester={video.semester}
-                liked={favourites.includes(video.id)}
-                likes={likeCounts[video.id] || 0}
-                onLike={() => handleFavourite(video.id)}
-              />
-            ))}
+            {filteredVideos.map(renderCard)}
           </div>
         )}
       </div>
