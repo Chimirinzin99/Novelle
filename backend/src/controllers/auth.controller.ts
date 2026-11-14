@@ -24,8 +24,8 @@ import { createClient } from "@supabase/supabase-js";
 
 import { supabase } from "../config/supabase";
 import { AuthenticatedRequest } from "../middleware/auth"; // Part 24
-import { sendLockoutAlert } from "../utils/mailer";
-import { CST_EMAIL_MESSAGE, isCstEmail } from "../constants/email";
+import { sendAdminAccessRequest, sendLockoutAlert } from "../utils/mailer";
+import { CST_EMAIL_MESSAGE, isCstEmail, isStaffEmail } from "../constants/email";
 
 export const MAX_FAILED_LOGINS = 5;
 export const FAILURE_WINDOW_MINUTES = 15; // older failures are forgotten
@@ -253,4 +253,69 @@ export const updateMyName = async (req: AuthenticatedRequest, res: Response) => 
   }
 
   return res.json({ success: true, full_name: data.full_name });
+};
+
+// ---------------------------------------------------------------------------
+// Part 25: POST /api/auth/me/admin-request  { programme_id, note? }
+// A lecturer (student account with a name-style CST email) asks to become a
+// programme admin. Nothing is saved in the database: the super admins get an
+// email and change the role on admin Users as before.
+// ---------------------------------------------------------------------------
+const NOTE_MAX_LENGTH = 300;
+const REQUEST_GAP_MS = 10 * 60 * 1000; // one request per user per 10 minutes
+const lastRequestAt = new Map<string, number>(); // best effort (resets on restart)
+
+export const requestAdminAccess = async (req: AuthenticatedRequest, res: Response) => {
+  if (!req.user) {
+    return res.status(401).json({ success: false, message: "Please log in again." });
+  }
+
+  const email = (req.user.email ?? "").trim().toLowerCase();
+  if (!isStaffEmail(email)) {
+    return res.status(403).json({ success: false, message: "Only lecturer accounts can request admin access." });
+  }
+
+  const last = lastRequestAt.get(req.user.id);
+  if (last && Date.now() - last < REQUEST_GAP_MS) {
+    return res.status(429).json({ success: false, message: "You already sent a request. Please wait a few minutes before sending another." });
+  }
+
+  const programmeId = Number(req.body?.programme_id);
+  if (!Number.isInteger(programmeId) || programmeId <= 0) {
+    return res.status(400).json({ success: false, message: "Please choose a programme." });
+  }
+
+  const rawNote = req.body?.note ?? "";
+  if (typeof rawNote !== "string") {
+    return res.status(400).json({ success: false, message: "The note must be text." });
+  }
+  const note = rawNote.trim().replace(/\s+/g, " ");
+  if (note.length > NOTE_MAX_LENGTH) {
+    return res.status(400).json({ success: false, message: `Please keep the note under ${NOTE_MAX_LENGTH} characters.` });
+  }
+
+  const [{ data: programme }, { data: profile }] = await Promise.all([
+    supabase.from("programmes").select("name").eq("id", programmeId).maybeSingle(),
+    supabase.from("profiles").select("full_name").eq("id", req.user.id).maybeSingle(),
+  ]);
+  if (!programme) {
+    return res.status(400).json({ success: false, message: "That programme was not found." });
+  }
+
+  const sent = await sendAdminAccessRequest({
+    name: profile?.full_name?.trim() || email,
+    email,
+    programme: programme.name,
+    note,
+  });
+
+  if (sent === 0) {
+    return res.status(503).json({
+      success: false,
+      message: "Your request could not be sent right now. Please email novelle.cst@gmail.com instead.",
+    });
+  }
+
+  lastRequestAt.set(req.user.id, Date.now());
+  return res.json({ success: true, message: "Request sent." });
 };

@@ -12,8 +12,9 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { isStaffEmail, NOVELLE_CONTACT_EMAIL } from "@/lib/cstEmail";
+import { isStaffEmail } from "@/lib/cstEmail";
 import EditNameForm from "@/components/EditNameForm";
+import AdminRequestForm from "@/components/AdminRequestForm"; // Part 25
 
 type StudentProfile = {
   full_name: string | null;
@@ -146,14 +147,10 @@ export default function ProfilePage() {
             <h2 className="font-display text-base font-bold text-ink">Are you a lecturer?</h2>
             <p className="mt-1.5 text-[15px] leading-relaxed text-ink-soft">
               You can browse, upload and star like everyone else. To review uploads for your
-              programme, ask the Novelle team to make you a programme admin:
+              programme, ask a super admin to make you a programme admin.
             </p>
-            <a
-              href={`mailto:${NOVELLE_CONTACT_EMAIL}?subject=${encodeURIComponent("Programme admin access")}`}
-              className="mt-2 inline-block font-bold text-navy underline underline-offset-[3px]"
-            >
-              {NOVELLE_CONTACT_EMAIL}
-            </a>
+            {/* Part 25: emails the super admins (no mailto needed any more) */}
+            <AdminRequestForm email={email} defaultProgrammeId={profile?.programme_id ?? null} />
           </section>
         )}
 

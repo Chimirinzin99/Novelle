@@ -10,3 +10,7 @@ export const CST_EMAIL_MESSAGE =
 
 // `email` must already be trimmed and lower case.
 export const isCstEmail = (email: string) => CST_EMAIL_PATTERN.test(email);
+
+// Part 25: a CST address with a name instead of a student ID = lecturer/staff
+// (same rule as isStaffEmail in frontend/src/lib/cstEmail.ts).
+export const isStaffEmail = (email: string) => isCstEmail(email) && !/^[0-9]+\./.test(email);

@@ -148,3 +148,73 @@ export async function sendLockoutAlert(
     console.error("Lockout alert email error:", error);
   }
 }
+
+// Part 25: a lecturer pressed "Request admin access" on their Profile.
+// Emails every active super admin; Reply-To is the lecturer so a super admin
+// can answer straight away. Returns how many emails went out (0 = none, e.g.
+// SMTP not set up or no super admins). Never throws.
+export async function sendAdminAccessRequest(request: {
+  name: string;
+  email: string;
+  programme: string;
+  note: string;
+}): Promise<number> {
+  try {
+    const mail = getTransporter();
+    if (!mail) {
+      console.warn("Admin access request not sent: SMTP_HOST / SMTP_USER / SMTP_PASS missing in backend/.env");
+      return 0;
+    }
+
+    const { data: admins, error } = await supabase
+      .from("profiles")
+      .select("email")
+      .eq("role", "super_admin")
+      .eq("is_active", true);
+
+    if (error) {
+      console.error("Admin access request: super admin lookup error:", error);
+      return 0;
+    }
+    const to = (admins ?? []).map((a) => a.email).filter(Boolean);
+    if (to.length === 0) return 0;
+
+    const usersLink = `${FRONTEND_URL}/admin/users`;
+    const note = request.note || "(no note)";
+
+    await mail.sendMail({
+      from: `"Novelle" <${MAIL_FROM}>`,
+      to,
+      replyTo: request.email,
+      subject: `Novelle: ${request.name} asked to be a programme admin`,
+      text: [
+        `${request.name} (${request.email}) asked for programme admin access on Novelle.`,
+        "",
+        `Programme: ${request.programme}`,
+        `Note: ${note}`,
+        "",
+        "If they should get it, change their role to Programme admin on the Users page:",
+        usersLink,
+        "Reply to this email to answer them.",
+        "",
+        "— Novelle",
+      ].join("\n"),
+      html: `
+        <p><strong>${escapeHtml(request.name)}</strong> (${escapeHtml(request.email)})
+           asked for programme admin access on Novelle.</p>
+        <p>Programme: <strong>${escapeHtml(request.programme)}</strong><br>
+           Note: ${escapeHtml(note)}</p>
+        <p>If they should get it, change their role to Programme admin on the
+           <a href="${usersLink}">Users page</a>.<br>
+           Reply to this email to answer them.</p>
+        <p>— Novelle</p>
+      `,
+    });
+
+    console.log(`Admin access request from ${request.email} sent to ${to.length} super admin(s)`);
+    return to.length;
+  } catch (error) {
+    console.error("Admin access request email error:", error);
+    return 0;
+  }
+}
