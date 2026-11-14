@@ -192,45 +192,39 @@ export default function Sidebar() {
   const notificationsRef = useRef<HTMLDivElement>(null);
   const mobileBellRef = useRef<HTMLDivElement>(null);
 
-  // Programme scroll-zoom references and state (Ngawang's effect)
+  // Programme list edge fade (Part 24, replaces Ngawang's scroll-zoom).
+  // The list fades out at the top / bottom edge only when there are more
+  // programmes to scroll to that way, so the middle stays the focus and the
+  // fade tells you "more this way". The old version highlighted whichever
+  // row was in the middle, which looked like a random row was selected.
   const programmeListRef = useRef<HTMLElement>(null);
-  const [zoomedProgramme, setZoomedProgramme] = useState(-1);
+  const [edgeFade, setEdgeFade] = useState({ top: false, bottom: false });
 
-  // Find the programme closest to the centre of the scrollable list
-  const updateProgrammeZoom = useCallback(() => {
+  const updateEdgeFade = useCallback(() => {
     const list = programmeListRef.current;
     if (!list) return;
 
-    const items = list.querySelectorAll<HTMLElement>("[data-programme-item]");
+    // 2px of slack: browsers can stop a fraction of a pixel short of the end.
+    const top = list.scrollTop > 2;
+    const bottom = list.scrollTop + list.clientHeight < list.scrollHeight - 2;
 
-    const listRect = list.getBoundingClientRect();
-    const center = listRect.top + listRect.height / 2;
-
-    let closestIndex = -1;
-    let closestDistance = Infinity;
-
-    items.forEach((item, index) => {
-      const rect = item.getBoundingClientRect();
-      const itemCenter = rect.top + rect.height / 2;
-      const distance = Math.abs(itemCenter - center);
-
-      if (distance < closestDistance) {
-        closestDistance = distance;
-        closestIndex = index;
-      }
-    });
-
-    setZoomedProgramme((previous) =>
-      previous === closestIndex ? previous : closestIndex
+    // Only re-render when something actually changed.
+    setEdgeFade((previous) =>
+      previous.top === top && previous.bottom === bottom ? previous : { top, bottom }
     );
   }, []);
 
-  // Update the zoom when the sidebar size changes
+  // Check once on load and again when the window (and so the list) resizes.
   useEffect(() => {
-    updateProgrammeZoom();
-    window.addEventListener("resize", updateProgrammeZoom);
-    return () => window.removeEventListener("resize", updateProgrammeZoom);
-  }, [updateProgrammeZoom]);
+    updateEdgeFade();
+    window.addEventListener("resize", updateEdgeFade);
+    return () => window.removeEventListener("resize", updateEdgeFade);
+  }, [updateEdgeFade]);
+
+  // A mask hides what's under its transparent parts: transparent at an edge
+  // = faded out there, solid black in between = fully visible.
+  const FADE = "28px";
+  const programmeMask = `linear-gradient(to bottom, ${edgeFade.top ? "transparent" : "#000"} 0, #000 ${FADE}, #000 calc(100% - ${FADE}), ${edgeFade.bottom ? "transparent" : "#000"} 100%)`;
 
   // Sync authentication and notifications
   useEffect(() => {
@@ -554,7 +548,7 @@ export default function Sidebar() {
           </nav>
         </section>
 
-        {/* Scrollable programmes with zoom-on-scroll */}
+        {/* Scrollable programmes; edges fade when there is more to scroll */}
         <section className="mt-7 flex min-h-0 flex-1 flex-col">
           <div className="mb-2 flex shrink-0 items-center justify-between px-3">
             <p className={sectionLabel}>Programmes</p>
@@ -563,14 +557,14 @@ export default function Sidebar() {
 
           <nav
             ref={programmeListRef}
-            onScroll={updateProgrammeZoom}
+            onScroll={updateEdgeFade}
+            style={{ maskImage: programmeMask, WebkitMaskImage: programmeMask }}
             className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden pr-1 [scrollbar-color:#CFDDF1_transparent] [scrollbar-width:thin]"
             aria-label="Programmes"
           >
-            {PROGRAMMES.map((programme, index) => {
+            {PROGRAMMES.map((programme) => {
               const href = programmeHref(programme.name);
               const active = pathname === href || pathname.startsWith(`${href}/`);
-              const isZoomed = zoomedProgramme === index;
 
               return (
                 <Link
@@ -581,9 +575,8 @@ export default function Sidebar() {
                   aria-current={active ? "page" : undefined}
                   className={[
                     "group relative flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm",
-                    "origin-center outline-none transition-all duration-200 ease-out",
+                    "outline-none transition-colors duration-200 ease-out",
                     "focus-visible:ring-2 focus-visible:ring-navy/40",
-                    isZoomed ? "scale-[1.04] opacity-100" : "scale-[0.96] opacity-80",
                     active
                       ? "bg-sky-wash font-bold text-navy"
                       : "text-ink-nav hover:bg-sky-wash hover:text-navy",
