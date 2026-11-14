@@ -11,6 +11,7 @@ import { supabase } from "@/lib/supabase";
 import Logo from "@/components/Logo";
 import AuthShell from "@/components/AuthShell";
 import PasswordChecklist from "@/components/PasswordChecklist";
+import PasswordInput from "@/components/PasswordInput";
 import { passwordMeetsRules, PASSWORD_RULES_MESSAGE } from "@/lib/password";
 import { CST_EMAIL_MESSAGE, CST_EMAIL_PLACEHOLDER, isCstEmail } from "@/lib/cstEmail";
 
@@ -262,9 +263,8 @@ export default function ResetPasswordPage() {
                 >
                   New password
                 </label>
-                <input
+                <PasswordInput
                   id="password"
-                  type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   autoComplete="new-password"
@@ -284,9 +284,8 @@ export default function ResetPasswordPage() {
                 >
                   Confirm new password
                 </label>
-                <input
+                <PasswordInput
                   id="confirmPassword"
-                  type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   autoComplete="new-password"

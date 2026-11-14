@@ -18,6 +18,7 @@ import {
   WEAK_PASSWORD_CODE,
 } from "@/lib/password";
 import PasswordChecklist from "@/components/PasswordChecklist";
+import PasswordInput from "@/components/PasswordInput";
 import WeakPasswordNotice from "@/components/WeakPasswordNotice";
 import ThemeSelect from "@/components/ThemeSelect";
 import EditNameForm from "@/components/EditNameForm"; // Part 24
@@ -207,11 +208,11 @@ export default function AdminProfilePage() {
             <form onSubmit={handlePasswordChange} className="grid gap-4 md:grid-cols-2">
               <label className="text-sm font-medium text-ink-nav">
                 New password
-                <input type="password" autoComplete="new-password" aria-describedby="password-rules" required value={password} onChange={(event) => setPassword(event.target.value)} placeholder="New password" className="mt-2 w-full rounded-xl border border-sky-line px-4 py-3 font-normal outline-none transition focus:border-navy-soft focus:ring-2 focus:ring-navy-soft/20" />
+                <PasswordInput autoComplete="new-password" aria-describedby="password-rules" required value={password} onChange={(event) => setPassword(event.target.value)} placeholder="New password" wrapperClassName="mt-2" className="w-full rounded-xl border border-sky-line px-4 py-3 font-normal outline-none transition focus:border-navy-soft focus:ring-2 focus:ring-navy-soft/20" />
               </label>
               <label className="text-sm font-medium text-ink-nav">
                 Confirm new password
-                <input type="password" autoComplete="new-password" required value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} placeholder="Enter it again" className="mt-2 w-full rounded-xl border border-sky-line px-4 py-3 font-normal outline-none transition focus:border-navy-soft focus:ring-2 focus:ring-navy-soft/20" />
+                <PasswordInput autoComplete="new-password" required value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} placeholder="Enter it again" wrapperClassName="mt-2" className="w-full rounded-xl border border-sky-line px-4 py-3 font-normal outline-none transition focus:border-navy-soft focus:ring-2 focus:ring-navy-soft/20" />
               </label>
               {/* Strength bar + rules (Part 13b), across both columns */}
               <div className="md:col-span-2"><PasswordChecklist password={password} id="password-rules" /></div>

@@ -11,6 +11,7 @@ import { supabase } from "@/lib/supabase";
 import Logo from "@/components/Logo";
 import AuthShell from "@/components/AuthShell";
 import PasswordChecklist from "@/components/PasswordChecklist";
+import PasswordInput from "@/components/PasswordInput";
 import { passwordMeetsRules, PASSWORD_RULES_MESSAGE } from "@/lib/password";
 import { CST_EMAIL_HINT, CST_EMAIL_MESSAGE, CST_EMAIL_PLACEHOLDER, isCstEmail } from "@/lib/cstEmail";
 
@@ -193,9 +194,8 @@ export default function RegisterPage() {
               Password
             </label>
 
-            <input
+            <PasswordInput
               id="password"
-              type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Create a password"

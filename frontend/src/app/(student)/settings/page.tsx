@@ -31,6 +31,7 @@ import {
   WEAK_PASSWORD_CODE,
 } from "@/lib/password";
 import PasswordChecklist from "@/components/PasswordChecklist";
+import PasswordInput from "@/components/PasswordInput";
 import WeakPasswordNotice from "@/components/WeakPasswordNotice";
 import ThemeSelect from "@/components/ThemeSelect";
 import {
@@ -223,8 +224,8 @@ export default function SettingsPage() {
           </div>
           <div className="mb-5 flex items-center gap-2 rounded-xl bg-sky-wash px-4 py-3 text-sm text-ink-soft"><Eye className="h-4 w-4 shrink-0 text-ink-soft" /> Signed in as <span className="font-medium text-ink">{email || "Loading account…"}</span></div>
           <form onSubmit={changePassword} className="grid gap-4 md:grid-cols-2">
-            <label className="text-sm font-medium">New password<input type="password" autoComplete="new-password" aria-describedby="password-rules" required value={password} onChange={(event) => setPassword(event.target.value)} placeholder="New password" className="mt-2 w-full rounded-xl border border-sky-line bg-white px-4 py-3 font-normal outline-none transition focus:border-navy-soft focus:ring-2 focus:ring-navy-soft/20" /></label>
-            <label className="text-sm font-medium">Confirm password<input type="password" autoComplete="new-password" required value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} placeholder="Enter it again" className="mt-2 w-full rounded-xl border border-sky-line bg-white px-4 py-3 font-normal outline-none transition focus:border-navy-soft focus:ring-2 focus:ring-navy-soft/20" /></label>
+            <label className="text-sm font-medium">New password<PasswordInput autoComplete="new-password" aria-describedby="password-rules" required value={password} onChange={(event) => setPassword(event.target.value)} placeholder="New password" wrapperClassName="mt-2" className="w-full rounded-xl border border-sky-line bg-white px-4 py-3 font-normal outline-none transition focus:border-navy-soft focus:ring-2 focus:ring-navy-soft/20" /></label>
+            <label className="text-sm font-medium">Confirm password<PasswordInput autoComplete="new-password" required value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} placeholder="Enter it again" wrapperClassName="mt-2" className="w-full rounded-xl border border-sky-line bg-white px-4 py-3 font-normal outline-none transition focus:border-navy-soft focus:ring-2 focus:ring-navy-soft/20" /></label>
             {/* Strength bar + rules (Part 13b), across both columns */}
             <div className="md:col-span-2"><PasswordChecklist password={password} id="password-rules" /></div>
             <div className="flex flex-wrap items-center gap-3 md:col-span-2">
