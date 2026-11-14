@@ -28,6 +28,8 @@ import PageHeader, { CountPill } from "@/components/PageHeader";
 import PdfCard from "@/components/PdfCard";
 import VideoCard from "@/components/VideoCard";
 import EmptyState from "@/components/EmptyState";
+import LoadMoreButton from "@/components/LoadMoreButton";
+import { useLoadMore } from "@/lib/useLoadMore";
 import EditResourceDialog from "@/components/EditResourceDialog";
 import FilterBar from "@/components/FilterBar";
 
@@ -210,6 +212,13 @@ export default function AllResourcesPage() {
     });
   }, [filter, query, resources, matchesPlace, selectedModule]);
 
+  // Part 23: draw 24 at a time; changing the type tab, search or any filter
+  // starts again at 24.
+  const page = useLoadMore(
+    visibleResources,
+    `${filter}|${query}|${selectedProgramme}|${selectedYear}|${selectedSemester}|${selectedModule}`
+  );
+
   // Part 22: with a year AND a semester chosen (and no single module), the
   // cards are grouped under one heading per module. The super admin looking
   // at all programmes gets one group per programme + module, with the
@@ -221,18 +230,33 @@ export default function AllResourcesPage() {
 
   const moduleGroups = useMemo(() => {
     if (!groupByModule) return [];
-    const groups = new Map<string, { module: string; programme: string; items: Resource[] }>();
-    for (const resource of visibleResources) {
-      const moduleName = resource.module_name || "Unknown Module";
-      const programme = resource.programmes?.name || "";
-      const key = `${programme}|${moduleName}`;
-      if (!groups.has(key)) groups.set(key, { module: moduleName, programme, items: [] });
+    // Part 23: items = cards shown so far; total = the group's full count.
+    const groups = new Map<
+      string,
+      { module: string; programme: string; items: Resource[]; total: number }
+    >();
+    const keyOf = (resource: Resource) =>
+      `${resource.programmes?.name || ""}|${resource.module_name || "Unknown Module"}`;
+    for (const resource of page.shown) {
+      const key = keyOf(resource);
+      if (!groups.has(key)) {
+        groups.set(key, {
+          module: resource.module_name || "Unknown Module",
+          programme: resource.programmes?.name || "",
+          items: [],
+          total: 0,
+        });
+      }
       groups.get(key)!.items.push(resource);
+    }
+    for (const resource of visibleResources) {
+      const group = groups.get(keyOf(resource));
+      if (group) group.total += 1;
     }
     return [...groups.values()].sort(
       (a, b) => a.programme.localeCompare(b.programme) || a.module.localeCompare(b.module)
     );
-  }, [groupByModule, visibleResources]);
+  }, [groupByModule, page.shown, visibleResources]);
 
   const showProgrammeInHeading = isSuperAdmin && selectedProgramme === "All Programmes";
 
@@ -488,7 +512,7 @@ export default function AllResourcesPage() {
                     <span className="text-sm font-semibold text-navy-soft">{group.programme}</span>
                   )}
                   <span className="text-sm font-medium text-ink-soft">
-                    {group.items.length} {group.items.length === 1 ? "resource" : "resources"}
+                    {group.total} {group.total === 1 ? "resource" : "resources"}
                   </span>
                 </h2>
                 <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
@@ -499,9 +523,11 @@ export default function AllResourcesPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
-            {visibleResources.map(renderCard)}
+            {page.shown.map(renderCard)}
           </div>
         )}
+
+        {!loading && <LoadMoreButton remaining={page.remaining} onClick={page.loadMore} />}
       </div>
 
       {pendingDelete && (

@@ -7,6 +7,7 @@
 // PDF preview part: View opens the preview window instead of a new tab.
 // Part 12: drawn with the shared PageHeader, FilterBar, PdfCard and
 // EmptyState (theme colours); the data code is unchanged.
+// Part 23: 24 cards at a time with a "Load more" button (lib/useLoadMore.ts).
 
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -19,6 +20,8 @@ import PageHeader, { CountPill } from "@/components/PageHeader";
 import CardSkeleton from "@/components/CardSkeleton";
 import PdfCard from "@/components/PdfCard";
 import EmptyState from "@/components/EmptyState";
+import LoadMoreButton from "@/components/LoadMoreButton";
+import { useLoadMore } from "@/lib/useLoadMore";
 import { findProgrammeBySlug } from "@/lib/programmes";
 import type { ResourceTypeCode } from "@/lib/resourceTypes";
 import { isSolvableType } from "@/lib/author";
@@ -246,6 +249,12 @@ export default function ResourceList({
       solvedFilter === "all" || (solvedFilter === "solved") === resource.is_solved
   );
 
+  // Part 23: draw 24 at a time; changing any filter starts again at 24.
+  const page = useLoadMore(
+    filtered,
+    `${selectedYear}|${selectedSemester}|${selectedModule}|${solvedFilter}`
+  );
+
   // Part 22: one card, used by both the flat list and the grouped view.
   const renderCard = (resource: Resource) => (
     <PdfCard
@@ -273,10 +282,16 @@ export default function ResourceList({
     selectedSemester !== "All Semesters" &&
     selectedModule === "All Modules";
 
-  const moduleGroups: [string, Resource[]][] = groupByModule
-    ? [...new Set(filtered.map((r) => r.module_name))]
+  // Part 23: groups hold only the cards shown so far (page.shown); the
+  // heading count is the module's full total, so it stays truthful.
+  const moduleGroups: [string, Resource[], number][] = groupByModule
+    ? [...new Set(page.shown.map((r) => r.module_name))]
         .sort((a, b) => a.localeCompare(b))
-        .map((name) => [name, filtered.filter((r) => r.module_name === name)])
+        .map((name) => [
+          name,
+          page.shown.filter((r) => r.module_name === name),
+          filtered.filter((r) => r.module_name === name).length,
+        ])
     : [];
 
   // Part 21: an empty list says what to do next. With no filters set, the
@@ -389,12 +404,12 @@ export default function ResourceList({
           // Part 22 (supervisor's "folder per module" idea): with a year AND a
           // semester chosen, the cards sit under one heading per module.
           <div className="flex flex-col gap-10">
-            {moduleGroups.map(([moduleName, items]) => (
+            {moduleGroups.map(([moduleName, items, total]) => (
               <section key={moduleName} aria-label={moduleName}>
                 <h2 className="mb-4 flex items-baseline gap-3 border-b border-line pb-2 text-xl font-bold text-navy">
                   {moduleName}
                   <span className="text-sm font-medium text-ink-soft">
-                    {items.length} {items.length === 1 ? singular : plural}
+                    {total} {total === 1 ? singular : plural}
                   </span>
                 </h2>
                 <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
@@ -406,9 +421,11 @@ export default function ResourceList({
         ) : (
           // 1 / 2 / 3 / 4 columns, same as /home
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
-            {filtered.map(renderCard)}
+            {page.shown.map(renderCard)}
           </div>
         )}
+
+        {!loading && <LoadMoreButton remaining={page.remaining} onClick={page.loadMore} />}
       </div>
     </main>
   );

@@ -10,6 +10,8 @@ import { supabase } from "@/lib/supabase";
 import { fetchLikeCounts, setLiked } from "@/lib/likes";
 import FilterBar from "@/components/FilterBar";
 import PageHeader, { CountPill } from "@/components/PageHeader";
+import LoadMoreButton from "@/components/LoadMoreButton";
+import { useLoadMore } from "@/lib/useLoadMore";
 import VideoCard from "@/components/VideoCard";
 import EmptyState from "@/components/EmptyState";
 import { findProgrammeBySlug } from "@/lib/programmes";
@@ -177,6 +179,12 @@ export default function VideosPage() {
       (selectedModule === "All Modules" || video.module_name === selectedModule)
   );
 
+  // Part 23: draw 24 at a time; changing any filter starts again at 24.
+  const page = useLoadMore(
+    filteredVideos,
+    `${selectedYear}|${selectedSemester}|${selectedModule}`
+  );
+
   // Part 22: with a year AND a semester chosen (and no single module), the
   // videos are grouped under one heading per module, A–Z.
   const groupByModule =
@@ -184,10 +192,15 @@ export default function VideosPage() {
     selectedSemester !== "All Semesters" &&
     selectedModule === "All Modules";
 
-  const moduleGroups: [string, Video[]][] = groupByModule
-    ? [...new Set(filteredVideos.map((v) => v.module_name))]
+  // Part 23: groups hold the videos shown so far; the count is the full total.
+  const moduleGroups: [string, Video[], number][] = groupByModule
+    ? [...new Set(page.shown.map((v) => v.module_name))]
         .sort((a, b) => a.localeCompare(b))
-        .map((name) => [name, filteredVideos.filter((v) => v.module_name === name)])
+        .map((name) => [
+          name,
+          page.shown.filter((v) => v.module_name === name),
+          filteredVideos.filter((v) => v.module_name === name).length,
+        ])
     : [];
 
   // One card, used by both the flat list and the grouped view.
@@ -260,12 +273,12 @@ export default function VideosPage() {
           />
         ) : groupByModule ? (
           <div className="flex flex-col gap-10">
-            {moduleGroups.map(([moduleName, items]) => (
+            {moduleGroups.map(([moduleName, items, total]) => (
               <section key={moduleName} aria-label={moduleName}>
                 <h2 className="mb-4 flex items-baseline gap-3 border-b border-line pb-2 text-xl font-bold text-navy">
                   {moduleName}
                   <span className="text-sm font-medium text-ink-soft">
-                    {items.length} {items.length === 1 ? "video" : "videos"}
+                    {total} {total === 1 ? "video" : "videos"}
                   </span>
                 </h2>
                 <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
@@ -276,9 +289,11 @@ export default function VideosPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
-            {filteredVideos.map(renderCard)}
+            {page.shown.map(renderCard)}
           </div>
         )}
+
+        {!loading && <LoadMoreButton remaining={page.remaining} onClick={page.loadMore} />}
       </div>
     </main>
   );
