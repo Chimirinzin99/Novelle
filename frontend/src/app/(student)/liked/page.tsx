@@ -31,6 +31,7 @@ type LikedItem = {
     title: string | null;
     topic: string;
     type: string;
+    module_code: string | null; // Part 25: shown on the card
     module_name: string | null;
     year: number | null;
     semester: number | null;
@@ -72,7 +73,7 @@ export default function LikedPage() {
     const { data, error } = await supabase
       .from("favourites")
       .select(
-        "id, created_at, resources(id, title, topic, type, module_name, year, semester, file_path, video_id, author_type, author_name, is_solved, programmes(name))"
+        "id, created_at, resources(id, title, topic, type, module_code, module_name, year, semester, file_path, video_id, author_type, author_name, is_solved, programmes(name))"
       )
       .eq("user_id", user.id)
       .order("created_at", { ascending: false }); // most recently liked first
@@ -168,6 +169,7 @@ export default function LikedPage() {
                   key={item.id}
                   title={title}
                   videoId={resource.video_id}
+                  moduleCode={resource.module_code}
                   moduleName={resource.module_name}
                   year={resource.year}
                   semester={resource.semester}
@@ -180,6 +182,7 @@ export default function LikedPage() {
                   key={item.id}
                   title={title}
                   type={resource.type}
+                  moduleCode={resource.module_code}
                   moduleName={resource.module_name}
                   year={resource.year}
                   semester={resource.semester}

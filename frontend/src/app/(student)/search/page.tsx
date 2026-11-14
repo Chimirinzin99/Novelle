@@ -28,6 +28,7 @@ type Result = {
   title: string | null;
   topic: string;
   type: string;
+  module_code: string | null; // Part 25: shown on the card
   module_name: string | null;
   year: number | null;
   semester: number | null;
@@ -110,7 +111,7 @@ function SearchResults() {
     const { data, error: searchError } = await supabase
       .from("resources")
       .select(
-        "id, title, topic, type, module_name, year, semester, file_path, video_id, author_type, author_name, is_solved, programmes(name)"
+        "id, title, topic, type, module_code, module_name, year, semester, file_path, video_id, author_type, author_name, is_solved, programmes(name)"
       )
       .or(
         `title.ilike.${pattern},topic.ilike.${pattern},module_code.ilike.${pattern},module_name.ilike.${pattern}`
@@ -197,6 +198,7 @@ function SearchResults() {
                       key={r.id}
                       title={title}
                       videoId={r.video_id}
+                      moduleCode={r.module_code}
                       moduleName={r.module_name}
                       year={r.year}
                       semester={r.semester}
@@ -207,6 +209,7 @@ function SearchResults() {
                       key={r.id}
                       title={title}
                       type={r.type}
+                      moduleCode={r.module_code}
                       moduleName={r.module_name}
                       year={r.year}
                       semester={r.semester}

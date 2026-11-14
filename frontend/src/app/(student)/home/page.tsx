@@ -32,6 +32,7 @@ type PdfResource = {
   title: string | null;
   topic: string;
   type: string;
+  module_code: string | null; // Part 25: shown on the card
   module_name: string | null;
   year: number;
   semester: number;
@@ -45,6 +46,7 @@ type Video = {
   id: number;
   title: string | null;
   topic: string;
+  module_code: string | null; // Part 25: shown on the card
   module_name: string | null;
   year: number;
   semester: number;
@@ -118,7 +120,7 @@ export default function Home() {
       supabase
         .from("resources")
         .select(
-          "id, title, topic, type, module_name, year, semester, file_path, author_type, author_name, is_solved",
+          "id, title, topic, type, module_code, module_name, year, semester, file_path, author_type, author_name, is_solved",
           { count: "exact" }
         )
         .eq("programme_id", profile.programme_id)
@@ -134,7 +136,7 @@ export default function Home() {
         newestOfType("assignment"),
         supabase
           .from("resources")
-          .select("id, title, topic, module_name, year, semester, video_id", { count: "exact" })
+          .select("id, title, topic, module_code, module_name, year, semester, video_id", { count: "exact" })
           .eq("programme_id", profile.programme_id)
           .eq("type", "video")
           .order("created_at", { ascending: false })
@@ -297,6 +299,7 @@ export default function Home() {
                 key={resource.id}
                 title={resource.title || resource.topic}
                 type={resource.type}
+                moduleCode={resource.module_code}
                 moduleName={resource.module_name}
                 year={resource.year}
                 semester={resource.semester}
@@ -362,6 +365,7 @@ export default function Home() {
                   key={video.id}
                   title={video.title || video.topic}
                   videoId={video.video_id}
+                  moduleCode={video.module_code}
                   moduleName={video.module_name}
                   year={video.year}
                   semester={video.semester}

@@ -22,6 +22,7 @@ type Video = {
   topic: string;
   year: number;
   semester: number;
+  module_code: string | null; // Part 25: shown on the card
   module_name: string;
   video_id: string; // 11-character YouTube ID
 };
@@ -69,7 +70,7 @@ export default function VideosPage() {
     // 2. This programme's videos, newest first.
     const { data, error: videosError } = await supabase
       .from("resources")
-      .select("id, topic, year, semester, module_name, video_id")
+      .select("id, topic, year, semester, module_code, module_name, video_id")
       .eq("programme_id", programmeData.id)
       .eq("type", "video")
       .order("created_at", { ascending: false });
@@ -86,6 +87,7 @@ export default function VideosPage() {
       topic: item.topic,
       year: item.year,
       semester: item.semester,
+      module_code: item.module_code,
       module_name: item.module_name || "Unknown Module",
       video_id: item.video_id,
     }));
@@ -209,6 +211,7 @@ export default function VideosPage() {
       key={video.id}
       title={video.topic}
       videoId={video.video_id}
+      moduleCode={video.module_code}
       moduleName={video.module_name}
       year={video.year}
       semester={video.semester}

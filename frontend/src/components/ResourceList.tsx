@@ -47,6 +47,7 @@ type Resource = {
   name: string;
   year: number;
   semester: number;
+  module_code: string | null; // Part 25: shown on the card
   module_name: string;
   file_path: string | null;
   author_type: string | null; // Part 13d
@@ -99,7 +100,7 @@ export default function ResourceList({
 
     const { data, error: loadError } = await supabase
       .from("resources")
-      .select("id, title, topic, year, semester, module_name, file_path, author_type, author_name, is_solved")
+      .select("id, title, topic, year, semester, module_code, module_name, file_path, author_type, author_name, is_solved")
       .eq("programme_id", programmeData.id)
       .eq("type", type)
       .order("created_at", { ascending: false });
@@ -116,6 +117,7 @@ export default function ResourceList({
       name: item.title || item.topic,
       year: item.year,
       semester: item.semester,
+      module_code: item.module_code,
       module_name: item.module_name || "Unknown Module",
       file_path: item.file_path,
       author_type: item.author_type,
@@ -261,6 +263,7 @@ export default function ResourceList({
       key={resource.id}
       title={resource.name}
       type={type}
+      moduleCode={resource.module_code}
       moduleName={resource.module_name}
       year={resource.year}
       semester={resource.semester}

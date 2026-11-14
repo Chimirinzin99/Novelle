@@ -18,6 +18,7 @@ import { authorCredit, isSolvableType } from "@/lib/author";
 type PdfCardProps = {
   title: string;
   type: string; // "note" | "question_paper" | "assignment"
+  moduleCode?: string | null; // Part 25
   moduleName?: string | null;
   year?: number | null;
   semester?: number | null;
@@ -73,10 +74,12 @@ export function resourceDetails(
 // icons (book, calendar) instead of "Module · Year 1 · Sem 1" — the middle
 // dots were a common template habit. Shared with VideoCard.
 export function ResourceMeta({
+  moduleCode,
   moduleName,
   year,
   semester,
 }: {
+  moduleCode?: string | null; // Part 25: shown before the name, e.g. "MAT205, Statistics…"
   moduleName?: string | null;
   year?: number | null;
   semester?: number | null;
@@ -88,12 +91,15 @@ export function ResourceMeta({
   return (
     <div className="space-y-0.5 text-sm text-ink-soft">
       {moduleName !== undefined && (
-        <p className="flex items-center gap-1.5">
-          <svg viewBox="0 0 24 24" className={icon} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <p className="flex items-start gap-1.5">
+          <svg viewBox="0 0 24 24" className={`${icon} mt-[3px]`} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z" />
             <path d="M4 21V5" />
           </svg>
-          {moduleName || "Unknown module"}
+          <span>
+            {moduleCode && moduleName && <span className="font-semibold text-ink-nav">{moduleCode}, </span>}
+            {moduleName || "Unknown module"}
+          </span>
         </p>
       )}
       {when && (
@@ -112,6 +118,7 @@ export function ResourceMeta({
 export default function PdfCard({
   title,
   type,
+  moduleCode,
   moduleName,
   year,
   semester,
@@ -141,7 +148,7 @@ export default function PdfCard({
         </div>
 
         <div>
-          <ResourceMeta moduleName={moduleName} year={year} semester={semester} />
+          <ResourceMeta moduleCode={moduleCode} moduleName={moduleName} year={year} semester={semester} />
           {credit && <p className="mt-1.5 text-sm font-semibold text-ink-nav">{credit}</p>}
         </div>
 

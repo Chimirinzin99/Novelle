@@ -399,6 +399,7 @@ export default function AllResourcesPage() {
         key={resource.id}
         title={title}
         videoId={resource.video_id}
+        moduleCode={resource.module_code}
         moduleName={resource.module_name}
         year={resource.year}
         semester={resource.semester}
@@ -410,6 +411,7 @@ export default function AllResourcesPage() {
         key={resource.id}
         title={title}
         type={resource.type}
+        moduleCode={resource.module_code}
         moduleName={resource.module_name}
         year={resource.year}
         semester={resource.semester}

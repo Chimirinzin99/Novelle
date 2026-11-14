@@ -18,6 +18,7 @@ import { youTubeThumbnail } from "@/lib/youtube";
 type VideoCardProps = {
   title: string;
   videoId: string; // 11-character YouTube ID (resources.video_id)
+  moduleCode?: string | null; // Part 25
   moduleName?: string | null;
   year?: number | null;
   semester?: number | null;
@@ -34,6 +35,7 @@ type VideoCardProps = {
 export default function VideoCard({
   title,
   videoId,
+  moduleCode,
   moduleName,
   year,
   semester,
@@ -76,7 +78,7 @@ export default function VideoCard({
         <div className="flex flex-1 flex-col gap-2.5 px-5 pb-3.5 pt-4">
           <h3 className="line-clamp-2 font-display text-base font-bold leading-snug text-ink">{title}</h3>
 
-          <ResourceMeta moduleName={moduleName} year={year} semester={semester} />
+          <ResourceMeta moduleCode={moduleCode} moduleName={moduleName} year={year} semester={semester} />
 
           {extra}
 
