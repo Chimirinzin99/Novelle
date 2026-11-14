@@ -23,6 +23,7 @@ import { Request, Response } from "express";
 import { createClient } from "@supabase/supabase-js";
 
 import { supabase } from "../config/supabase";
+import { AuthenticatedRequest } from "../middleware/auth"; // Part 24
 import { sendLockoutAlert } from "../utils/mailer";
 import { CST_EMAIL_MESSAGE, isCstEmail } from "../constants/email";
 
@@ -200,4 +201,56 @@ export const login = async (req: Request, res: Response) => {
     console.error("Login error:", error);
     return res.status(500).json({ success: false, message: "Server error." });
   }
+};
+
+// ------------------------------------------------------------------
+// Part 24: PATCH /api/auth/me/name  { full_name }
+//
+// Why a backend route and not an RLS update policy on profiles:
+// RLS works on whole rows, not columns. A policy "users can update their
+// own profile" would also let a student change their own role or
+// programme_id from the browser console. Here the service key does the
+// update, and the code only ever touches full_name of the logged-in user
+// (req.user.id comes from the verified token, never from the body).
+//
+// Note: author credit on existing uploads ("By ...") is stored text on
+// each resource, so it keeps the old name. That is intended.
+// ------------------------------------------------------------------
+export const NAME_MIN_LENGTH = 2;
+export const NAME_MAX_LENGTH = 60;
+
+export const updateMyName = async (req: AuthenticatedRequest, res: Response) => {
+  if (!req.user) {
+    return res.status(401).json({ success: false, message: "Please log in again." });
+  }
+
+  const raw = req.body?.full_name;
+
+  if (typeof raw !== "string") {
+    return res.status(400).json({ success: false, message: "Please enter your name." });
+  }
+
+  // Trim the ends and squeeze repeated spaces ("Ashis   Rai" -> "Ashis Rai").
+  const fullName = raw.trim().replace(/\s+/g, " ");
+
+  if (fullName.length < NAME_MIN_LENGTH || fullName.length > NAME_MAX_LENGTH) {
+    return res.status(400).json({
+      success: false,
+      message: `Your name must be ${NAME_MIN_LENGTH} to ${NAME_MAX_LENGTH} characters.`,
+    });
+  }
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .update({ full_name: fullName }) // only this column, on purpose
+    .eq("id", req.user.id)
+    .select("full_name")
+    .single();
+
+  if (error || !data) {
+    console.error("Update name error:", error);
+    return res.status(500).json({ success: false, message: "Could not save your name. Please try again." });
+  }
+
+  return res.json({ success: true, full_name: data.full_name });
 };

@@ -6,12 +6,14 @@
 // Part 21: "Liked Resources" -> "Starred" (star icon), crisp cards without the
 // lift on hover, and a "Are you a lecturer?" box for name-style CST emails
 // (how to ask for programme admin access).
+// Part 24: "Edit name" under the name (components/EditNameForm.tsx).
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { isStaffEmail, NOVELLE_CONTACT_EMAIL } from "@/lib/cstEmail";
+import EditNameForm from "@/components/EditNameForm";
 
 type StudentProfile = {
   full_name: string | null;
@@ -122,6 +124,14 @@ export default function ProfilePage() {
                 <p className="mt-2 inline-flex rounded-full bg-sky-tint px-3 py-1 text-xs font-medium text-navy">
                   {profile?.programmes?.name || "Programme not assigned"}
                 </p>
+                {profile && (
+                  <EditNameForm
+                    currentName={profile.full_name?.trim() || ""}
+                    onSaved={(newName) =>
+                      setProfile((current) => (current ? { ...current, full_name: newName } : current))
+                    }
+                  />
+                )}
               </div>
             </div>
           )}

@@ -20,6 +20,7 @@ import {
 import PasswordChecklist from "@/components/PasswordChecklist";
 import WeakPasswordNotice from "@/components/WeakPasswordNotice";
 import ThemeSelect from "@/components/ThemeSelect";
+import EditNameForm from "@/components/EditNameForm"; // Part 24
 
 type AdminProfile = {
   full_name: string | null;
@@ -153,6 +154,12 @@ export default function AdminProfilePage() {
                   <p className="mt-1 inline-flex rounded-full bg-sky-wash px-3 py-1 text-xs font-semibold text-navy-soft">
                     {roleLabel(profile.role)}
                   </p>
+                  <EditNameForm
+                    currentName={profile.full_name?.trim() || ""}
+                    onSaved={(newName) =>
+                      setProfile((current) => (current ? { ...current, full_name: newName } : current))
+                    }
+                  />
                 </div>
               </div>
 

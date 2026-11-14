@@ -34,6 +34,7 @@ import Logo from "@/components/Logo";
 import ThemeToggle from "@/components/ThemeToggle";
 import { isAdminRole, isSuperAdminRole, roleLabel } from "@/lib/roles";
 import { fetchPendingCount, PENDING_CHANGED_EVENT } from "@/lib/pending";
+import { NAME_CHANGED_EVENT } from "@/components/EditNameForm"; // Part 24
 
 // How often the pending count refreshes while a page stays open.
 const PENDING_REFRESH_MS = 60_000;
@@ -265,6 +266,18 @@ export default function AdminSidebar() {
     void loadProfile();
     return () => { active = false; };
   }, [router]);
+
+  // Part 24: the admin changed their name on the Profile page. Show it here
+  // straight away, and forget the cached copy so the next load is fresh.
+  useEffect(() => {
+    function onNameChanged(event: Event) {
+      const newName = (event as CustomEvent<string>).detail;
+      setProfile((current) => (current ? { ...current, full_name: newName } : current));
+      clearCachedProfile();
+    }
+    window.addEventListener(NAME_CHANGED_EVENT, onNameChanged);
+    return () => window.removeEventListener(NAME_CHANGED_EVENT, onNameChanged);
+  }, []);
 
   async function logout() {
     clearCachedProfile();
