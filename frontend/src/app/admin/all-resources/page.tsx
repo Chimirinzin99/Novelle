@@ -39,6 +39,7 @@ type Resource = {
   topic: string | null;
   type: string;
   module_id: number | null;
+  module_code: string | null; // Part 24: searchable
   module_name: string | null;
   year: number;
   semester: number;
@@ -54,7 +55,7 @@ type Resource = {
 
 // The columns this page reads (also used to reload one resource after an edit).
 const RESOURCE_COLUMNS =
-  "id, title, topic, type, module_id, module_name, year, semester, programme_id, file_path, video_id, author_type, author_name, is_solved, created_at, programmes(name)";
+  "id, title, topic, type, module_id, module_code, module_name, year, semester, programme_id, file_path, video_id, author_type, author_name, is_solved, created_at, programmes(name)";
 
 const filters = [
   { value: "all", label: "All resources" },
@@ -202,7 +203,7 @@ export default function AllResourcesPage() {
         (selectedModule === "All Modules" ||
           (resource.module_name || "Unknown Module") === selectedModule);
       const programme = resource.programmes?.name || "";
-      const searchable = [resource.title, resource.topic, resource.module_name, programme]
+      const searchable = [resource.title, resource.topic, resource.module_code, resource.module_name, programme]
         .filter(Boolean)
         .join(" ")
         .toLowerCase();

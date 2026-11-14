@@ -32,7 +32,7 @@ export const getResources = async (
     let query = supabase
       .from("resources")
       .select(
-        "id, title, topic, type, module_id, module_name, programme_id, year, semester, file_path, video_id, uploaded_by, created_at, author_type, author_name, is_solved"
+        "id, title, topic, type, module_id, module_code, module_name, programme_id, year, semester, file_path, video_id, uploaded_by, created_at, author_type, author_name, is_solved"
       )
       .order("created_at", { ascending: false });
 
@@ -159,7 +159,7 @@ export const uploadResourceFile = async (
 
     const { data: module, error: moduleError } = await supabase
       .from("modules")
-      .select("id, programme_id, module_name, year, semester, active")
+      .select("id, programme_id, module_code, module_name, year, semester, active")
       .eq("id", Number(module_id))
       .maybeSingle();
 
@@ -181,6 +181,7 @@ export const uploadResourceFile = async (
     }
 
     const moduleId: number = module.id;
+    const moduleCode: string = module.module_code; // Part 24: for search
     const moduleName: string = module.module_name;
     const yearNumber: number = module.year;
     const semesterNumber: number = module.semester;
@@ -227,6 +228,7 @@ export const uploadResourceFile = async (
         topic: topic.trim(),
         type,
         module_id: moduleId,
+        module_code: moduleCode,
         module_name: moduleName,
         programme_id: programmeId,
         year: yearNumber,
@@ -370,7 +372,7 @@ export const updateResource = async (
     if (module_id !== undefined) {
       const { data: module, error: moduleError } = await supabase
         .from("modules")
-        .select("id, programme_id, module_name, year, semester, active")
+        .select("id, programme_id, module_code, module_name, year, semester, active")
         .eq("id", Number(module_id))
         .maybeSingle();
 
@@ -393,6 +395,7 @@ export const updateResource = async (
       }
 
       updates.module_id = module.id;
+      updates.module_code = module.module_code;
       updates.module_name = module.module_name;
       updates.year = module.year;
       updates.semester = module.semester;

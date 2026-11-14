@@ -102,7 +102,8 @@ function SearchResults() {
     setLoading(true);
 
     // ilike = case-insensitive "like"; %word% = "contains word".
-    // .or("a,b,c") = match if ANY of the three is true.
+    // .or("a,b,c,d") = match if ANY of them is true.
+    // Part 24: module_code too, so "MAT205" finds that module's resources.
     // The value is in double quotes so spaces in it are kept.
     const pattern = `"%${safe}%"`;
 
@@ -112,7 +113,7 @@ function SearchResults() {
         "id, title, topic, type, module_name, year, semester, file_path, video_id, author_type, author_name, is_solved, programmes(name)"
       )
       .or(
-        `title.ilike.${pattern},topic.ilike.${pattern},module_name.ilike.${pattern}`
+        `title.ilike.${pattern},topic.ilike.${pattern},module_code.ilike.${pattern},module_name.ilike.${pattern}`
       )
       .order("created_at", { ascending: false })
       .limit(SEARCH_LIMIT);
