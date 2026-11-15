@@ -43,11 +43,13 @@ export default function LandingPage() {
     <main className="flex min-h-screen flex-col bg-cream">
       {/* Hero on the campus photo: header, logo mark, wordmark, Explore */}
       <section className="relative flex min-h-[86vh] flex-col overflow-hidden">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+        <Image
           src="/images/campus/aerial.webp"
           alt=""
-          className="absolute inset-0 h-full w-full object-cover"
+          fill
+          preload
+          sizes="100vw"
+          className="object-cover"
           style={{ objectPosition: "center 40%" }}
         />
         {/* Navy fade: darker towards the bottom, where the text is */}

@@ -7,6 +7,8 @@
 //
 // Usage: <AuthShell photo="/images/campus/students-walking.webp">…form…</AuthShell>
 
+import Image from "next/image";
+
 type AuthShellProps = {
   photo: string;
   position?: string; // which part of the photo stays visible (object-position)
@@ -17,11 +19,13 @@ export default function AuthShell({ photo, position = "center", children }: Auth
   return (
     <main className="flex min-h-screen bg-cream">
       <div className="relative hidden flex-1 overflow-hidden lg:block">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+        <Image
           src={photo}
           alt=""
-          className="absolute inset-0 h-full w-full object-cover"
+          fill
+          preload
+          sizes="50vw"
+          className="object-cover"
           style={{ objectPosition: position }}
         />
         {/* Navy fade at the bottom, behind the credit */}

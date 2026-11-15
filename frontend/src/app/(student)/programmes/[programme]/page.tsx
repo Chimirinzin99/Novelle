@@ -10,6 +10,7 @@
 // Part 21: each programme's banner shows its own CST photo
 // (lib/programmeBanners.ts); crisp category cards (no lift on hover).
 
+import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -117,11 +118,13 @@ export default function ProgrammePage() {
             "on-bar" (globals.css) are navy and white in light mode, and stay
             dark / light in dark mode (plain navy turns light blue there). */}
         <div className="relative mb-8 h-[180px] overflow-hidden rounded-md sm:h-[200px] lg:h-[220px]">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
+          <Image
             src={banner.src}
             alt=""
-            className="absolute inset-0 h-full w-full object-cover"
+            fill
+            preload
+            sizes="100vw"
+            className="object-cover"
             style={{ objectPosition: banner.position }}
           />
           <div className="absolute inset-0 bg-gradient-to-r from-bar/90 via-bar/55 to-transparent" />

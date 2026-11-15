@@ -59,7 +59,7 @@ export default function VideoCard({
           className="group relative block w-full text-left outline-none focus-visible:ring-2 focus-visible:ring-navy/40"
           aria-label={`Watch ${title}`}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
+          {/* eslint-disable-next-line @next/next/no-img-element -- YouTube thumbnail from i.ytimg.com: already small, and skipping Next image optimisation saves the Vercel free-plan quota */}
           <img
             src={youTubeThumbnail(videoId)}
             alt=""

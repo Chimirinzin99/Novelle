@@ -693,7 +693,7 @@ export default function ManageResourcesPage() {
               {/* Live preview: thumbnail if the link is valid */}
               {videoUrl.trim() &&
                 (previewVideoId ? (
-                  // eslint-disable-next-line @next/next/no-img-element
+                  // eslint-disable-next-line @next/next/no-img-element -- YouTube thumbnail from i.ytimg.com: already small, and skipping Next image optimisation saves the Vercel free-plan quota
                   <img
                     src={youTubeThumbnail(previewVideoId)}
                     alt="Video thumbnail preview"
