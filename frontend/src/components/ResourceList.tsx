@@ -79,11 +79,6 @@ export default function ResourceList({
   const [solvedFilter, setSolvedFilter] = useState<SolvedFilter>("all"); // Part 13d
   const showSolvedFilter = isSolvableType(type);
 
-  useEffect(() => {
-    fetchResources();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [programmeSlug, type]);
-
   async function fetchResources() {
     setLoading(true);
     setError("");
@@ -152,6 +147,13 @@ export default function ResourceList({
     setLikeCounts(counts);
     setLoading(false);
   }
+
+  /* eslint-disable react-hooks/set-state-in-effect -- load the data when the page opens; the loader shows the spinner first */
+  useEffect(() => {
+    fetchResources();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [programmeSlug, type]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // PDF preview part: View opens the preview window (usePreview), Download
   // saves the file (lib/files.ts). Both used to open a new tab.

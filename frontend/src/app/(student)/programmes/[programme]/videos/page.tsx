@@ -48,10 +48,6 @@ export default function VideosPage() {
   const [selectedSemester, setSelectedSemester] = useState("All Semesters");
   const [selectedModule, setSelectedModule] = useState("All Modules");
 
-  useEffect(() => {
-    fetchVideos();
-  }, [programmeSlug]);
-
   async function fetchVideos() {
     setLoading(true);
     setError("");
@@ -118,6 +114,12 @@ export default function VideosPage() {
     setLikeCounts(counts);
     setLoading(false);
   }
+
+  /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps -- reload only when the programme changes; the loader shows the spinner first */
+  useEffect(() => {
+    fetchVideos();
+  }, [programmeSlug]);
+  /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 
   // Like / unlike (same as the Notes page).
   // Like / unlike. The star (Part 21; was a heart) and count change straight away ("optimistic"),

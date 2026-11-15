@@ -63,21 +63,6 @@ export default function MySubmissionsPage() {
   const [notice, setNotice] = useState("");
   const [filter, setFilter] = useState<StatusFilter>("all");
 
-  useEffect(() => {
-    const savedNotice = sessionStorage.getItem("novelle:upload-notice");
-
-    if (savedNotice) {
-      setNotice(savedNotice);
-      sessionStorage.removeItem("novelle:upload-notice");
-
-      const timeout = window.setTimeout(() => setNotice(""), 8000);
-      loadSubmissions();
-      return () => window.clearTimeout(timeout);
-    }
-
-    loadSubmissions();
-  }, []);
-
   async function loadSubmissions() {
     setLoading(true);
     setError("");
@@ -115,6 +100,23 @@ export default function MySubmissionsPage() {
 
     setLoading(false);
   }
+
+  /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps -- show the saved upload notice, then load the list */
+  useEffect(() => {
+    const savedNotice = sessionStorage.getItem("novelle:upload-notice");
+
+    if (savedNotice) {
+      setNotice(savedNotice);
+      sessionStorage.removeItem("novelle:upload-notice");
+
+      const timeout = window.setTimeout(() => setNotice(""), 8000);
+      loadSubmissions();
+      return () => window.clearTimeout(timeout);
+    }
+
+    loadSubmissions();
+  }, []);
+  /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 
   // Open the student's own PDF in the preview window. Allowed by the
   // storage policy from migration 002 (files in submissions/<their-id>/).

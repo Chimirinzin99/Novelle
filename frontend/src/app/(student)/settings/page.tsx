@@ -104,6 +104,7 @@ export default function SettingsPage() {
   // Part 13b: true when login found the password too weak
   const [weakPasswordNotice, setWeakPasswordNotice] = useState(false);
 
+  /* eslint-disable react-hooks/set-state-in-effect -- reads browser storage / the URL, which only exists after the page has mounted */
   useEffect(() => {
     setWeakPasswordNotice(hasWeakPasswordFlag());
     setPreferences(getNotificationPreferences());
@@ -114,6 +115,7 @@ export default function SettingsPage() {
     setReduceMotion(readReduceMotion());
     supabase.auth.getUser().then(({ data }) => setEmail(data.user?.email ?? ""));
   }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // Part 20: save + apply only when the user changes a setting
   function changeFontSize(size: FontSize) {

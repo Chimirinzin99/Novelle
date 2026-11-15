@@ -280,7 +280,7 @@ export default function LoginPage() {
 
         {/* Register */}
         <p className="mt-6 text-center text-sm text-ink-soft">
-          Don't have an account?{" "}
+          Don&apos;t have an account?{" "}
 
           <Link
             href="/register"

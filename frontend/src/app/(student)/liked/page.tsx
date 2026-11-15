@@ -51,10 +51,6 @@ export default function LikedPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    loadLiked();
-  }, []);
-
   async function loadLiked() {
     setLoading(true);
     setError("");
@@ -90,6 +86,12 @@ export default function LikedPage() {
 
     setLoading(false);
   }
+
+  /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps -- load the data when the page opens; the loader shows the spinner first */
+  useEffect(() => {
+    loadLiked();
+  }, []);
+  /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 
   // PDF preview part: View opens the preview window (usePreview), Download
   // saves the file (lib/files.ts). Both used to open a new tab.

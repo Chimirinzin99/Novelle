@@ -131,9 +131,11 @@ export default function AdminSidebar() {
   const topBarBellRef = useRef<HTMLDivElement>(null);
 
   // Close the panel on a page change
+  /* eslint-disable react-hooks/set-state-in-effect -- close the bell panel when the page changes */
   useEffect(() => {
     setBellOpen(false);
   }, [pathname]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // Close the panel on a click outside it or Escape
   useEffect(() => {

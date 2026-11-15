@@ -129,10 +129,6 @@ export default function ManageResourcesPage() {
   const [isDragging, setIsDragging] = useState(false); // PDF dragged over the drop zone
 
 
-  useEffect(() => {
-    loadPage();
-  }, []);
-
   async function loadPage() {
     setLoading(true);
     setError("");
@@ -241,6 +237,12 @@ export default function ManageResourcesPage() {
       );
     }
   }
+
+  /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps -- load the data when the page opens; the loader shows the spinner first */
+  useEffect(() => {
+    loadPage();
+  }, []);
+  /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 
   async function handleUpload(event: React.FormEvent) {
     event.preventDefault();

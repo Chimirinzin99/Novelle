@@ -53,9 +53,11 @@ export default function AdminRequestForm({ email, defaultProgrammeId }: Props) {
   const [error, setError] = useState("");
   const [sentAt, setSentAt] = useState<string | null>(null);
 
+  /* eslint-disable react-hooks/set-state-in-effect -- reads browser storage / the URL, which only exists after the page has mounted */
   useEffect(() => {
     setSentAt(readSent(email));
   }, [email]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   async function openForm() {
     setError("");

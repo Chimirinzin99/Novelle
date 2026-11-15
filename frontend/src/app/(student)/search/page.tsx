@@ -63,10 +63,6 @@ function SearchResults() {
   const [error, setError] = useState("");
   const [fullName, setFullName] = useState("");
 
-  useEffect(() => {
-    runSearch();
-  }, [query]);
-
   // The student's name for the welcome heading (same as /home).
   // Runs once; a missing name just leaves the heading without ", name".
   useEffect(() => {
@@ -129,6 +125,12 @@ function SearchResults() {
 
     setLoading(false);
   }
+
+  /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps -- search again only when the query changes; the search shows the spinner first */
+  useEffect(() => {
+    runSearch();
+  }, [query]);
+  /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 
   // PDF preview part: View opens the preview window (usePreview), Download
   // saves the file (lib/files.ts). Both used to open a new tab.

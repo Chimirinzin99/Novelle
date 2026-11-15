@@ -74,10 +74,6 @@ export default function Home() {
   const [likeCounts, setLikeCounts] = useState<Record<number, number>>({});
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadStudentData();
-  }, []);
-
   async function loadStudentData() {
     setLoading(true);
 
@@ -191,6 +187,12 @@ export default function Home() {
     setLikeCounts(counts);
     setLoading(false);
   }
+
+  /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps -- load the data when the page opens; the loader shows the spinner first */
+  useEffect(() => {
+    loadStudentData();
+  }, []);
+  /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 
   // PDF preview part: View opens the preview window (usePreview), Download
   // saves the file (lib/files.ts). Both used to open a new tab.

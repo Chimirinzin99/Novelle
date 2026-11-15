@@ -40,18 +40,18 @@ type Programme = {
 // Part 21: modules grouped under "Year 1, Semester 1" headings, in order.
 function moduleGroups<T extends { year: number; semester: number }>(modules: T[]) {
   const groups = new Map<string, { key: string; title: string; year: number; semester: number; modules: T[] }>();
-  for (const module of modules) {
-    const key = `${module.year}-${module.semester}`;
+  for (const item of modules) {
+    const key = `${item.year}-${item.semester}`;
     if (!groups.has(key)) {
       groups.set(key, {
         key,
-        title: `Year ${module.year}, Semester ${module.semester}`,
-        year: module.year,
-        semester: module.semester,
+        title: `Year ${item.year}, Semester ${item.semester}`,
+        year: item.year,
+        semester: item.semester,
         modules: [],
       });
     }
-    groups.get(key)!.modules.push(module);
+    groups.get(key)!.modules.push(item);
   }
   return [...groups.values()].sort((a, b) => a.year - b.year || a.semester - b.semester);
 }
@@ -247,6 +247,7 @@ export default function ModulesPage() {
     };
 
     loadPage();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- load once (and if the router changes), not on every render
   }, [router]);
 
   // ------------------------------------

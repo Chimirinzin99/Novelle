@@ -47,9 +47,11 @@ export default function AdminProfilePage() {
   // Part 13b: true when login found the password too weak
   const [weakPasswordNotice, setWeakPasswordNotice] = useState(false);
 
+  /* eslint-disable react-hooks/set-state-in-effect -- reads browser storage / the URL, which only exists after the page has mounted */
   useEffect(() => {
     setWeakPasswordNotice(hasWeakPasswordFlag());
   }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   useEffect(() => {
     async function loadProfile() {

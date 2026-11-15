@@ -38,10 +38,6 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    loadProfile();
-  }, []);
-
   async function loadProfile() {
     setLoading(true);
     setError("");
@@ -81,6 +77,12 @@ export default function ProfilePage() {
 
     setLoading(false);
   }
+
+  /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps -- load the data when the page opens; the loader shows the spinner first */
+  useEffect(() => {
+    loadProfile();
+  }, []);
+  /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 
   const fullName = profile?.full_name?.trim() || "Student";
 

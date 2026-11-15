@@ -79,7 +79,7 @@ export default function AllResourcesPage() {
   const [selectedModule, setSelectedModule] = useState("All Modules");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [openingId, setOpeningId] = useState<number | null>(null);
+  const [, setOpeningId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Resource | null>(null);
   const [success, setSuccess] = useState("");
@@ -87,6 +87,7 @@ export default function AllResourcesPage() {
   // The resource in the Edit window (null = closed).
   const [editing, setEditing] = useState<Resource | null>(null);
 
+  /* eslint-disable react-hooks/set-state-in-effect -- reads browser storage / the URL, which only exists after the page has mounted */
   useEffect(() => {
     const requestedType = new URLSearchParams(window.location.search).get("type");
     if (requestedType && filters.some((item) => item.value === requestedType)) {
@@ -134,6 +135,7 @@ export default function AllResourcesPage() {
     }
     void loadResources();
   }, [router]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   useEffect(() => {
     if (!success) return;

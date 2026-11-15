@@ -263,10 +263,12 @@ export default function AdminSubmissionsPage() {
     setLoading(false);
   };
 
+  /* eslint-disable react-hooks/set-state-in-effect -- load the data when the page opens; the loader shows the spinner first */
   useEffect(() => {
     loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // Open the submitted (private) PDF in the preview window. Storage RLS
   // allows admins to see submissions of their programme (all for super admin).

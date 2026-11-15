@@ -231,6 +231,7 @@ export default function UsersPage() {
     };
 
     loadPage();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- load once (and if the router changes), not on every render
   }, [router]);
 
   // ------------------------------------
