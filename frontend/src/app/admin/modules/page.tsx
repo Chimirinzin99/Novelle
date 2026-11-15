@@ -7,6 +7,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import FilterBar from "@/components/FilterBar";
 import { BACKEND_URL } from "@/lib/config";
 import { callBackend, readJson } from "@/lib/backend";
 import {
@@ -77,10 +78,13 @@ export default function ModulesPage() {
   const formRef = useRef<HTMLDivElement>(null);
 
   // Super admin only: programme list, the programme a NEW module goes to,
-  // and the programme filter above the module list ("" = all programmes).
+  // and the filters above the module list (Part 28: + year and semester,
+  // same FilterBar as All Resources; the programme filter is super admin only).
   const [programmes, setProgrammes] = useState<Programme[]>([]);
   const [formProgrammeId, setFormProgrammeId] = useState("");
-  const [listProgrammeId, setListProgrammeId] = useState("");
+  const [listProgramme, setListProgramme] = useState("All Programmes");
+  const [listYear, setListYear] = useState("All Years");
+  const [listSemester, setListSemester] = useState("All Semesters");
 
   const [moduleCode, setModuleCode] = useState("");
   const [moduleName, setModuleName] = useState("");
@@ -557,10 +561,19 @@ export default function ModulesPage() {
   const programmeNameById = (id: number) =>
     programmes.find((p) => p.id === id)?.name ?? "";
 
-  // Modules shown in the list (super admin can filter by programme).
-  const visibleModules = listProgrammeId
-    ? modules.filter((m) => m.programme_id === Number(listProgrammeId))
-    : modules;
+  // Modules shown in the list, after the Programme / Year / Semester filters.
+  const visibleModules = modules.filter(
+    (m) =>
+      (listProgramme === "All Programmes" || programmeNameById(m.programme_id) === listProgramme) &&
+      (listYear === "All Years" || `Year ${m.year}` === listYear) &&
+      (listSemester === "All Semesters" || `Semester ${m.semester}` === listSemester)
+  );
+
+  function clearListFilters() {
+    setListProgramme("All Programmes");
+    setListYear("All Years");
+    setListSemester("All Semesters");
+  }
 
   return (
     // text-gray-900: without it the text (and the form boxes, which inherit
@@ -770,6 +783,18 @@ export default function ModulesPage() {
         </div>
         )}
 
+        {/* Part 28: Programme (super admin only) / Year / Semester */}
+        <FilterBar
+          programmes={isSuperAdminRole(profile?.role) ? programmes.map((p) => p.name) : undefined}
+          programme={listProgramme}
+          onProgrammeChange={setListProgramme}
+          year={listYear}
+          onYearChange={setListYear}
+          semester={listSemester}
+          onSemesterChange={setListSemester}
+          onClear={clearListFilters}
+        />
+
         {/* Module List (Part 21: crisp box, modules grouped by year and
             semester, code in a small tag, only inactive modules marked) */}
         <div className="overflow-hidden rounded-md border-[1.5px] border-card-line bg-white">
@@ -785,28 +810,26 @@ export default function ModulesPage() {
                 : ""}
             </p>
 
-            {/* Programme filter (super admin only) */}
-            {canManage && (
-              <select
-                value={listProgrammeId}
-                onChange={(e) => setListProgrammeId(e.target.value)}
-                className="mt-3 rounded-lg border border-sky-line bg-white px-3 py-2 text-sm outline-none focus:border-navy-soft"
-              >
-                <option value="">All programmes</option>
-                {programmes.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-            )}
           </div>
 
           {visibleModules.length === 0 ? (
             <div className="px-6 py-12 text-center">
-              <p className="text-ink-soft">
-                No modules have been added yet.
-              </p>
+              {modules.length === 0 ? (
+                <p className="text-ink-soft">
+                  No modules have been added yet.
+                </p>
+              ) : (
+                <>
+                  <p className="text-ink-soft">No modules match these filters.</p>
+                  <button
+                    type="button"
+                    onClick={clearListFilters}
+                    className="mt-2 rounded text-sm font-semibold text-navy-soft outline-none hover:text-navy hover:underline focus-visible:ring-2 focus-visible:ring-navy/40"
+                  >
+                    Clear filters
+                  </button>
+                </>
+              )}
             </div>
           ) : (
             <div>
