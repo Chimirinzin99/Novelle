@@ -1,0 +1,557 @@
+// controllers/resources.controller.ts — admin list, upload, edit, delete.
+// Part 13d: author credit + Solved/Unsolved (utils/author.ts) on upload and
+// edit; GET returns author_type, author_name, is_solved.
+
+import { Response } from "express";
+import crypto from "crypto";
+
+import { supabase } from "../config/supabase";
+import { AuthenticatedRequest } from "../middleware/auth";
+
+const BUCKET_NAME = "resources";
+
+import { isResourceType } from "../constants/resourceTypes";
+import { parseYouTubeId } from "../utils/youtube";
+import { readAuthor, readBoolean } from "../utils/author";
+
+// Part 13d: only these types can be marked Solved.
+const SOLVABLE_TYPES = ["question_paper", "assignment"];
+
+export const getResources = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required.",
+      });
+    }
+
+    let query = supabase
+      .from("resources")
+      .select(
+        "id, title, topic, type, module_id, module_code, module_name, programme_id, year, semester, file_path, video_id, uploaded_by, created_at, author_type, author_name, is_solved"
+      )
+      .order("created_at", { ascending: false });
+
+    if (req.user.role === "programme_admin") {
+      if (!req.user.programme_id) {
+        return res.status(403).json({
+          success: false,
+          message: "Programme not assigned.",
+        });
+      }
+
+      query = query.eq("programme_id", req.user.programme_id);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error("Get resources error:", error);
+
+      return res.status(500).json({
+        success: false,
+        message: "Failed to fetch notes.",
+        error: error.message,
+      });
+    }
+
+    return res.json({
+      success: true,
+      resources: data,
+    });
+  } catch (error) {
+    console.error("Get resources error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Server error.",
+    });
+  }
+};
+
+export const uploadResourceFile = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required.",
+      });
+    }
+
+    const { topic, type, module_id } = req.body;
+
+    if (!topic || !topic.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Topic is required.",
+      });
+    }
+
+    if (!isResourceType(type)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid resource type.",
+      });
+    }
+
+    // Part 13d: who made it ("self" = this admin) and Solved/Unsolved
+    const author = await readAuthor(req.body, req.user.id);
+    if (!author.ok) {
+      return res.status(400).json({ success: false, message: author.message });
+    }
+    const isSolved =
+      SOLVABLE_TYPES.includes(type) && readBoolean(req.body.is_solved) === true;
+
+    // Videos are a YouTube link (no file); every other type is a PDF.
+    const isVideo = type === "video";
+    let videoId: string | null = null;
+
+    if (isVideo) {
+      videoId = parseYouTubeId(req.body.video_url);
+
+      if (!videoId) {
+        return res.status(400).json({
+          success: false,
+          message: "Please enter a valid YouTube video link.",
+        });
+      }
+    } else {
+      if (!req.file) {
+        return res.status(400).json({
+          success: false,
+          message: "Please upload a PDF file.",
+        });
+      }
+
+      if (req.file.mimetype !== "application/pdf") {
+        return res.status(400).json({
+          success: false,
+          message: "Only PDF files are allowed.",
+        });
+      }
+    }
+
+    let programmeId = req.user.programme_id;
+
+    if (req.user.role === "programme_admin" && !programmeId) {
+      return res.status(403).json({
+        success: false,
+        message: "Programme not assigned.",
+      });
+    }
+
+    // The module is picked from a dropdown on /admin/resources: name, year,
+    // semester and programme are all copied from it, so the client can't
+    // send a mismatched year or programme.
+    if (!module_id) {
+      return res.status(400).json({
+        success: false,
+        message: "Please choose a module.",
+      });
+    }
+
+    const { data: module, error: moduleError } = await supabase
+      .from("modules")
+      .select("id, programme_id, module_code, module_name, year, semester, active")
+      .eq("id", Number(module_id))
+      .maybeSingle();
+
+    if (moduleError || !module || !module.active) {
+      return res.status(400).json({
+        success: false,
+        message: "Module not found or not active.",
+      });
+    }
+
+    if (
+      req.user.role === "programme_admin" &&
+      module.programme_id !== programmeId
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "You cannot upload to another programme's module.",
+      });
+    }
+
+    const moduleId: number = module.id;
+    const moduleCode: string = module.module_code; // Part 24: for search
+    const moduleName: string = module.module_name;
+    const yearNumber: number = module.year;
+    const semesterNumber: number = module.semester;
+    programmeId = module.programme_id;
+
+    if (!programmeId) {
+      return res.status(400).json({
+        success: false,
+        message: "Programme is required.",
+      });
+    }
+
+    // PDFs: upload the file to Storage first. Videos have no file.
+    let filePath: string | null = null;
+
+    if (!isVideo && req.file) {
+      const safeFileName = req.file.originalname
+        .replace(/[^a-zA-Z0-9._-]/g, "_")
+        .replace(/_+/g, "_");
+
+      filePath = `admin/${programmeId}/${crypto.randomUUID()}-${safeFileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from(BUCKET_NAME)
+        .upload(filePath, req.file.buffer, {
+          contentType: "application/pdf",
+          upsert: false,
+        });
+
+      if (uploadError) {
+        console.error("Storage upload error:", uploadError);
+
+        return res.status(500).json({
+          success: false,
+          message: "Failed to upload PDF.",
+          error: uploadError.message,
+        });
+      }
+    }
+
+    const { data: resource, error: insertError } = await supabase
+      .from("resources")
+      .insert({
+        topic: topic.trim(),
+        type,
+        module_id: moduleId,
+        module_code: moduleCode,
+        module_name: moduleName,
+        programme_id: programmeId,
+        year: yearNumber,
+        semester: semesterNumber,
+        file_path: filePath, // null for videos
+        video_id: videoId, // null for PDFs
+        uploaded_by: req.user.id,
+        author_type: author.fields?.author_type ?? null, // Part 13d
+        author_name: author.fields?.author_name ?? null,
+        is_solved: isSolved,
+      })
+      .select()
+      .single();
+
+    if (insertError) {
+      console.error("Resource insert error:", insertError);
+
+      // Remove uploaded file if database insert fails.
+      if (filePath) {
+        await supabase.storage
+          .from(BUCKET_NAME)
+          .remove([filePath]);
+      }
+
+      return res.status(500).json({
+        success: false,
+        message: "Failed to save resource information.",
+        error: insertError.message,
+      });
+    }
+
+    return res.status(201).json({
+      success: true,
+      message: isVideo
+        ? "Video added successfully."
+        : "Resource uploaded successfully.",
+      resource,
+    });
+  } catch (error) {
+    console.error("Upload resource error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Server error.",
+    });
+  }
+};
+
+// ------------------------------------
+// Edit a resource (PUT /api/resources/:id, JSON body)
+// Any field left out stays as it is:
+//   topic     - new title
+//   type      - note / question_paper / assignment (a video stays a video)
+//   module_id - new module; name, year, semester and programme are copied
+//               from the module, same as when uploading
+//   video_url - new YouTube link (videos only)
+//   author_type / author_name / show_author_name - author credit (Part 13d;
+//               "self" = whoever uploaded it, see utils/author.ts)
+//   is_solved - Solved/Unsolved (question papers and assignments)
+// The PDF itself can't be replaced here: delete and upload again instead.
+// ------------------------------------
+export const updateResource = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required.",
+      });
+    }
+
+    const resourceId = req.params.id;
+
+    const { data: existing, error: findError } = await supabase
+      .from("resources")
+      .select("id, programme_id, type, title, uploaded_by")
+      .eq("id", resourceId)
+      .single();
+
+    if (findError || !existing) {
+      return res.status(404).json({
+        success: false,
+        message: "Resource not found.",
+      });
+    }
+
+    // Programme admins may only edit their own programme's resources.
+    if (
+      req.user.role === "programme_admin" &&
+      existing.programme_id !== req.user.programme_id
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "You cannot edit resources from another programme.",
+      });
+    }
+
+    const { topic, type, module_id, video_url } = req.body;
+
+    const updates: Record<string, unknown> = {};
+
+    if (topic !== undefined) {
+      if (typeof topic !== "string" || !topic.trim()) {
+        return res.status(400).json({
+          success: false,
+          message: "Topic cannot be empty.",
+        });
+      }
+
+      updates.topic = topic.trim();
+
+      // Approved student submissions also store a title, and students see
+      // `title || topic`, so keep the two the same.
+      if (existing.title !== null) {
+        updates.title = topic.trim();
+      }
+    }
+
+    if (type !== undefined) {
+      if (!isResourceType(type)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid resource type.",
+        });
+      }
+
+      // A video has no PDF and a PDF has no video link, so a resource
+      // can't be switched to or from "video" by editing its type.
+      if ((type === "video") !== (existing.type === "video")) {
+        return res.status(400).json({
+          success: false,
+          message: "Cannot change a resource to or from Video.",
+        });
+      }
+
+      updates.type = type;
+    }
+
+    if (module_id !== undefined) {
+      const { data: module, error: moduleError } = await supabase
+        .from("modules")
+        .select("id, programme_id, module_code, module_name, year, semester, active")
+        .eq("id", Number(module_id))
+        .maybeSingle();
+
+      if (moduleError || !module || !module.active) {
+        return res.status(400).json({
+          success: false,
+          message: "Module not found or not active.",
+        });
+      }
+
+      // ...and may only move it to a module of their own programme.
+      if (
+        req.user.role === "programme_admin" &&
+        module.programme_id !== req.user.programme_id
+      ) {
+        return res.status(403).json({
+          success: false,
+          message: "You cannot move a resource to another programme's module.",
+        });
+      }
+
+      updates.module_id = module.id;
+      updates.module_code = module.module_code;
+      updates.module_name = module.module_name;
+      updates.year = module.year;
+      updates.semester = module.semester;
+      updates.programme_id = module.programme_id;
+    }
+
+    if (video_url !== undefined) {
+      if (existing.type !== "video") {
+        return res.status(400).json({
+          success: false,
+          message: "Only videos have a YouTube link.",
+        });
+      }
+
+      const videoId = parseYouTubeId(video_url);
+
+      if (!videoId) {
+        return res.status(400).json({
+          success: false,
+          message: "Please enter a valid YouTube video link.",
+        });
+      }
+
+      updates.video_id = videoId;
+    }
+
+    // Part 13d: author credit ("self" = the person who uploaded it)
+    const author = await readAuthor(req.body, existing.uploaded_by);
+    if (!author.ok) {
+      return res.status(400).json({ success: false, message: author.message });
+    }
+    if (author.fields) {
+      updates.author_type = author.fields.author_type;
+      updates.author_name = author.fields.author_name;
+    }
+
+    // Part 13d: Solved/Unsolved. Uses the new type if it is changing.
+    const finalType = (updates.type as string | undefined) ?? existing.type;
+    const solved = readBoolean(req.body.is_solved);
+    if (solved !== undefined) {
+      updates.is_solved = SOLVABLE_TYPES.includes(finalType) && solved;
+    } else if (updates.type !== undefined && !SOLVABLE_TYPES.includes(finalType)) {
+      updates.is_solved = false; // became a note: drop the tag
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Nothing to update.",
+      });
+    }
+
+    const { data, error } = await supabase
+      .from("resources")
+      .update(updates)
+      .eq("id", resourceId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Update resource error:", error);
+
+      return res.status(500).json({
+        success: false,
+        message: "Failed to update resource.",
+        error: error.message,
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: "Resource updated successfully.",
+      resource: data,
+    });
+  } catch (error) {
+    console.error("Update resource error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Server error.",
+    });
+  }
+};
+
+export const deleteResource = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required.",
+      });
+    }
+
+    const resourceId = req.params.id;
+
+    const { data: resource, error: findError } = await supabase
+      .from("resources")
+      .select("id, programme_id, file_path")
+      .eq("id", resourceId)
+      .single();
+
+    if (findError || !resource) {
+      return res.status(404).json({
+        success: false,
+        message: "Resource not found.",
+      });
+    }
+
+    if (
+      req.user.role === "programme_admin" &&
+      resource.programme_id !== req.user.programme_id
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "You cannot delete resources from another programme.",
+      });
+    }
+
+    if (resource.file_path) {
+      const { error: storageError } = await supabase.storage
+        .from(BUCKET_NAME)
+        .remove([resource.file_path]);
+
+      if (storageError) {
+        console.error("Storage delete error:", storageError);
+      }
+    }
+
+    const { error: deleteError } = await supabase
+      .from("resources")
+      .delete()
+      .eq("id", resourceId);
+
+    if (deleteError) {
+      console.error("Delete resource error:", deleteError);
+
+      return res.status(500).json({
+        success: false,
+        message: "Failed to delete resource.",
+        error: deleteError.message,
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: "Resource deleted successfully.",
+    });
+  } catch (error) {
+    console.error("Delete resource error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Server error.",
+    });
+  }
+};

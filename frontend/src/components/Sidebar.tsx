@@ -1,0 +1,630 @@
+"use client";
+
+// The student sidebar, shown on every page in app/(student)/ (see layout.tsx).
+// Part 13c: the bell now reads real notifications from the database
+// (lib/notifications.ts): pending, approved and rejected (with the reason).
+// It refreshes on load, on login/logout, when the window gets focus, when the
+// panel opens and every minute; each item shows a coloured status word.
+// Part 12: restyled with the theme colours and the shared <Logo />.
+// Responsive part: below 1024 px (lg) the sidebar becomes a slide-in menu.
+// A top bar with ☰, the logo and the bell takes its place; ☰ opens the menu,
+// and the backdrop, X, Escape or choosing a link closes it.
+
+import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
+import { programmeHref } from "@/lib/programmes";
+import Logo from "@/components/Logo";
+import ThemeToggle from "@/components/ThemeToggle";
+import {
+  fetchNotifications,
+  markAllNotificationsRead,
+  markNotificationRead,
+  notificationsUpdatedEvent,
+  type AppNotification,
+  type NotificationKind,
+} from "@/lib/notifications";
+
+// Part 13c: status word + colour per notification kind
+// (gold = pending, green = success, red = rejected — the app's colour rules).
+// Part 21: white sidebar with a firmer border (option B, 8 Nov — was cream),
+// and a gold star next to Upload.
+const KIND_LABEL: Record<NotificationKind, { text: string; className: string }> = {
+  pending: { text: "Pending", className: "text-gold-ink" },
+  approved: { text: "Approved", className: "text-green-700" },
+  rejected: { text: "Rejected", className: "text-red-700" },
+};
+
+const REFRESH_EVERY_MS = 60_000; // re-check the bell once a minute
+
+// name = exact programme name in the database (used for the URL);
+// label = what the sidebar shows (with the short form).
+const PROGRAMMES = [
+  { name: "Civil Engineering", label: "Civil Engineering" },
+  { name: "Electrical Engineering", label: "Electrical Engineering" },
+  {
+    name: "Electronics and Communication Engineering",
+    label: "Electronics & Communication (ECE)",
+  },
+  { name: "Information Technology", label: "Information Technology (IT)" },
+  { name: "Architecture", label: "Architecture" },
+  { name: "Engineering Geology", label: "Engineering Geology" },
+  {
+    name: "Instrumentation and Control Engineering",
+    label: "Instrumentation & Control (ICE)",
+  },
+  {
+    name: "Water Resources Engineering",
+    label: "Water Resources Engineering (WRE)",
+  },
+  { name: "Mechanical Engineering", label: "Mechanical Engineering" },
+  { name: "Software Engineering", label: "Software Engineering" },
+];
+
+type IconName =
+  | "home"
+  | "plus"
+  | "user"
+  | "bell"
+  | "graduation"
+  | "settings"
+  | "logout"
+  | "login"
+  | "chevron"
+  | "menu"
+  | "close";
+
+// Small line icons drawn with SVG. stroke="currentColor" means the icon
+// takes the text colour of whatever it sits in.
+function Icon({
+  name,
+  className = "h-5 w-5",
+}: {
+  name: IconName;
+  className?: string;
+}) {
+  const common = {
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 1.8,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+  };
+
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden="true" {...common}>
+      {name === "home" && (
+        <>
+          <path d="m3 10 9-7 9 7" />
+          <path d="M5 9v12h14V9" />
+          <path d="M9 21v-7h6v7" />
+        </>
+      )}
+
+      {name === "plus" && <path d="M12 5v14M5 12h14" />}
+
+      {name === "user" && (
+        <>
+          <circle cx="12" cy="8" r="4" />
+          <path d="M4.5 21a7.5 7.5 0 0 1 15 0" />
+        </>
+      )}
+
+      {name === "bell" && (
+        <>
+          <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9Z" />
+          <path d="M10 21h4" />
+        </>
+      )}
+
+      {name === "graduation" && (
+        <>
+          <path d="m2 9 10-5 10 5-10 5z" />
+          <path d="M6 11v5c3.5 3 8.5 3 12 0v-5" />
+          <path d="M22 9v7" />
+        </>
+      )}
+
+      {name === "settings" && (
+        <>
+          <circle cx="12" cy="12" r="3" />
+          <path d="m19.4 15 .1.1 1.4 1.1-1.5 2.6-1.7-.6a8 8 0 0 1-1.6.9l-.3 1.8h-3l-.3-1.8a8 8 0 0 1-1.6-.9l-1.7.6-1.5-2.6 1.4-1.1a7 7 0 0 1 0-2l-1.4-1.1 1.5-2.6 1.7.6a8 8 0 0 1 1.6-.9l.3-1.8h3l.3 1.8a8 8 0 0 1 1.6.9l1.7-.6 1.5 2.6-1.4 1.1a7 7 0 0 1 0 2Z" />
+        </>
+      )}
+
+      {name === "logout" && (
+        <>
+          <path d="M10 17l5-5-5-5" />
+          <path d="M15 12H3" />
+          <path d="M12 3h7a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-7" />
+        </>
+      )}
+
+      {name === "login" && (
+        <>
+          <path d="M14 17l5-5-5-5" />
+          <path d="M19 12H7" />
+          <path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h7" />
+        </>
+      )}
+
+      {name === "chevron" && <path d="m9 18 6-6-6-6" />}
+
+      {name === "menu" && <path d="M4 6h16M4 12h16M4 18h16" />}
+
+      {name === "close" && <path d="M6 6l12 12M18 6 6 18" />}
+    </svg>
+  );
+}
+
+// Classes for a main sidebar link. The current page gets a solid navy
+// background (as in the design); others get a pale hover.
+// focus-visible: a ring only for keyboard users (Tab), not on mouse clicks.
+function navClass(active: boolean) {
+  return [
+    "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-[15px]",
+    "transition-colors duration-150 outline-none",
+    "focus-visible:ring-2 focus-visible:ring-navy/40",
+    active
+      ? "bg-navy font-semibold text-white"
+      : "font-medium text-ink-nav hover:bg-sky-wash hover:text-navy",
+  ].join(" ");
+}
+
+// Small uppercase section headings ("MY ACCOUNT", "PROGRAMMES").
+const sectionLabel =
+  "font-display text-[11px] font-bold uppercase tracking-[0.14em] text-muted-blue";
+
+export default function Sidebar() {
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const [loggedIn, setLoggedIn] = useState(false);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+
+  // Phones/tablets: is the slide-in menu open?
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  // Bell + panel containers (sidebar bell on laptops, top-bar bell on
+  // phones), used to detect clicks outside the panel.
+  const notificationsRef = useRef<HTMLDivElement>(null);
+  const mobileBellRef = useRef<HTMLDivElement>(null);
+
+  // Programme list edge fade (Part 24, replaces Ngawang's scroll-zoom).
+  // The list fades out at the top / bottom edge only when there are more
+  // programmes to scroll to that way, so the middle stays the focus and the
+  // fade tells you "more this way". The old version highlighted whichever
+  // row was in the middle, which looked like a random row was selected.
+  const programmeListRef = useRef<HTMLElement>(null);
+  const [edgeFade, setEdgeFade] = useState({ top: false, bottom: false });
+
+  const updateEdgeFade = useCallback(() => {
+    const list = programmeListRef.current;
+    if (!list) return;
+
+    // 2px of slack: browsers can stop a fraction of a pixel short of the end.
+    const top = list.scrollTop > 2;
+    const bottom = list.scrollTop + list.clientHeight < list.scrollHeight - 2;
+
+    // Only re-render when something actually changed.
+    setEdgeFade((previous) =>
+      previous.top === top && previous.bottom === bottom ? previous : { top, bottom }
+    );
+  }, []);
+
+  // Check once on load and again when the window (and so the list) resizes.
+  useEffect(() => {
+    updateEdgeFade();
+    window.addEventListener("resize", updateEdgeFade);
+    return () => window.removeEventListener("resize", updateEdgeFade);
+  }, [updateEdgeFade]);
+
+  // A mask hides what's under its transparent parts: transparent at an edge
+  // = faded out there, solid black in between = fully visible.
+  const FADE = "28px";
+  const programmeMask = `linear-gradient(to bottom, ${edgeFade.top ? "transparent" : "#000"} 0, #000 ${FADE}, #000 calc(100% - ${FADE}), ${edgeFade.bottom ? "transparent" : "#000"} 100%)`;
+
+  // Sync authentication and notifications
+  useEffect(() => {
+    let mounted = true;
+
+    // Part 13c: async — reads the database (only this user's rows, via RLS)
+    const syncNotifications = async () => {
+      const list = await fetchNotifications();
+      if (mounted) setNotifications(list);
+    };
+
+    void syncNotifications();
+    window.addEventListener(notificationsUpdatedEvent, syncNotifications);
+    window.addEventListener("storage", syncNotifications); // toggles changed in another tab
+    window.addEventListener("focus", syncNotifications); // back to this tab
+    const timer = window.setInterval(syncNotifications, REFRESH_EVERY_MS);
+
+    const checkUser = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (mounted) setLoggedIn(!!session);
+    };
+
+    checkUser();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (mounted) setLoggedIn(!!session);
+      // Logged in as someone else / logged out: reload the bell.
+      // (setTimeout: Supabase advises not to await its calls inside this callback.)
+      setTimeout(() => void syncNotifications(), 0);
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+      window.clearInterval(timer);
+      window.removeEventListener(notificationsUpdatedEvent, syncNotifications);
+      window.removeEventListener("storage", syncNotifications);
+      window.removeEventListener("focus", syncNotifications);
+    };
+  }, []);
+
+  // Close notifications when clicking outside or pressing Escape
+  useEffect(() => {
+    if (!notificationsOpen) return;
+
+    const handleClick = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (
+        !notificationsRef.current?.contains(target) &&
+        !mobileBellRef.current?.contains(target)
+      ) {
+        setNotificationsOpen(false);
+      }
+    };
+
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setNotificationsOpen(false);
+    };
+
+    document.addEventListener("mousedown", handleClick);
+    document.addEventListener("keydown", handleKey);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClick);
+      document.removeEventListener("keydown", handleKey);
+    };
+  }, [notificationsOpen]);
+
+  // Escape closes the slide-in menu (phones/tablets)
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMenuOpen(false);
+    };
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, [menuOpen]);
+
+  const unreadCount = notifications.filter((n) => !n.read).length;
+
+  function openNotification(notification: AppNotification) {
+    // Show it as read straight away; the database update runs in the background.
+    setNotifications((list) =>
+      list.map((n) => (n.id === notification.id ? { ...n, read: true } : n))
+    );
+    if (!notification.read) void markNotificationRead(notification.id);
+    setNotificationsOpen(false);
+    router.push(notification.href);
+  }
+
+  function markAllRead() {
+    setNotifications((list) => list.map((n) => ({ ...n, read: true })));
+    void markAllNotificationsRead();
+  }
+
+  // Opening the panel re-checks for new notifications.
+  function toggleNotifications() {
+    if (!notificationsOpen) {
+      void fetchNotifications().then(setNotifications);
+    }
+    setNotificationsOpen(!notificationsOpen);
+  }
+
+  // The bell button + its panel. Drawn twice: in the sidebar (laptops) and in
+  // the top bar (phones/tablets); each copy is hidden on the other size.
+  function renderBell(
+    ref: React.RefObject<HTMLDivElement | null>,
+    wrapperClass: string,
+    panelPosition: string
+  ) {
+    return (
+      <div ref={ref} className={`relative ${wrapperClass}`}>
+        <button
+          type="button"
+          onClick={toggleNotifications}
+          aria-label={`Notifications${
+            unreadCount ? `, ${unreadCount} unread` : ""
+          }`}
+          aria-expanded={notificationsOpen}
+          className="relative rounded-lg p-1.5 text-ink-soft outline-none transition hover:bg-sky-wash hover:text-navy focus-visible:ring-2 focus-visible:ring-navy/40"
+        >
+          <Icon name="bell" className="h-5 w-5" />
+
+          {/* Unread count in star gold (the design's colour for counts) */}
+          {unreadCount > 0 && (
+            <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-gold px-1 text-[9px] font-extrabold leading-none text-ink">
+              {unreadCount > 9 ? "9+" : unreadCount}
+            </span>
+          )}
+        </button>
+
+        {notificationsOpen && (
+          <div
+            role="dialog"
+            aria-label="Notifications"
+            className={`absolute z-[60] w-80 overflow-hidden rounded-2xl border border-line bg-white shadow-xl ${panelPosition}`}
+          >
+            <div className="flex items-center justify-between border-b border-line px-4 py-3">
+              <h2 className="text-sm font-bold text-navy">Notifications</h2>
+
+              {unreadCount > 0 && (
+                <button
+                  type="button"
+                  onClick={markAllRead}
+                  className="text-xs font-semibold text-navy-soft hover:text-navy"
+                >
+                  Mark all read
+                </button>
+              )}
+            </div>
+
+            {notifications.length === 0 ? (
+              <p className="px-4 py-8 text-center text-sm text-ink-soft">
+                You’re all caught up.
+              </p>
+            ) : (
+              <ul className="max-h-72 divide-y divide-line overflow-y-auto">
+                {notifications.map((notification) => (
+                  <li key={notification.id}>
+                    <button
+                      type="button"
+                      onClick={() => openNotification(notification)}
+                      className={`flex w-full items-start gap-3 px-4 py-3 text-left transition hover:bg-sky-wash ${
+                        notification.read ? "bg-white" : "bg-cream"
+                      }`}
+                    >
+                      {/* Unread dot (sky blue is fine here: decoration) */}
+                      <span
+                        className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${
+                          notification.read ? "bg-transparent" : "bg-brand-sky"
+                        }`}
+                        aria-hidden="true"
+                      />
+
+                      <span className="min-w-0">
+                        {/* Part 13c: coloured status word */}
+                        <span
+                          className={`block text-xs font-bold uppercase tracking-wide ${KIND_LABEL[notification.kind].className}`}
+                        >
+                          {KIND_LABEL[notification.kind].text}
+                        </span>
+                        <span className="block text-sm leading-5 text-ink">
+                          {notification.message}
+                        </span>
+                        <time
+                          dateTime={notification.createdAt}
+                          className="mt-1 block text-xs text-ink-soft"
+                        >
+                          {new Date(notification.createdAt).toLocaleString()}
+                        </time>
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    router.push("/login");
+    router.refresh();
+  };
+
+  return (
+    <>
+      {/* Phones/tablets (below lg): top bar with ☰, logo and bell */}
+      <header className="z-30 flex h-16 shrink-0 items-center justify-between gap-3 border-b-[1.5px] border-card-line bg-white px-3 lg:hidden">
+        <div className="flex min-w-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setMenuOpen(true)}
+            aria-label="Open menu"
+            aria-expanded={menuOpen}
+            aria-controls="student-sidebar"
+            className="rounded-lg p-2 text-ink-nav outline-none transition hover:bg-sky-wash hover:text-navy focus-visible:ring-2 focus-visible:ring-navy/40"
+          >
+            <Icon name="menu" className="h-6 w-6" />
+          </button>
+          <Logo href="/" />
+        </div>
+
+        {renderBell(mobileBellRef, "", "right-0 top-[calc(100%+0.5rem)] max-w-[calc(100vw-1.5rem)]")}
+      </header>
+
+      {/* Dark backdrop behind the open menu; a click on it closes the menu */}
+      {menuOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-ink/40 lg:hidden dark:bg-black/60"
+          onClick={() => setMenuOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Laptops: always shown on the left (fixed; the layout leaves lg:ml-72).
+          Phones/tablets: slides in from the left when ☰ is pressed; while closed
+          it is moved off screen and made invisible, so Tab can't reach it.
+          Clicking any link inside closes the menu. */}
+      <aside
+        id="student-sidebar"
+        onClick={(event) => {
+          if ((event.target as HTMLElement).closest("a")) setMenuOpen(false);
+        }}
+        className={[
+          "fixed inset-y-0 left-0 z-50 flex h-screen w-72 max-w-[85vw] shrink-0 flex-col border-r-[1.5px] border-card-line bg-white px-4 py-6",
+          "transition-transform duration-200 lg:z-40 lg:translate-x-0",
+          menuOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full max-lg:invisible",
+        ].join(" ")}
+      >
+        {/* Phones/tablets: close button */}
+        <button
+          type="button"
+          onClick={() => setMenuOpen(false)}
+          aria-label="Close menu"
+          className="absolute right-3 top-4 rounded-lg p-2 text-ink-soft outline-none transition hover:bg-sky-wash hover:text-navy focus-visible:ring-2 focus-visible:ring-navy/40 lg:hidden"
+        >
+          <Icon name="close" className="h-5 w-5" />
+        </button>
+
+        {/* Brand. Part 19: the laptop bell moved up here, next to the logo
+            (it sat beside "My Account", which made it look like part of that
+            section); same place as on the admin sidebar. */}
+        <div className="mb-7 flex shrink-0 items-start justify-between gap-2 px-2">
+          <Logo href="/" />
+          {renderBell(
+            notificationsRef,
+            "max-lg:hidden",
+            "left-[calc(100%+0.75rem)] top-0 max-w-[calc(100vw-20rem)]"
+          )}
+        </div>
+
+        {/* Main navigation */}
+        <nav aria-label="Main" className="shrink-0 space-y-1">
+          <Link href="/home" className={navClass(pathname === "/home")}>
+            <Icon name="home" />
+            <span>Home</span>
+          </Link>
+
+          {/* Upload: the main action for students, so it is coloured gold
+              from the logo's star (user's idea, Part 12). The "+" icon uses the
+              bright star gold; the word uses the darker gold-ink, because the
+              bright gold is too faint to read as text on white. On the upload
+              page itself it gets a pale gold background. */}
+          <Link
+            href="/submit-note"
+            aria-current={pathname === "/submit-note" ? "page" : undefined}
+            className={[
+              "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-[15px] font-bold text-gold-ink",
+              "outline-none transition-colors duration-150 hover:bg-gold-tint",
+              "focus-visible:ring-2 focus-visible:ring-navy/40",
+              pathname === "/submit-note" ? "bg-gold-tint" : "",
+            ].join(" ")}
+          >
+            {/* Part 21: the logo's gold star instead of "+" */}
+            <svg viewBox="0 0 24 24" className="h-5 w-5 fill-gold stroke-gold" strokeWidth={1.7} strokeLinejoin="round" aria-hidden="true">
+              <path d="M12 2.8l2.8 5.8 6.4.9-4.6 4.5 1.1 6.3L12 17.3l-5.7 3 1.1-6.3L2.8 9.5l6.4-.9z" />
+            </svg>
+            <span>Upload</span>
+          </Link>
+        </nav>
+
+        {/* My Account */}
+        <section className="mt-7 shrink-0">
+          <div className="mb-2 flex items-center justify-between px-3">
+            <p className={sectionLabel}>My Account</p>
+          </div>
+
+          <nav aria-label="My account" className="space-y-1">
+            <Link href="/profile" className={navClass(pathname === "/profile")}>
+              <Icon name="user" />
+              <span>Profile</span>
+            </Link>
+          </nav>
+        </section>
+
+        {/* Scrollable programmes; edges fade when there is more to scroll */}
+        <section className="mt-7 flex min-h-0 flex-1 flex-col">
+          <div className="mb-2 flex shrink-0 items-center justify-between px-3">
+            <p className={sectionLabel}>Programmes</p>
+            <Icon name="graduation" className="h-4 w-4 text-muted-blue" />
+          </div>
+
+          <nav
+            ref={programmeListRef}
+            onScroll={updateEdgeFade}
+            style={{ maskImage: programmeMask, WebkitMaskImage: programmeMask }}
+            className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden pr-1 [scrollbar-color:#CFDDF1_transparent] [scrollbar-width:thin]"
+            aria-label="Programmes"
+          >
+            {PROGRAMMES.map((programme) => {
+              const href = programmeHref(programme.name);
+              const active = pathname === href || pathname.startsWith(`${href}/`);
+
+              return (
+                <Link
+                  key={programme.name}
+                  href={href}
+                  title={programme.name}
+                  data-programme-item
+                  aria-current={active ? "page" : undefined}
+                  className={[
+                    "group relative flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm",
+                    "outline-none transition-colors duration-200 ease-out",
+                    "focus-visible:ring-2 focus-visible:ring-navy/40",
+                    active
+                      ? "bg-sky-wash font-bold text-navy"
+                      : "text-ink-nav hover:bg-sky-wash hover:text-navy",
+                  ].join(" ")}
+                >
+                  {/* Dot: sky blue for the current programme, grey otherwise */}
+                  <span
+                    className={[
+                      "h-1.5 w-1.5 shrink-0 rounded-full transition-colors",
+                      active ? "bg-brand-sky" : "bg-sky-line group-hover:bg-brand-sky",
+                    ].join(" ")}
+                  />
+
+                  <span className="min-w-0 flex-1 leading-5">{programme.label}</span>
+
+                  {active && <Icon name="chevron" className="h-4 w-4 shrink-0 text-navy" />}
+                </Link>
+              );
+            })}
+          </nav>
+        </section>
+
+        {/* Bottom actions */}
+        <div className="mt-4 shrink-0 border-t border-line pt-4">
+          {/* Dark mode part: one-click light/dark */}
+          <ThemeToggle className={`${navClass(false)} text-left`} />
+          <Link href="/settings" className={navClass(pathname === "/settings")}>
+            <Icon name="settings" />
+            <span>Settings</span>
+          </Link>
+
+          {loggedIn ? (
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[15px] font-medium text-ink-nav outline-none transition-colors hover:bg-red-50 hover:text-red-700 focus-visible:ring-2 focus-visible:ring-navy/40"
+            >
+              <Icon name="logout" />
+              <span>Logout</span>
+            </button>
+          ) : (
+            <Link href="/login" className={`mt-1 ${navClass(pathname === "/login")}`}>
+              <Icon name="login" />
+              <span>Login</span>
+            </Link>
+          )}
+        </div>
+      </aside>
+    </>
+  );
+}
